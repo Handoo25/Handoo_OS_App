@@ -1,0 +1,2057 @@
+<style>
+  .v-tabs-container-inv { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .v-tabs-sidebar-inv { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 25px; }
+  .v-tab-btn-inv { 
+    display: flex; align-items: center; gap: 15px; padding: 20px 30px; border: none; background: none; 
+    width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; 
+    border-bottom: 1px solid #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;
+  }
+  .v-tab-btn-inv:hover { background: #f1f5f9; color: var(--dark); }
+  .v-tab-btn-inv.active { background: white; color: var(--dark); border-right: 6px solid var(--brand); }
+  .v-tab-btn-inv i { font-size: 1.4rem; color: #94a3b8; transition: 0.3s; width: 24px; text-align: center; }
+  .v-tab-btn-inv.active i { color: var(--brand); }
+  .v-tabs-content-inv { flex-grow: 1; padding: 40px; overflow-y: auto; background: white; }
+
+  .titanium-card-inv { 
+    padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; 
+    background: #fff; transition: 0.3s; cursor: pointer; position: relative; 
+    overflow: hidden; margin-bottom: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .titanium-card-inv:hover { border-color: var(--brand); transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); }
+  .card-accent-inv { border-left: 5px solid var(--brand) !important; }
+  
+  .titanium-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+  }
+  .titanium-pill.pill-brand { background: var(--brand); color: #0f172a; border-color: var(--brand); }
+  .titanium-pill.pill-dark { background: #1e293b; color: #94a3b8; border-color: #475569; }
+
+  .alias-tag { font-size: 9px; padding: 2px 8px; border-radius: 4px; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; font-weight: 700; margin-right: 5px; margin-top: 5px; display: inline-block; }
+
+  .unified-block { padding: 24px; border-radius: 16px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 16px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .block-dark .text-muted { color: #94a3b8 !important; }
+  .h-label-refined { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+  .h-form-control { height: 42px; border-radius: 10px; font-size: 13px; border-color: #e2e8f0; font-weight: 600; }
+
+  /* ESTILOS MODAL INTERNO */
+  .m-shell { display: flex; height: 100%; }
+  .m-sidebar { width: 220px; background: #f8fafc; border-right: 1px solid #e2e8f0; flex-shrink: 0; padding-top: 20px; }
+  .m-content { flex-grow: 1; padding: 30px 40px; overflow-y: auto; background: #f1f5f9; }
+  .m-nav-btn { display: flex; align-items: center; gap: 12px; padding: 15px 25px; width: 100%; border: none; background: none; font-weight: 800; font-size: 10px; color: #64748b; text-transform: uppercase; text-align: left; cursor: pointer; transition: 0.2s; border-bottom: 1px solid #f1f5f9; }
+  .m-nav-btn:hover { background: #f1f5f9; }
+  .m-nav-btn.active { background: white; color: var(--dark); border-right: 4px solid var(--brand); }
+</style>
+
+<script>
+  console.log('DEBUG: Views_Inventory.html está cargando...');
+  window.addEventListener('handoo:inventory-updated', () => {
+    if (typeof InventoryView !== 'undefined') {
+      InventoryView.load();
+    }
+  });
+
+console.log('Handoo Titanium v126.6: Master Cargado y Saneado (Con Blindaje Total)');
+
+window.InventoryView = {
+  activeTab: 'PRODUCT',
+  modalActiveTab: 'general',
+  catalog: { products: [], modules: [], plans: [], discounts: [] },
+  vendors: [],
+  quarantine: [],
+  allExpenses: [],
+  currentLinkedInvoices: [],
+  _cachedExpenses: null,
+  editingMaster: null,
+  systemProfile: 'STANDARD', 
+  salesFamilies: ['ENTRANTES', 'PRIMEROS', 'SEGUNDOS', 'POSTRES', 'BEBIDAS', 'VINOS', 'CAFÉS', 'COCKTAILS', 'OTROS'],
+
+  /* =================================================================
+     1. ARRANQUE Y NAVEGACIÓN
+  ================================================================= */
+  checkProfile: function() {
+      const settings = window.HandooApp.settings || this.settings;
+      if (settings && settings.sector_profile) {
+          const p = settings.sector_profile.toUpperCase();
+          this.systemProfile = (p.includes('HORECA') || p.includes('ALIMENT')) ? 'HORECA' : 'STANDARD';
+      } else {
+          this.systemProfile = 'STANDARD';
+      }
+  },
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    this.checkProfile();
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div>
+            <h6 class="h-label text-white-50">SISTEMA DE ACTIVOS</h6>
+            <h2 class="fw-black m-0 text-uppercase">Catálogo Global</h2>
+         </div>
+         <div class="d-flex gap-2">
+            <button class="btn btn-outline-warning px-3 py-2 fw-black shadow-sm" onclick="InventoryView.openStrategicCommand()" title="Asistente Estratégico (Cheminai)"><i class="bi bi-cpu-fill me-1"></i> CHEMINAI</button>
+            <button class="btn btn-outline-danger px-3 py-2 fw-black shadow-sm" onclick="InventoryView.openBulkDeleteModal()"><i class="bi bi-trash3-fill"></i></button>
+            <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="InventoryView.openMasterForm('new')">+ NUEVO ARTÍCULO</button>
+            <button class="btn btn-outline-light px-4 py-2 fw-black shadow-sm" onclick="InventoryView.openImporter()">PEGAR DESDE EXCEL</button>
+         </div>
+      </div>
+      <div class="p-5 animate-slide"><div class="v-tabs-container-inv"><div class="v-tabs-sidebar-inv" id="inv-sidebar"></div><div class="v-tabs-content-inv" id="inv-content-area"></div></div></div>`;
+    this.renderSidebar();
+    this.load();
+  },
+
+  load: async function() {
+        this.renderSidebar();
+        if(!document.getElementById('catalog-table-body')) {
+            this.renderTabContent();
+        }
+        
+        // 1. ENCENDEMOS EL INDICADOR DE CARGA
+        this._isCatalogLoading = true;
+        this.refreshTableOnly(); 
+
+        try {
+            const [resCat, resSet, resVen, resExp] = await Promise.all([
+                window.HandooApp.api('inventory.get_catalog'),
+                window.HandooApp.api('admin.get_settings'),
+                window.HandooApp.api('vendor.list').catch(() => ({ok: true, data: []})),
+                window.HandooApp.api('expense.list').catch(() => ({ok: true, data: []}))
+            ]);
+
+            if(resSet && resSet.ok) {
+                this.settings = resSet.data;
+                window.HandooApp.settings = resSet.data;
+                this.renderSidebar();
+            }
+            if(resCat && resCat.ok) {
+                this.catalog = resCat.data;
+                // 🔥 SOLUCIÓN LUPA: Guardamos los productos en la variable global para el módulo de RRHH
+                window.HandooCatalogGlobal = this.catalog.products || [];
+            }
+            if(resVen && resVen.ok) this.vendors = Array.isArray(resVen.data) ? resVen.data : Object.values(resVen.data || {});
+            if(resExp && resExp.ok) this._cachedExpenses = Array.isArray(resExp.data) ? resExp.data : Object.values(resExp.data || {});
+
+        } catch (e) { 
+            console.error("Error en la carga de Inventario:", e); 
+        } finally {
+            // 2. APAGAMOS EL INDICADOR Y REPINTAMOS LOS DATOS
+            this._isCatalogLoading = false;
+            this.refreshTableOnly(); 
+        }
+  },
+  renderSidebar: function() {
+    const sidebar = document.getElementById('inv-sidebar');
+    if(!sidebar) return;
+
+    const active = ['FEAT_CATALOG_MODULES', 'FEAT_CATALOG_PLANS', 'FEAT_CATALOG_DISCOUNTS', 'FEAT_INVENTORY_ADVANCED', 'FEAT_CATALOG_TAXONOMY'];
+
+    const menuGroups = [
+      {
+        title: 'GESTIÓN DE ACTIVOS',
+        items: [
+          { id: 'PRODUCT', icon: 'bi-box-seam', label: 'Catálogo de Productos' },
+          { id: 'QUARANTINE', icon: 'bi-shield-exclamation', label: 'Aduana y Cuarentena' }
+        ]
+      },
+      {
+        title: 'INGENIERÍA DE PRODUCTO',
+        items: [
+          { id: 'MODULE', icon: 'bi-puzzle', label: 'Módulos Extras', license: 'FEAT_CATALOG_MODULES' },
+          { id: 'PLAN', icon: 'bi-layers', label: 'Packs', license: 'FEAT_CATALOG_PLANS' },
+          { id: 'DISCOUNT', icon: 'bi-tag', label: 'Descuentos', license: 'FEAT_CATALOG_DISCOUNTS' }
+        ]
+      },
+      {
+        title: 'SISTEMA Y CONFIGURACIÓN',
+        items: [
+          { id: 'UNITS_CONFIG', icon: 'bi-arrow-left-right', label: 'Conversor de Unidades', license: 'FEAT_INVENTORY_ADVANCED' },
+          { id: 'CONFIG_MASTER', icon: 'bi-gear-wide-connected', label: 'Configuración Global', license: 'FEAT_CATALOG_TAXONOMY' }
+        ]
+      }
+    ];
+
+    sidebar.innerHTML = menuGroups.map(group => {
+      const visibleItems = group.items.filter(it => !it.license || active.includes(it.license));
+      if (visibleItems.length === 0) return '';
+      return `
+        <div class="mb-4">
+          <h6 class="h-label-refined mb-2" style="opacity: 0.5; padding-left: 15px;">${group.title}</h6>
+          ${visibleItems.map(m => `
+            <button class="v-tab-btn-inv ${this.activeTab === m.id ? 'active' : ''}" onclick="InventoryView.setTab('${m.id}')">
+              <i class="bi ${m.icon} fs-5 me-2"></i> 
+              <span>${m.label}</span>
+              ${m.id === 'QUARANTINE' ? `<span id="q-badge-side" class="badge rounded-pill bg-danger ms-auto d-none">0</span>` : ''}
+            </button>
+          `).join('')}
+        </div>
+      `;
+    }).join('');
+  },
+
+  setTab: function(tabId) {
+    this.activeTab = tabId;
+    this.renderSidebar(); 
+    this.renderTabContent(); 
+    if(tabId === 'PRODUCT' && this.catalog?.products) {
+        this.refreshTableOnly();
+    }
+  },
+
+  /* =================================================================
+     2. RENDERIZADO DE PESTAÑAS (TABLAS Y CONFIG)
+  ================================================================= */
+  renderTabContent: async function() {
+    const container = document.getElementById('inv-content-area');
+    if(!container) return;
+    
+    if(this.activeTab === 'CONFIG_MASTER') return this.renderConfigMaster(container);
+    if(this.activeTab === 'QUARANTINE') return this.renderQuarantine(container);
+    if(this.activeTab === 'UNITS_CONFIG') return this.renderUnitsConfig(container);
+
+    container.innerHTML = `
+      <div class="animate-slide">
+        <div class="d-flex gap-3 mb-4 bg-light p-3 rounded-4 shadow-sm border align-items-end">
+          <div class="flex-grow-1">
+            <label class="h-label-refined mb-2">Buscador Inteligente</label>
+            <div class="input-group">
+              <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+              <input type="text" id="catalog-search" class="form-control border-start-0 ps-0 fw-bold" placeholder="Escribe el nombre del activo..." onkeyup="InventoryView.filterCatalog()">
+            </div>
+          </div>
+          <div style="width: 220px;">
+            <label class="h-label-refined mb-2">Filtrar por Tipo</label>
+            <select id="catalog-filter-type" class="form-select fw-black text-uppercase" style="font-size:12px" onchange="InventoryView.filterCatalog()">
+              <option value="ALL">🔍 MOSTRAR TODOS</option>
+              <option value="RAW">⚙️ MATERIA PRIMA / COMPONENTE</option>
+              <option value="SUPPLY">📦 SUMINISTROS</option>
+              <option value="FINAL_PRODUCT">🛍️ PRODUCTO VENTA</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-4 shadow-sm border overflow-hidden">
+          <table class="table table-hover m-0 align-middle">
+            <thead class="bg-dark text-white">
+              <tr style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">
+                <th class="ps-4 py-3" width="400">Activo / Referencia</th>
+                <th width="150">Categoría</th>
+                <th class="text-center" width="100">UDS</th>
+                <th class="text-end" width="150">Costo/PVP</th>
+                <th class="text-end pe-4" width="100">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="catalog-table-body"></tbody>
+          </table>
+        </div>
+      </div>`;
+    this.refreshTableOnly();
+  },
+
+  refreshTableOnly: function() {
+    const tbody = document.getElementById('catalog-table-body');
+    if(!tbody) return;
+
+    // Si está descargando datos, mostramos el Spinner
+    if (this._isCatalogLoading) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-5 text-center text-muted fw-bold"><span class="spinner-border spinner-border-sm me-2"></span>Sincronizando catálogo con el servidor...</td></tr>';
+        return;
+    }
+
+    const listKey = { 'PRODUCT': 'products', 'MODULE': 'modules', 'PLAN': 'plans', 'DISCOUNT': 'discounts' }[this.activeTab];
+    const items = this.catalog[listKey] || [];
+    
+    // Si ya ha cargado todo y realmente no hay datos, entonces sí ponemos VACÍO
+    if(items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="p-5 text-center opacity-25 fw-black">VACÍO</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = items.map(item => `
+      <tr class="catalog-row" data-name="${(item.nombre||'').toLowerCase()}" data-type="${item.type}">
+        <td class="ps-4 py-2" onclick="InventoryView.openMasterForm('${item.id}')" style="cursor:pointer">
+          <div class="fw-black text-uppercase text-dark" style="font-size: 12px;">${escapeHTML(item.nombre)}</div>
+          <div class="x-small text-muted font-monospace" style="font-size: 9px;">${item.id}</div>
+        </td>
+        <td><span class="titanium-pill ${item.type === 'RAW' ? 'pill-brand' : 'pill-dark'}">${item.type}</span></td>
+        <td class="text-center fw-bold text-muted" style="font-size: 10px;">${item.consume_unit || 'uds'}</td>
+        <td class="text-end fw-black text-brand" style="font-size: 13px;">${parseFloat(item.pvp || 0).toLocaleString()} €</td>
+        <td class="text-end pe-4"><i class="bi bi-trash3 text-danger cursor-pointer" onclick="InventoryView.deleteMaster('${item.id}')"></i></td>
+      </tr>`).join('');
+  },
+
+  filterCatalog: function() {
+    const q = document.getElementById('catalog-search').value.toLowerCase();
+    const type = document.getElementById('catalog-filter-type').value;
+    document.querySelectorAll('.catalog-row').forEach(row => {
+      const nameMatch = row.dataset.name.includes(q);
+      const typeMatch = (type === 'ALL' || row.dataset.type === type);
+      row.style.display = (nameMatch && typeMatch) ? 'table-row' : 'none';
+    });
+  },
+
+  renderConfigMaster: async function(container) {
+    const taxonomy = await this.getTaxonomyData();
+    const labels = this.settings?.ui_labels || {};
+    const invMap = this.settings?.inventory_map || {};
+
+    container.innerHTML = `
+      <div class="animate-slide p-4" style="max-width: 1000px; margin: 0 auto;">
+        <div class="unified-block block-dark mt-0 mb-4" style="border-left: 6px solid var(--brand) !important;">
+            <h6 class="fw-black text-uppercase m-0 text-white">Configuración Global</h6>
+            <p class="small text-muted m-0">Gestión de listados y parámetros maestros</p>
+        </div>
+        <div class="d-flex flex-column gap-4">
+          <div class="unified-block block-light m-0">
+              <div class="row align-items-end g-3">
+                  <div class="col-md-4">
+                      <h6 class="fw-black text-uppercase m-0" style="font-size: 12px;">Bautismo del Sistema</h6>
+                  </div>
+                  <div class="col-md-4">
+                      <label class="h-label-refined">Etiqueta Categoría Inv.</label>
+                      <input type="text" id="ui-inv-cat" class="form-control h-form-control fw-bold" value="${labels.inv_cat || 'Categoría de Inventario'}">
+                  </div>
+                  <div class="col-md-4">
+                      <label class="h-label-refined">Etiqueta Ubicación</label>
+                      <div class="d-flex gap-2">
+                          <input type="text" id="ui-zone" class="form-control h-form-control fw-bold" value="${labels.zone_label || 'Ubicación / Zona'}">
+                          <button class="btn btn-dark fw-black px-4 h-form-control" onclick="InventoryView.saveUIConfig()">GUARDAR</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div class="unified-block block-light m-0">
+              <div class="row align-items-center mb-3">
+                  <div class="col-md-6"><h6 class="fw-black text-uppercase m-0" style="font-size: 12px;">Categorías de Inventario (Almacén)</h6></div>
+                  <div class="col-md-6">
+                      <div class="input-group">
+                          <input type="text" id="new-inv-cat" class="form-control h-form-control" placeholder="Añadir nueva categoría...">
+                          <button class="btn btn-dark fw-black px-4" onclick="InventoryView.addTaxonomyItem('INVENTORY')">AÑADIR</button>
+                      </div>
+                  </div>
+              </div>
+              <div class="d-flex flex-wrap gap-2 p-3 bg-white border rounded-4 shadow-sm">
+                  ${taxonomy.inventory.map(cat => `<span class="badge bg-light text-dark border p-2 px-3 fw-bold d-flex align-items-center" style="font-size:11px;">${cat} <i class="bi bi-x-circle-fill text-danger ms-2 cursor-pointer" onclick="InventoryView.removeTaxonomyItem('INVENTORY', '${cat}')"></i></span>`).join('')}
+              </div>
+          </div>
+          <div class="unified-block block-light m-0 border-warning" style="border-left: 4px solid var(--warning) !important;">
+              <div class="row align-items-center mb-3">
+                  <div class="col-md-6"><h6 class="fw-black text-uppercase m-0" style="font-size: 12px;">Familias Comerciales (Venta TPV)</h6></div>
+                  <div class="col-md-6">
+                      <div class="input-group">
+                          <input type="text" id="new-menu-cat" class="form-control h-form-control border-warning" placeholder="Añadir nueva familia...">
+                          <button class="btn btn-warning fw-black px-4" onclick="InventoryView.addTaxonomyItem('MENU')">AÑADIR</button>
+                      </div>
+                  </div>
+              </div>
+              <div class="d-flex flex-wrap gap-2 p-3 bg-white border rounded-4 shadow-sm">
+                  ${taxonomy.menu.map(cat => `<span class="badge bg-light text-dark border border-warning p-2 px-3 fw-bold d-flex align-items-center" style="font-size:11px;">${escapeHTML(cat)} <i class="bi bi-x-circle-fill text-danger ms-2 cursor-pointer" onclick="InventoryView.removeTaxonomyItem('MENU', '${escapeHTML(cat)}')"></i></span>`).join('')}
+              </div>
+          </div>
+          <div class="unified-block block-light m-0">
+              <div class="row align-items-center mb-3">
+                  <div class="col-md-6"><h6 class="fw-black text-uppercase m-0" style="font-size: 12px;">Mapa de Ubicaciones / Zonas</h6></div>
+                  <div class="col-md-6">
+                      <div class="input-group">
+                          <input type="text" id="new-zona-name" class="form-control h-form-control" placeholder="Añadir nueva ubicación...">
+                          <button class="btn btn-dark fw-black px-4" onclick="InventoryView.quickAdd('ZONA')">AÑADIR</button>
+                      </div>
+                  </div>
+              </div>
+              <div class="d-flex flex-wrap gap-2 p-3 bg-white border rounded-4 shadow-sm">
+                  ${Object.entries(invMap).map(([k, v]) => `<span class="badge bg-light text-dark border p-2 px-3 fw-bold d-flex align-items-center" style="font-size:11px;">${escapeHTML(v)} <i class="bi bi-x-circle-fill text-danger ms-2 cursor-pointer" onclick="InventoryView.removeZona('${escapeHTML(k)}')"></i></span>`).join('')}
+              </div>
+          </div>
+        </div>
+      </div>`;
+  },
+  /* =================================================================
+     3. FUNCIONES DE CONFIGURACIÓN GLOBAL (TAXONOMÍA Y BAUTISMO)
+  ================================================================= */
+  saveUIConfig: async function() {
+    const payload = {
+      inv_cat: document.getElementById('ui-inv-cat').value.toUpperCase(),
+      zone_label: document.getElementById('ui-zone').value.toUpperCase()
+    };
+    HandooApp.ui.setLoading('btn-save-ui', true);
+    const res = await HandooApp.api('admin.save_ui_labels', payload);
+    if(res.ok) {
+      this.settings.ui_labels = payload;
+      window.HandooApp.settings.ui_labels = payload;
+      HandooApp.ui.showToast("¡Handoo bautizado con éxito!", "success");
+      this.renderSidebar();
+      this.renderTabContent();
+    } else {
+      HandooApp.ui.showToast("Error al guardar el bautismo", "error");
+    }
+    HandooApp.ui.setLoading('btn-save-ui', false);
+  },
+
+  quickAdd: function(type) {
+      const label = type === 'INVENTORY' ? 'Nueva Categoría' : type === 'MENU' ? 'Nueva Familia' : 'Nueva Ubicación';
+
+      // Creamos un modal de Titanium 100% nativo para que nunca falle
+      const overlay = document.createElement('div');
+      overlay.className = 'h-modal-overlay animate-slide';
+      overlay.style.zIndex = '100000'; // Nos aseguramos de que salga por encima de la ficha del artículo
+      overlay.innerHTML = `
+        <div class="h-modal shadow-lg" style="width: 400px;">
+           <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">${label}</h5></div>
+           <div class="h-modal-body bg-light p-4">
+              <label class="h-label-refined">Nombre / Denominación</label>
+              <input type="text" id="quick-add-input" class="form-control h-form-control fw-bold text-uppercase" placeholder="Escriba aquí...">
+           </div>
+           <div class="h-modal-footer">
+              <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+              <button class="btn btn-dark fw-black flex-grow-1 shadow" onclick="InventoryView.executeQuickAdd('${type}', document.getElementById('quick-add-input').value, this)">CREAR Y SELECCIONAR</button>
+           </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      setTimeout(() => document.getElementById('quick-add-input').focus(), 100);
+  },
+
+  executeQuickAdd: async function(type, newVal, btn) {
+      if (!newVal || !newVal.trim()) return window.HandooApp.ui.showToast("El nombre es obligatorio", "error");
+      const valClean = newVal.trim().toUpperCase();
+      
+      btn.closest('.h-modal-overlay').remove();
+      window.HandooApp.ui.showToast("Inyectando...", "info");
+
+      // Salvar estado formulario para no borrar lo que estabas escribiendo
+      if (this.modalActiveTab === 'general' && this.editingMaster) {
+          this.editingMaster.nombre = document.getElementById('m-nombre')?.value || this.editingMaster.nombre;
+          this.editingMaster.type = document.getElementById('m-type')?.value || this.editingMaster.type;
+          this.editingMaster.last_cost = parseFloat(document.getElementById('m-coste-manual')?.value || this.editingMaster.last_cost || 0);
+          this.editingMaster.pvp = parseFloat(document.getElementById('m-pvp')?.value || this.editingMaster.pvp || 0);
+          this.editingMaster.safety_stock = parseFloat(document.getElementById('m-safety-stock')?.value || this.editingMaster.safety_stock || 0);
+          this.editingMaster.descripcion = document.getElementById('m-desc')?.value || this.editingMaster.descripcion;
+      }
+
+      if (!this.settings.masters) this.settings.masters = {};
+      let newZoneKey = null;
+
+      // Inyección en memoria
+      if (type === 'INVENTORY') {
+          if (!this.settings.masters.inventory_families) this.settings.masters.inventory_families = [];
+          if (!this.settings.masters.inventory_families.includes(valClean)) this.settings.masters.inventory_families.push(valClean);
+          this.editingMaster.category = valClean;
+      } 
+      else if (type === 'MENU') {
+          if (!this.settings.masters.sales_families) this.settings.masters.sales_families = this.salesFamilies;
+          if (!this.settings.masters.sales_families.includes(valClean)) this.settings.masters.sales_families.push(valClean);
+          if (!this.salesFamilies.includes(valClean)) this.salesFamilies.push(valClean);
+          this.editingMaster.family = valClean;
+      } 
+      else if (type === 'ZONA') {
+          if (!this.settings.inventory_map) this.settings.inventory_map = {};
+          newZoneKey = 'ZONA_' + Date.now();
+          this.settings.inventory_map[newZoneKey] = valClean;
+          this.editingMaster.zona = newZoneKey;
+      }
+
+      // Repintar interfaz
+      const modalBody = document.getElementById('m-content-area');
+      if (modalBody && this.modalActiveTab === 'general') {
+          modalBody.innerHTML = this.renderPhysicalItemForm();
+          this.handleNaturaChange(document.getElementById('m-type'));
+      } else if (this.activeTab === 'CONFIG_MASTER') {
+          this.renderConfigMaster(document.getElementById('inv-content-area'));
+      }
+
+      // Guardar en servidor en segundo plano
+      try {
+          if (type === 'ZONA') await window.HandooApp.api('admin.update_zones', { key: newZoneKey, value: valClean, action: 'ADD' });
+          else await window.HandooApp.api('admin.update_taxonomy', { type: type, value: valClean, action: 'ADD' });
+      } catch (e) { console.error("Error bg:", e); }
+  },
+
+  getTaxonomyData: async function() {
+    const settings = this.settings || window.HandooApp.settings;
+    return {
+      inventory: settings?.masters?.inventory_families || ['CARNES', 'VERDURAS', 'BEBIDAS', 'LIMPIEZA'],
+      menu: settings?.masters?.sales_families || ['ENTRANTES', 'PRIMEROS', 'POSTRES', 'VINOS']
+    };
+  },
+
+  addTaxonomyItem: async function(type) {
+    const inputId = type === 'INVENTORY' ? 'new-inv-cat' : 'new-menu-cat';
+    const val = document.getElementById(inputId).value.trim().toUpperCase();
+    if(!val) return;
+    HandooApp.ui.showToast("Guardando categoría...");
+    const res = await HandooApp.api('admin.update_taxonomy', { type, value: val, action: 'ADD' });
+    if(res.ok) {
+      this.settings = res.data;
+      this.renderConfigMaster(document.getElementById('inv-content-area'));
+    }
+  },
+
+  removeTaxonomyItem: async function(type, val) {
+    if(!await HandooApp.ui.confirm(`¿Eliminar ${val}?`)) return;
+    const res = await HandooApp.api('admin.update_taxonomy', { type, value: val, action: 'REMOVE' });
+    if(res.ok) {
+      this.settings = res.data;
+      this.renderConfigMaster(document.getElementById('inv-content-area'));
+    }
+  },
+
+  removeZona: async function(key) {
+    if(!await HandooApp.ui.confirm(`¿Eliminar zona?`)) return;
+    const res = await HandooApp.api('admin.update_zones', { key, action: 'REMOVE' });
+    if(res.ok) {
+        this.settings = res.data;
+        window.HandooApp.settings = res.data;
+        this.renderConfigMaster(document.getElementById('inv-content-area'));
+    }
+  },
+
+  // 📡 LA ANTENA RECEPTORA (Versión Blindada)
+  openMasterForm: async function(id, prefillData = null) {
+    try {
+        const isNew = id === 'new';
+        const isHoreca = (this.systemProfile === 'HORECA');
+        const allItems = [...(this.catalog.products||[]), ...(this.catalog.modules||[]), ...(this.catalog.plans||[]), ...(this.catalog.discounts||[])];
+        const existing = allItems.find(m => String(m.id) === String(id));
+        const defaultType = isHoreca ? 'MATERIA_PRIMA' : 'PRODUCT';
+
+        // 1. CARGAMOS ALÉRGENOS MAESTROS
+        const resAllergens = await window.HandooApp.api('allergens.get_list', {});
+        this.allAllergens = (resAllergens && resAllergens.ok && Array.isArray(resAllergens.data)) ? resAllergens.data : [];
+
+        // 2. PREPARAMOS EL MOLDE VACÍO O CON DATOS
+        this.editingMaster = isNew ? { 
+          id: 'new', type: prefillData?.type || defaultType, nombre: prefillData?.nombre || '', descripcion: '', pvp: 0, coste: 0,
+          iva: prefillData?.iva || 21, irpf: prefillData?.irpf || 0,
+          family: '', purchase_account: '600', aliases: prefillData?.aliases || [], zona: prefillData?.zona || '', posicion: prefillData?.posicion || '',
+          facturas_vinculadas: [], lead_time: 2, safety_stock: 0, is_elaborated: false, bom: [], alergenos: []
+        } : (existing ? JSON.parse(JSON.stringify(existing)) : null);
+        
+        if(!this.editingMaster) throw new Error("No se pudo cargar la información del artículo.");
+        if(!this.editingMaster.aliases) this.editingMaster.aliases = [];
+        if(!this.editingMaster.bom) this.editingMaster.bom = [];
+        if(!this.editingMaster.facturas_vinculadas) this.editingMaster.facturas_vinculadas = [];
+        if(!this.editingMaster.alergenos || !Array.isArray(this.editingMaster.alergenos)) this.editingMaster.alergenos = [];
+
+    // 3. 📡 BÚSQUEDA EXHAUSTIVA DE INGENIERÍA (Búsqueda por ID y por Nombre)
+    try {
+        const resForm = await window.HandooApp.api('formula.list', {});
+        if (resForm.ok && resForm.data) {
+            const formulaVinculada = resForm.data.find(f => 
+                String(f.id_producto) === String(id) || 
+                String(f.master_link) === String(id) || 
+                // EL FALLBACK INFALIBLE: Si el nombre coincide exactamente, lo damos por bueno
+                (!isNew && existing && String(f.nombre).trim().toUpperCase() === String(existing.nombre).trim().toUpperCase())
+            );
+
+            if (formulaVinculada) {
+                // Extraemos los componentes (Blindaje contra JSON Strings del Excel)
+                let comps = formulaVinculada.components || formulaVinculada.ingredientes || formulaVinculada.items || [];
+                if (typeof comps === 'string') {
+                    try { comps = JSON.parse(comps); } catch(e) { comps = []; }
+                }
+
+                if (Array.isArray(comps) && comps.length > 0) {
+                    // Inyectamos la receta
+                    this.editingMaster.bom = comps.map(c => ({
+                        id: c.master_id || c.id || c.id_producto,
+                        qty: parseFloat(c.cantidad_bruta || c.qty || 0),
+                        unit: c.unidad || c.unit || 'g'
+                    }));
+                    
+                    // Sincronizamos alérgenos
+                    this.syncAllergensFromBOM(); 
+                    
+                    // Aviso visual para que sepas que ha funcionado
+                    setTimeout(() => HandooApp.ui.showToast("Receta sincronizada automáticamente", "success"), 500);
+                }
+            }
+        }
+    } catch(e) { console.warn("Antena de Fórmulas desconectada:", e); }
+
+    // 4. DIBUJAMOS EL MODAL
+    this.currentLinkedInvoices = this.editingMaster.facturas_vinculadas || [];
+    this.modalActiveTab = 'general';
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.style.zIndex = '100000'; // Prioridad absoluta sobre otros modales
+    this.currentModalOverlay = overlay;
+    
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 1050px; height: 90vh;">
+         <div class="h-modal-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-dark btn-sm rounded-circle shadow-sm" onclick="InventoryView.navigateProduct(-1)" title="Anterior"><i class="bi bi-chevron-left"></i></button>
+                <h5 class="m-0 fw-black text-uppercase">${isNew ? 'NUEVO ARTÍCULO' : 'FICHA: ' + escapeHTML(this.editingMaster.nombre)}</h5>
+                <button class="btn btn-dark btn-sm rounded-circle shadow-sm" onclick="InventoryView.navigateProduct(1)" title="Siguiente"><i class="bi bi-chevron-right"></i></button>
+            </div>
+            <button class="btn btn-sm btn-light p-0 px-2" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x fs-4"></i></button>
+         </div>
+         <div class="h-modal-body p-0">
+            <div class="m-shell">
+               <div class="m-sidebar"></div>
+               <div class="m-content"></div>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button id="btn-save-master" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="InventoryView.saveMaster()">GUARDAR CAMBIOS</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    this.renderModalSidebar();
+    this.renderModalContent();
+    } catch(err) {
+        console.error("CRITICAL ERROR opening MasterForm:", err);
+        HandooApp.ui.showToast("Error al abrir la ficha del activo", "error");
+    }
+  },
+
+  navigateProduct: function(direction) {
+      // Obtenemos los IDs del listado filtrado actual para movernos en el mismo orden que ve el usuario
+      const rows = Array.from(document.querySelectorAll('#catalog-table-body tr:not([style*="display: none"])'));
+      if(rows.length <= 1) return;
+      
+      const currentId = this.editingMaster.id;
+      const currentIndex = rows.findIndex(row => row.innerHTML.includes(currentId));
+      
+      let targetIndex = currentIndex + direction;
+      if(targetIndex < 0) targetIndex = rows.length - 1;
+      if(targetIndex >= rows.length) targetIndex = 0;
+      
+      const nextId = rows[targetIndex].querySelector('.x-small').innerText;
+      
+      // Cerramos y abrimos el nuevo
+      const modal = document.querySelector('.h-modal-overlay');
+      if(modal) modal.remove();
+      this.openMasterForm(nextId);
+  },
+
+  renderModalSidebar: function() {
+    const nav = this.currentModalOverlay.querySelector('.m-sidebar');
+    if(!nav) return;
+
+    const activeFeats = this.settings?.active_modules || window.HandooApp?.settings?.active_modules || [];
+    const canManageUnits = activeFeats.includes("FEAT_INVENTORY_ADVANCED");
+    const showImpact = ['RAW', 'PREP', 'SEMIFINISHED', 'SUPPLY'].includes(this.editingMaster.type);
+    const isSystemItem = ['MODULE', 'PLAN', 'DISCOUNT'].includes(this.editingMaster.type);
+
+    const items = [
+      { id: 'general', icon: 'bi-gear-fill', label: 'Ficha Técnica' },
+      ...(!isSystemItem && canManageUnits ? [{ id: 'units', icon: 'bi-arrow-left-right', label: 'Unidades y Conversión' }] : []),
+      { id: 'logistics', icon: 'bi-box-seam', label: 'Proveedores' }
+    ];
+
+    if (['FINAL_PRODUCT', 'PREP'].includes(this.editingMaster.type)) {
+      items.push({ id: 'escandallo', icon: 'bi-diagram-3-fill', label: 'Escandallo / Receta' });
+    }
+    if (showImpact && this.editingMaster.id !== 'new') {
+      items.push({ id: 'impact', icon: 'bi-bezier2', label: 'Impacto en Recetas' });
+    }
+
+    nav.innerHTML = items.map(m => `<button class="m-nav-btn ${this.modalActiveTab === m.id ? 'active' : ''}" onclick="InventoryView.setModalTab('${m.id}')"><i class="${m.icon} fs-6"></i> ${m.label}</button>`).join('');
+  },
+
+  setModalTab: function(tab) { 
+    this.modalActiveTab = tab; 
+    this.renderModalSidebar();
+    setTimeout(() => this.renderModalContent(), 50); 
+  },
+
+  renderModalContent: function() {
+    const area = this.currentModalOverlay.querySelector('.m-content');
+    if(!area) return;
+
+    try {
+        if (this.modalActiveTab === 'general') {
+           if(['MODULE', 'PLAN', 'DISCOUNT'].includes(this.editingMaster.type)) area.innerHTML = this.renderSystemItemForm();
+           else {
+               area.innerHTML = this.renderPhysicalItemForm();
+               setTimeout(() => this.handleNaturaChange(document.getElementById('m-type')), 50);
+           }
+        } else if (this.modalActiveTab === 'units') this.renderUnitsTab(area);
+        else if (this.modalActiveTab === 'logistics') this.renderLogisticsTab(area);
+        else if (this.modalActiveTab === 'escandallo') this.renderEscandalloTab(area);
+        else if (this.modalActiveTab === 'impact') this.renderImpactTab(area);
+    } catch (e) {
+        console.error("ERROR rendering modal content:", e);
+        area.innerHTML = `
+            <div class="p-5 text-center">
+                <i class="bi bi-exclamation-triangle-fill text-danger fs-1 mb-3"></i>
+                <h5 class="fw-black text-uppercase">Error de Renderizado</h5>
+                <p class="text-muted small">Hubo un problema al dibujar esta pestaña. Por favor, intenta recargar.</p>
+                <div class="bg-light p-3 rounded-4 font-monospace x-small text-start border mt-3">${e.message}</div>
+            </div>
+        `;
+    }
+  },
+
+  renderImpactTab: function(area) {
+    const masterId = this.editingMaster.id;
+    const affectedProducts = [];
+    (this.catalog.products || []).forEach(p => {
+        if (p.bom && p.bom.length > 0) {
+            const found = p.bom.find(b => b.id === masterId);
+            if (found) affectedProducts.push({ product: p, qty: found.qty, unit: found.unit });
+        }
+    });
+
+    let rows = affectedProducts.map(ap => `
+        <tr>
+            <td class="ps-4 py-3"><div class="fw-black text-uppercase text-dark" style="font-size: 11px;">${escapeHTML(ap.product.nombre)}</div></td>
+            <td><span class="badge bg-light text-dark border">${ap.product.type}</span></td>
+            <td class="text-center fw-black text-danger">${ap.qty} <span class="small">${ap.unit}</span></td>
+            <td class="text-end fw-black text-success" style="font-size: 13px;">${parseFloat(ap.product.pvp || 0).toLocaleString()} €</td>
+            <td class="text-end pe-4"><button class="btn btn-sm btn-outline-dark fw-bold border" onclick="document.querySelector('.h-modal-overlay').remove(); InventoryView.openMasterForm('${ap.product.id}')" style="font-size: 9px;">VER FICHA</button></td>
+        </tr>`).join('');
+    if (affectedProducts.length === 0) rows = `<tr><td colspan="5" class="text-center p-5 opacity-50 fw-bold">No se utiliza en ninguna receta activa.</td></tr>`;
+
+    area.innerHTML = `
+      <div class="animate-slide">
+         <div class="unified-block block-dark mt-0 mb-4" style="border-left: 6px solid var(--warning) !important;">
+            <div class="row align-items-center"><div class="col-md-1 text-center"><i class="bi bi-bezier2 text-warning fs-2"></i></div><div class="col-md-11"><h6 class="fw-black text-uppercase m-0 text-white" style="font-size:12px;">Impacto en Recetas (Where-Used)</h6></div></div>
+         </div>
+         <div class="bg-white rounded-4 shadow-sm border overflow-hidden">
+            <table class="table table-hover m-0 align-middle"><thead class="bg-light"><tr><th class="ps-4">Producto Afectado</th><th>Naturaleza</th><th class="text-center">Consumo ud.</th><th class="text-end">PVP Venta</th><th class="text-end pe-4">Acción</th></tr></thead><tbody>${rows}</tbody></table>
+         </div>
+      </div>`;
+  },
+
+  renderPhysicalItemForm: function() {
+      const settings = this.settings || window.HandooApp?.settings || {};
+      const labels = {
+          inv_cat: settings.ui_labels?.inv_cat || "Categoría de Inventario",
+          sales_cat: settings.ui_labels?.sales_cat || "Clasificación Comercial",
+          stock_label: settings.ui_labels?.stock_label || "Stock de Seguridad",
+          zone_label: settings.ui_labels?.zone_label || "Ubicación / Zona"
+      };
+      
+      const activeFeats = settings.active_modules || [];
+      const hasTaxonomy = activeFeats.includes('FEAT_CATALOG_TAXONOMY'); 
+      const assetNaturas = [
+          {id: 'PRODUCT', name: 'Producto Estándar', is_sale: true, acc6: '600', acc7: '700'},
+          {id: 'MATERIA_PRIMA', name: 'Materia Prima', is_sale: false, acc6: '601', acc7: ''},
+          {id: 'PREPARACION', name: 'Preparación', is_sale: false, acc6: '601', acc7: ''},
+          {id: 'VENTA_FINAL', name: 'Venta Final', is_sale: true, acc6: '600', acc7: '700'},
+          {id: 'TOOL', name: 'Herramientas / Utillaje', is_sale: false, acc6: '629', acc7: ''},
+          {id: 'FIXED_ASSET', name: 'Inmovilizado (CAPEX)', is_sale: false, acc6: '210', acc7: ''}
+      ]; 
+      
+      const invCats = (settings.masters?.inventory_families?.length > 0) ? settings.masters.inventory_families : ['GENERAL'];
+      const salesCats = (settings.masters?.sales_families?.length > 0) ? settings.masters.sales_families : this.salesFamilies;
+      
+      const currentNatura = assetNaturas.find(n => n.id === this.editingMaster.type);
+      const isSaleable = currentNatura ? currentNatura.is_sale : (this.editingMaster.type === 'FINAL_PRODUCT' || this.editingMaster.type === 'PRODUCT');
+      const stockActual = this.editingMaster.stock_actual || 0;
+      const stockSeguridad = this.editingMaster.safety_stock || 0;
+      const isLowStock = (stockActual <= stockSeguridad);
+      
+      const inventoryMap = settings.inventory_map || {};
+
+      return `
+        <div class="animate-slide">
+            <div class="unified-block block-dark mt-0">
+               <div class="row g-3 text-uppercase">
+                  <div class="col-md-12">
+                      <label class="h-label-refined text-white-50">Activo / Denominación Comercial</label>
+                      <input type="text" id="m-nombre" class="form-control h-form-control fw-black" value="${escapeHTML(this.editingMaster.nombre || '')}">
+                  </div>
+                  <div class="col-md-12">
+                      <label class="h-label-refined text-brand">Naturaleza del Activo</label>
+                      <div class="d-flex gap-3 align-items-center">
+                         <select id="m-type" class="form-select h-form-control fw-black border-brand" onchange="InventoryView.handleNaturaChange(this)">
+                             ${assetNaturas.map(n => `<option value="${n.id}" data-is-sale="${n.is_sale}" data-acc6="${n.acc6}" data-acc7="${n.acc7}" ${this.editingMaster.type === n.id ? 'selected' : ''}>${n.name.toUpperCase()}</option>`).join('')}
+                         </select>
+                         <div class="form-check form-switch ms-3">
+                            <input class="form-check-input" type="checkbox" id="m-is-refrigerated" ${this.editingMaster.is_refrigerated ? 'checked' : ''}>
+                            <label class="form-check-label small fw-black text-white-50" for="m-is-refrigerated">REFRIGERADO</label>
+                         </div>
+                      </div>
+                  </div>
+                  <div class="${hasTaxonomy ? 'col-md-6' : 'col-md-12'}">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                          <label class="h-label-refined text-white-50 m-0">${(labels.inv_cat || '').toUpperCase()}</label>
+                          ${hasTaxonomy ? `<button type="button" class="btn btn-sm btn-dark text-warning border-0 px-2 py-0 ms-2 fw-black" style="font-size: 9px;" onclick="window.InventoryView.quickAdd('INVENTORY')">+ NUEVO</button>` : ''}
+                      </div>
+                      ${hasTaxonomy ? `<select id="m-inv-category" class="form-select h-form-control fw-bold"><option value="">-- SELECCIONAR --</option>${invCats.map(c => `<option value="${c}" ${this.editingMaster.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select>` : `<input type="text" id="m-inv-category" class="form-control h-form-control fw-bold" value="${escapeHTML(this.editingMaster.category || '')}" placeholder="Escriba categoría...">`}
+                  </div>
+                  <div id="m-sales-cat-wrapper" class="col-md-6" style="${isSaleable ? '' : 'display:none'}">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                          <label class="h-label-refined text-warning m-0">${(labels.sales_cat || '').toUpperCase()}</label>
+                          ${hasTaxonomy ? `<button type="button" class="btn btn-sm btn-warning text-dark border-0 px-2 py-0 ms-2 fw-black" style="font-size: 9px;" onclick="window.InventoryView.quickAdd('MENU')">+ NUEVO</button>` : ''}
+                      </div>
+                      ${hasTaxonomy ? `<select id="m-family" class="form-select h-form-control fw-bold border-warning"><option value="">-- NO ASIGNADO --</option>${salesCats.map(f => `<option value="${f}" ${this.editingMaster.family === f ? 'selected' : ''}>${f}</option>`).join('')}</select>` : `<input type="text" id="m-family" class="form-control h-form-control fw-bold border-warning" value="${escapeHTML(this.editingMaster.family || '')}" placeholder="Escriba familia...">`}
+                  </div>
+               </div>
+            </div>
+            <div class="unified-block block-light mt-3">
+               <div class="row g-3 align-items-center">
+                  <div class="col-md-4 text-center border-end">
+                      <label class="h-label-refined text-muted small">STOCK ACTUAL</label>
+                      <div class="h2 fw-black mb-0 ${isLowStock ? 'text-danger' : 'text-success'}">${stockActual}</div>
+                      <span class="badge ${isLowStock ? 'bg-danger' : 'bg-success'} text-uppercase" style="font-size:9px">${isLowStock ? 'Reponer' : 'Existencias OK'}</span>
+                  </div>
+                  <div class="col-md-8 px-4">
+                      <label class="h-label-refined text-muted">AUDITORÍA DE INVENTARIO</label>
+                      <button type="button" class="btn btn-outline-brand btn-sm fw-bold w-100 rounded-3" onclick="InventoryView.adjust('${this.editingMaster.id}')"><i class="bi bi-pencil-square me-2"></i>AJUSTE MANUAL / STOCK INICIAL</button>
+                  </div>
+               </div>
+            </div>
+            <div class="unified-block block-light mt-3 border-brand" style="border-left: 5px solid var(--brand) !important;">
+               <div class="row g-3">
+                  <div class="col-md-6 border-end">
+                      <label class="h-label-refined">COSTE COMPRA (MANUAL)</label>
+                      <div class="input-group">
+                        <span class="input-group-text bg-white border-0 fw-bold">€</span>
+                        <input type="number" id="m-coste-manual" class="form-control h-form-control fw-black text-danger border-0" value="${this.editingMaster.last_cost || 0}" step="0.01">
+                      </div>
+                  </div>
+                  <div class="col-md-6" id="m-pvp-wrapper" style="${isSaleable ? '' : 'display:none'}">
+                      <label class="h-label-refined text-success">PRECIO DE VENTA (PVP)</label>
+                      <div class="input-group">
+                        <span class="input-group-text bg-white border-0 text-success fw-bold">€</span>
+                        <input type="number" id="m-pvp" class="form-control h-form-control fw-black text-success border-0" value="${this.editingMaster.pvp || 0}" step="0.01">
+                      </div>
+                  </div>
+               </div>
+            </div>
+            <div class="unified-block block-light mt-3">
+               <div class="row g-3">
+                  <div class="col-md-6">
+                      <label class="h-label-refined text-muted">CTA. GASTO (COMPRA)</label>
+                      <select id="m-account" class="form-select h-form-control fw-bold">
+                           <option value="600" ${this.editingMaster.purchase_account=='600'?'selected':''}>600 - MERCADERÍAS</option>
+                           <option value="601" ${this.editingMaster.purchase_account=='601'?'selected':''}>601 - MATERIAS PRIMAS</option>
+                           <option value="629" ${this.editingMaster.purchase_account=='629' || !this.editingMaster.purchase_account ?'selected':''}>629 - GENÉRICA / OTROS</option>
+                      </select>
+                  </div>
+                  <div id="m-sales-acc-wrapper" class="col-md-6" style="${isSaleable ? '' : 'display:none'}">
+                      <label class="h-label-refined text-success">CTA. INGRESO (VENTA)</label>
+                      <select id="m-sales-account" class="form-select h-form-control fw-bold border-success text-success bg-white">
+                           <option value="700" ${this.editingMaster.sales_account=='700' || !this.editingMaster.sales_account ?'selected':''}>700 - VENTAS MERCADERÍAS</option>
+                           <option value="701" ${this.editingMaster.sales_account=='701'?'selected':''}>701 - PROD. TERMINADOS</option>
+                      </select>
+                  </div>
+               </div>
+            </div>
+            <div class="unified-block block-light mt-3">
+               <div class="row g-3">
+                  <div class="col-md-6 border-end">
+                      <label class="h-label-refined text-muted">IVA SOPORTADO (%)</label>
+                      <input type="number" id="m-iva" class="form-control h-form-control fw-black text-center" value="${this.editingMaster.iva || 21}">
+                  </div>
+                  <div class="col-md-6">
+                      <label class="h-label-refined text-muted">IRPF / RETENCIÓN (%)</label>
+                      <input type="number" id="m-irpf" class="form-control h-form-control fw-black text-center" value="${this.editingMaster.irpf || 0}">
+                  </div>
+               </div>
+            </div>
+            <div class="unified-block block-light mt-3">
+               <div class="row g-3">
+                  <div class="col-md-6 border-end">
+                      <label class="h-label-refined text-muted">${(labels.stock_label || '').toUpperCase()}</label>
+                      <input type="number" id="m-safety-stock" class="form-control h-form-control fw-black text-center" value="${this.editingMaster.safety_stock || 0}">
+                  </div>
+                  <div class="col-md-6">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                          <label class="h-label-refined text-muted m-0">${(labels.zone_label || '').toUpperCase()}</label>
+                          <button type="button" class="btn btn-sm btn-secondary text-white border-0 px-2 py-0 ms-2 fw-black" style="font-size: 9px;" onclick="window.InventoryView.quickAdd('ZONA')">+ NUEVO</button>
+                      </div>
+                      <select id="m-zona" class="form-select h-form-control fw-bold text-center text-uppercase">
+                          <option value="">-- SELECCIONAR --</option>
+                          ${Object.keys(inventoryMap).map(z => `<option value="${z}" ${this.editingMaster.zona === z ? 'selected' : ''}>${escapeHTML(inventoryMap[z] || '')}</option>`).join('')}
+                      </select>
+                  </div>
+               </div>
+            </div>
+            <div class="unified-block block-light mt-3">
+                <label class="h-label-refined text-muted text-uppercase">Seguridad Alimentaria (Alérgenos)</label>
+                <div class="d-flex flex-wrap gap-2 p-3 bg-white border rounded-4 shadow-sm">
+                    ${(this.allAllergens || []).map(a => `
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="al-${a.id}" value="${a.id}" ${(Array.isArray(this.editingMaster.alergenos) ? this.editingMaster.alergenos : []).includes(a.id) ? 'checked' : ''}>
+                            <label class="form-check-label fw-bold" for="al-${a.id}">${escapeHTML(a.nombre || '')}</label>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="mt-3">
+                <label class="h-label-refined text-muted text-uppercase">Notas y descripción técnica</label>
+                <textarea id="m-desc" class="form-control" rows="2" style="border-radius:12px; font-size: 13px;">${escapeHTML(this.editingMaster.descripcion || '')}</textarea>
+            </div>
+        </div>`;
+  },
+  renderSystemItemForm: function() {
+      return `
+      <div class="animate-slide">
+        <div class="unified-block block-dark mt-0">
+          <div class="row g-3">
+             <div class="col-md-8">
+               <label class="h-label-refined text-white-50">NOMBRE ÍTEM SISTEMA</label>
+               <input type="text" id="m-nombre" class="form-control h-form-control fw-black text-uppercase" value="${escapeHTML(this.editingMaster.nombre)}">
+             </div>
+             <div class="col-md-4">
+               <label class="h-label-refined text-white-50">TIPO</label>
+               <input type="text" class="form-control h-form-control text-white bg-secondary" readonly value="${escapeHTML(this.editingMaster.type)}">
+             </div>
+          </div>
+        </div>
+        <div class="unified-block block-light mt-3">
+          <div class="row g-3">
+             <div class="col-md-4">
+               <label class="h-label-refined">VALOR / PVP (€)</label>
+               <input type="number" id="m-pvp" class="form-control h-form-control fw-black text-brand" value="${this.editingMaster.pvp || this.editingMaster.valor || 0}">
+             </div>
+             <div class="col-md-8">
+               <label class="h-label-refined">DESCRIPCIÓN</label>
+               <input type="text" id="m-desc" class="form-control h-form-control" value="${escapeHTML(this.editingMaster.descripcion)}">
+             </div>
+          </div>
+        </div>
+        <input type="hidden" id="m-type" value="${escapeHTML(this.editingMaster.type)}">
+        <input type="hidden" id="m-account" value="700">
+      </div>`;
+  },
+
+  handleNaturaChange: function(sel) {
+      if (!sel || !sel.options || sel.selectedIndex < 0) return;
+      const opt = sel.options[sel.selectedIndex];
+      const isSale = (opt.getAttribute('data-is-sale') === 'true');
+      const defAcc6 = opt.getAttribute('data-acc6');
+      const defAcc7 = opt.getAttribute('data-acc7');
+      const salesWrap = document.getElementById('m-sales-acc-wrapper');
+      const salesCatWrap = document.getElementById('m-sales-cat-wrapper');
+      const pvpWrap = document.getElementById('m-pvp-wrapper');
+      
+      if(salesWrap) salesWrap.style.display = isSale ? 'block' : 'none';
+      if(salesCatWrap) salesCatWrap.style.display = isSale ? 'block' : 'none';
+      if(pvpWrap) pvpWrap.style.display = isSale ? 'block' : 'none';
+      
+      if(defAcc6 && document.getElementById('m-account')) document.getElementById('m-account').value = defAcc6;
+      if(isSale && defAcc7 && document.getElementById('m-sales-account')) document.getElementById('m-sales-account').value = defAcc7;
+  },
+
+  toggleElaborated: function(val) {
+    this.editingMaster.is_elaborated = val;
+    this.renderModalSidebar();
+  },
+
+  saveMaster: async function() { 
+      const overlay = this.currentModalOverlay || document.body;
+      const nameInp = overlay.querySelector('#m-nombre'); 
+      if (!nameInp || !nameInp.value.trim()) {
+          return HandooApp.ui.showToast("El nombre es obligatorio", "error");
+      }
+      HandooApp.ui.setLoading('btn-save-master', true); 
+      try {
+          // 1. Recogemos lo que haya en el formulario
+          this.editingMaster.nombre = nameInp.value.trim().toUpperCase();
+          this.editingMaster.pvp = parseFloat(overlay.querySelector('#m-pvp')?.value || 0);
+          this.editingMaster.last_cost = parseFloat(overlay.querySelector('#m-coste-manual')?.value || 0);
+          this.editingMaster.zona = overlay.querySelector('#m-zona')?.value;
+          this.editingMaster.purchase_account = overlay.querySelector('#m-account')?.value;
+          this.editingMaster.sales_account = overlay.querySelector('#m-sales-account')?.value;
+          this.editingMaster.descripcion = overlay.querySelector('#m-desc')?.value;
+          this.editingMaster.safety_stock = parseFloat(overlay.querySelector('#m-safety-stock')?.value || 0);
+          this.editingMaster.iva = parseFloat(overlay.querySelector('#m-iva')?.value || 21);
+          this.editingMaster.irpf = parseFloat(overlay.querySelector('#m-irpf')?.value || 0);
+          this.editingMaster.is_refrigerated = overlay.querySelector('#m-is-refrigerated')?.checked || false;
+          this.editingMaster.alergenos = Array.from(overlay.querySelectorAll('input[type="checkbox"][id^="al-"]:checked')).map(cb => cb.value);
+
+          // 2. BLINDAJE DE TIPO Y CATEGORÍA (El arreglo del bug)
+          const formType = overlay.querySelector('#m-type')?.value;
+          if (formType && formType !== "") {
+              this.editingMaster.type = formType;
+          }
+
+          const formCat = overlay.querySelector('#m-inv-category')?.value;
+          if (formCat && formCat !== "") {
+              this.editingMaster.category = formCat;
+          }
+          
+          const formFam = overlay.querySelector('#m-family')?.value;
+          if (formFam && formFam !== "") {
+              this.editingMaster.family = formFam;
+          }
+
+          // 3. Enviamos al servidor
+          const res = await HandooApp.api('inventory.save_master', this.editingMaster); 
+          
+          if(res.ok) { 
+              // --- BLOQUE DE SINCRONIZACIÓN ESPEJO ---
+              // Si el producto tiene ingredientes, creamos/actualizamos la Fórmula Maestra
+              if (this.editingMaster.bom && this.editingMaster.bom.length > 0) {
+                  const formulaPayload = {
+                      id_producto: this.editingMaster.id,
+                      nombre: this.editingMaster.nombre,
+                      pvp_canales: { local: this.editingMaster.pvp || 0 },
+                      components: this.editingMaster.bom.map(b => ({
+                          master_id: b.id,
+                          cantidad_bruta: b.qty,
+                          unidad: b.unit
+                      }))
+                  };
+                  // Lo mandamos al servidor de fórmulas de forma silenciosa
+                  HandooApp.api('formula.save', formulaPayload);
+              }
+              // ---------------------------------------
+
+              const modal = document.querySelector('.h-modal-overlay');
+              if(modal) modal.remove();
+              HandooApp.ui.showToast("Producto e Ingeniería sincronizados", "success"); 
+              
+              // 🚀 DISPATCH EVENTO PARA FÓRMULAS
+              window.dispatchEvent(new CustomEvent('handoo:product-created', { 
+                  detail: { productId: res.data.id, productName: this.editingMaster.nombre } 
+              }));
+
+              await this.load(); 
+          } else { 
+              throw new Error(res.msg || "Error al guardar");
+          }
+      } catch (error) {
+          HandooApp.ui.showToast(error.message, "error"); 
+      } finally {
+          HandooApp.ui.setLoading('btn-save-master', false);
+      }
+  },
+
+  deleteMaster: async function(id) { 
+      if(await HandooApp.ui.confirm("¿Eliminar activo?")) { 
+          await HandooApp.api('inventory.delete_master', {id}); 
+          this.load(); 
+      }
+  },
+
+  openBulkDeleteModal: function() {
+    const listKey = { 'PRODUCT': 'products', 'MODULE': 'modules', 'PLAN': 'plans', 'DISCOUNT': 'discounts' }[this.activeTab];
+    const currentItems = this.catalog[listKey] || [];
+    if (currentItems.length === 0) return HandooApp.ui.showToast("No hay elementos.", "warning");
+
+    let rowsHtml = currentItems.map(item => `
+        <div class="bulk-row d-flex align-items-center border-bottom py-2 bg-white px-3" data-name="${(item.nombre||'').toLowerCase()}">
+            <input class="form-check-input bulk-delete-cb m-0" type="checkbox" value="${item.id}" style="width: 20px; height: 20px; cursor:pointer;">
+            <div class="ms-3 flex-grow-1">
+                <div class="fw-black text-uppercase" style="font-size: 11px;">${escapeHTML(item.nombre)}</div>
+                <div class="text-muted fw-bold" style="font-size: 9px;">${item.type} | ${item.pvp || 0} €</div>
+            </div>
+        </div>`).join('');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px; max-height: 85vh; display: flex; flex-direction: column;">
+         <div class="h-modal-header bg-danger text-white p-4 d-flex justify-content-between">
+            <h5 class="m-0 fw-black text-uppercase">Gestor de Borrado</h5>
+            <button class="btn btn-sm btn-light" onclick="this.closest('.h-modal-overlay').remove()">X</button>
+         </div>
+         <div class="bg-white p-3 border-bottom">
+            <input type="text" id="bulk-search" class="form-control" placeholder="Buscar..." onkeyup="InventoryView.filterBulkList()">
+         </div>
+         <div class="h-modal-body bg-light flex-grow-1 overflow-auto">${rowsHtml}</div>
+         <div class="h-modal-footer p-4 bg-white border-top">
+            <button id="btn-bulk-delete" class="btn btn-danger w-100 fw-black shadow" onclick="InventoryView.executeBulkDelete()">ELIMINAR SELECCIONADOS</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  filterBulkList: function() {
+    const q = document.getElementById('bulk-search').value.toLowerCase();
+    document.querySelectorAll('.bulk-row').forEach(row => {
+      row.style.display = row.dataset.name.includes(q) ? 'flex' : 'none';
+    });
+  },
+
+  executeBulkDelete: async function() {
+    const ids = Array.from(document.querySelectorAll('.bulk-delete-cb:checked')).map(cb => cb.value);
+    if (ids.length === 0) return HandooApp.ui.showToast("Nada seleccionado", "warning");
+    if (await HandooApp.ui.confirm(`¿Borrar ${ids.length} artículos?`)) {
+        const res = await new Promise(resolve => {
+            google.script.run.withSuccessHandler(resolve).api_inventory_bulk_delete({ ids: ids });
+        });
+        if(res.ok) { document.querySelector('.h-modal-overlay').remove(); HandooApp.ui.showToast(res.msg, "success"); this.load(); }
+    }
+  },
+
+  /* =================================================================
+     5. LÓGICA DE STOCK, MERMAS Y AJUSTES
+  ================================================================= */
+  adjust: async function(id) {
+    const item = this.catalog.products.find(p => p.id === id);
+    if(!item) return HandooApp.ui.showToast("Producto no encontrado", "error");
+    
+    const resConv = await HandooApp.api('inventory.get_all_conversions');
+    const conv = resConv.ok ? Object.values(resConv.data).find(c => c.product_id === id) : null;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 400px;">
+         <div class="h-modal-header bg-dark text-white">
+            <h5 class="m-0 fw-black text-uppercase">AJUSTAR STOCK: ${escapeHTML(item.nombre)}</h5>
+         </div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <label class="h-label-refined">CANTIDAD Y UNIDAD</label>
+               <div class="d-flex gap-2">
+                  <input type="number" id="adj-qty" class="form-control h-form-control fw-black" value="1" style="width: 60%">
+                  <select id="adj-unit" class="form-select h-form-control fw-black" style="width: 40%">
+                     <option value="BASE">${conv ? conv.consume_unit : 'UD'}</option>
+                     ${conv ? `<option value="${conv.buy_unit}">${conv.buy_unit}</option>` : ''}
+                  </select>
+               </div>
+               <label class="h-label-refined mt-3">TIPO DE AJUSTE</label>
+               <select id="adj-type" class="form-select h-form-control fw-black">
+                  <option value="SUMA">SUMAR STOCK</option>
+                  <option value="RESTA">RESTAR STOCK</option>
+               </select>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button id="btn-adj-exec" class="btn btn-dark fw-black flex-grow-1" onclick="InventoryView.executeAdjust('${id}')">APLICAR</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeAdjust: async function(id) {
+    const qty = parseFloat(document.getElementById('adj-qty').value);
+    const unit = document.getElementById('adj-unit').value; 
+    const type = document.getElementById('adj-type').value;
+    
+    const resConv = await HandooApp.api('inventory.get_all_conversions');
+    const conv = resConv.ok ? Object.values(resConv.data).find(c => c.product_id === id) : null;
+    const unitName = (unit === 'BASE') ? (conv ? conv.consume_unit : 'UD') : unit;
+    
+    const concept = `Ajuste manual: ${qty} ${unitName}`;
+    
+    HandooApp.ui.setLoading('btn-adj-exec', true);
+    
+    const res = await HandooApp.api('inventory.adjust_stock', { producto_id: id, cantidad: qty, tipo: type, unidad: unitName, concept: concept });
+    
+    if(res.ok) {
+        document.querySelector('.h-modal-overlay').remove();
+        HandooApp.ui.showToast("Stock ajustado correctamente");
+        this.load();
+    } else {
+        HandooApp.ui.showToast(res.msg, "error");
+        HandooApp.ui.setLoading('btn-adj-exec', false);
+    }
+  },
+
+  checkExpiryRotation: function(scanData) {
+      const existingStock = this.catalog.products.filter(p => p.zona === scanData.location && p.id !== scanData.productId);
+      const scanExpiry = new Date(scanData.expiryDate);
+      for (const p of existingStock) {
+          if (p.expiryDate && new Date(p.expiryDate) < scanExpiry) {
+              return { error: true, message: `Error FIFO: Existe producto ${p.nombre} con caducidad anterior (${p.expiryDate}) en esta zona.` };
+          }
+      }
+      return { error: false };
+  },
+
+  renderExpiryAlert: function(container, message) {
+      container.innerHTML = `
+          <div class="p-4 rounded-4 bg-danger text-white shadow-lg animate-slide mt-3">
+              <div class="d-flex align-items-center gap-3">
+                  <i class="bi bi-exclamation-triangle-fill fs-2"></i>
+                  <div>
+                      <h5 class="fw-black m-0">ALERTA DE ROTACIÓN FIFO</h5>
+                      <p class="m-0 small">${message}</p>
+                  </div>
+              </div>
+          </div>
+      `;
+  },
+
+  refreshStockChain: async function(productId, stockBase, elementId) {
+      const res = await HandooApp.api('inventory.get_stock_chain', { productId, stockBase });
+      if (res.ok) {
+          const el = document.getElementById(elementId);
+          if (el) el.innerText = res.data;
+      }
+  },
+
+  /* =================================================================
+     6. ESCANDALLOS (BOM)
+  ================================================================= */
+  renderEscandalloTab: function(area) {
+    const bom = this.editingMaster.bom || [];
+    
+    const rawMaterials = this.catalog.products.filter(p => 
+        ['RAW', 'SEMIFINISHED', 'MATERIA_PRIMA', 'PREPARACION', 'PRODUCT', 'VENTA_FINAL'].includes(p.type)
+    );
+
+    let costeTotal = 0;
+
+    const filasHtml = bom.map((item, idx) => {
+        // Buscamos el precio del ingrediente
+        const rm = rawMaterials.find(p => String(p.id) === String(item.id));
+        let unitCost = 0;
+        if (rm) {
+            unitCost = parseFloat(rm.last_purchase_price || rm.coste || rm.pvp || 0);
+            if (unitCost === 0 && rm.aliases && rm.aliases.length > 0) {
+                unitCost = parseFloat(rm.aliases[0].last_price || 0);
+            }
+        }
+        
+        // Calculamos el coste de esta línea
+        const qty = parseFloat(item.qty || 0);
+        const lineCost = unitCost * qty;
+        costeTotal += lineCost;
+
+        return `
+         <tr>
+            <td class="ps-4">
+               <select class="form-select form-select-sm fw-bold" onchange="InventoryView.updateBomItem(${idx}, 'id', this.value)">
+                  <option value="">-- SELECCIONE --</option>
+                  ${rawMaterials.map(mat => `<option value="${mat.id}" ${String(item.id) === String(mat.id) ? 'selected' : ''}>${escapeHTML(mat.nombre)}</option>`).join('')}
+               </select>
+            </td>
+            <td class="text-center">
+               <input type="number" step="0.001" class="form-control form-control-sm text-center fw-black" value="${item.qty}" onchange="InventoryView.updateBomItem(${idx}, 'qty', this.value)">
+            </td>
+            <td class="text-center">
+               <input type="text" class="form-control form-control-sm text-center x-small" value="${item.unit || 'g'}" onchange="InventoryView.updateBomItem(${idx}, 'unit', this.value)">
+            </td>
+            <td class="text-end fw-black text-brand" style="font-size: 13px;">
+               ${lineCost.toFixed(3)}€
+            </td>
+            <td class="text-end pe-4">
+               <button class="btn btn-link text-danger p-0" onclick="InventoryView.removeBomItem(${idx})"><i class="bi bi-trash3"></i></button>
+            </td>
+         </tr>
+        `;
+    }).join('');
+
+    area.innerHTML = `
+      <div class="animate-slide">
+         <div class="unified-block block-dark mt-0 mb-4">
+            <div class="row align-items-center">
+               <div class="col-md-1 text-center"><i class="bi bi-diagram-3 text-brand fs-2"></i></div>
+               <div class="col-md-7">
+                  <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Escandallo de Producción</h6>
+                  <p class="small text-muted m-0">Defina los ingredientes y cantidades.</p>
+               </div>
+               <div class="col-md-4 text-end">
+                  <div class="small text-white-50 fw-bold">COSTE TOTAL (BASE)</div>
+                  <div class="fs-4 fw-black text-brand">${costeTotal.toFixed(3)} €</div>
+               </div>
+            </div>
+         </div>
+         <div class="bg-white rounded-4 shadow-sm overflow-hidden">
+            <table class="table table-hover m-0 align-middle">
+               <thead class="bg-light">
+                  <tr>
+                     <th class="ps-4" style="font-size:10px">INGREDIENTE / MATERIA PRIMA</th>
+                     <th class="text-center" style="font-size:10px; width: 15%">CANTIDAD</th>
+                     <th class="text-center" style="font-size:10px; width: 15%">UNIDAD</th>
+                     <th class="text-end" style="font-size:10px; width: 15%">COSTE</th>
+                     <th class="text-end pe-4" style="font-size:10px; width: 10%">ACCIONES</th>
+                  </tr>
+               </thead>
+               <tbody id="bom-list-body">
+                  ${filasHtml}
+                  ${bom.length === 0 ? '<tr><td colspan="5" class="text-center p-4 opacity-50 small fw-bold">No hay ingredientes definidos</td></tr>' : ''}
+               </tbody>
+            </table>
+            <div class="p-3 bg-light border-top text-center">
+               <button class="btn btn-dark btn-sm fw-black px-4" onclick="InventoryView.addBomItem()">+ AÑADIR INGREDIENTE</button>
+            </div>
+         </div>
+      </div>`;
+  },
+  addBomItem: function() {
+    if(!this.editingMaster.bom) this.editingMaster.bom = [];
+    this.editingMaster.bom.push({ id: '', qty: 1, unit: 'KG' });
+    this.renderEscandalloTab(document.getElementById('m-content-area'));
+  },
+
+  // 🧠 CEREBRO TITANIUM: Sincroniza alérgenos leyendo los ingredientes
+  syncAllergensFromBOM: function() {
+      if (!this.editingMaster.bom || this.editingMaster.bom.length === 0) return;
+      
+      const inheritedAllergens = new Set(this.editingMaster.alergenos || []); 
+      
+      this.editingMaster.bom.forEach(item => {
+          // Buscamos el ingrediente en el catálogo para ver sus alérgenos
+          const ingredientData = this.catalog.products.find(p => String(p.id) === String(item.id));
+          if (ingredientData && ingredientData.alergenos) {
+              ingredientData.alergenos.forEach(algId => inheritedAllergens.add(String(algId)));
+          }
+      });
+      
+      this.editingMaster.alergenos = Array.from(inheritedAllergens);
+  },
+
+  updateBomItem: function(idx, field, val) {
+    this.editingMaster.bom[idx][field] = field === 'qty' ? parseFloat(val) : val;
+    
+    // Si lo que ha cambiado es el ingrediente (el id), recalculamos alérgenos
+    if (field === 'id') {
+        this.syncAllergensFromBOM();
+    }
+  },
+
+  removeBomItem: function(idx) {
+    this.editingMaster.bom.splice(idx, 1);
+    this.syncAllergensFromBOM(); // Recalculamos al quitar un ingrediente
+    this.renderEscandalloTab(document.getElementById('m-content-area'));
+  },
+
+  /* =================================================================
+     7. UNIDADES Y CONVERSIONES
+  ================================================================= */
+  renderUnitsTab: function(area) {
+    area.innerHTML = `
+      <div class="animate-slide">
+         <div class="unified-block block-dark mt-0">
+            <div class="row align-items-center mb-3">
+               <div class="col-md-1 text-center"><i class="bi bi-arrow-left-right fs-2 text-brand"></i></div>
+               <div class="col-md-11">
+                  <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Ingeniería de Unidades y Conversión</h6>
+                  <p class="small text-muted m-0">Defina la conversión entre compra y consumo.</p>
+               </div>
+            </div>
+         </div>
+         <div class="unified-block block-light mt-3">
+            <div class="row g-3">
+               <div class="col-md-4">
+                  <label class="h-label-refined">UNIDAD COMPRA</label>
+                  <input type="text" id="m-buy-unit" class="form-control h-form-control" value="${escapeHTML(this.editingMaster.buy_unit) || 'CAJA'}" onkeyup="InventoryView.updateConversionText()">
+               </div>
+               <div class="col-md-4">
+                  <label class="h-label-refined">UNIDAD CONSUMO</label>
+                  <input type="text" id="m-consume-unit" class="form-control h-form-control" value="${escapeHTML(this.editingMaster.consume_unit) || 'UD'}" onkeyup="InventoryView.updateConversionText()">
+               </div>
+               <div class="col-md-4">
+                  <label class="h-label-refined">FACTOR CONVERSIÓN</label>
+                  <input type="number" id="m-conversion-factor" class="form-control h-form-control fw-black text-brand" value="${this.editingMaster.conversion_factor || 1}" onchange="InventoryView.updateConversionText()">
+               </div>
+            </div>
+            <div id="conversion-dynamic-text" class="mt-3 p-2 bg-white border border-dashed rounded text-center fw-bold small text-muted">
+               1 ${escapeHTML(this.editingMaster.buy_unit) || 'CAJA'} contiene ${this.editingMaster.conversion_factor || 1} ${escapeHTML(this.editingMaster.consume_unit) || 'UD'}
+            </div>
+            <button class="btn btn-brand-titanium btn-sm w-100 mt-2 fw-black" onclick="InventoryView.saveConversion('${this.editingMaster.id}')">GUARDAR FÓRMULA</button>
+         </div>
+      </div>`;
+  },
+  updateConversionText: function() {
+      const buy = document.getElementById('m-buy-unit').value || 'CAJA';
+      const consume = document.getElementById('m-consume-unit').value || 'UD';
+      const factor = document.getElementById('m-conversion-factor').value || 1;
+      const el = document.getElementById('conversion-dynamic-text');
+      if(el) el.innerText = `1 ${buy} contiene ${factor} ${consume}`;
+  },
+  saveConversion: async function(productId) {
+      const payload = {
+          product_id: productId,
+          buy_unit: document.getElementById('m-buy-unit').value,
+          consume_unit: document.getElementById('m-consume-unit').value,
+          conversion_factor: document.getElementById('m-conversion-factor').value,
+          is_weight_based: false
+      };
+      const res = await HandooApp.api('inventory.save_conversion', payload);
+      if(res.ok) HandooApp.ui.showToast("Conversión guardada.");
+      else HandooApp.ui.showToast(res.msg, "error");
+  },
+  renderUnitsConfig: async function(container) {
+    const resConv = await HandooApp.api('inventory.get_all_conversions');
+    const convData = resConv.ok ? resConv.data : {};
+    
+    const baseRules = [
+        { id: 'base-1', product_id: null, buy_unit: 'KG', factor: 1000, consume_unit: 'GR', base: true },
+        { id: 'base-2', product_id: null, buy_unit: 'L', factor: 1000, consume_unit: 'ML', base: true },
+        { id: 'base-3', product_id: null, buy_unit: 'UNIDAD', factor: 1, consume_unit: 'UNIDAD', base: true }
+    ];
+
+    const rules = [...baseRules, ...Object.values(convData)];
+
+    container.innerHTML = `
+      <div class="animate-slide" id="units-config-container">
+        <div class="unified-block block-light mt-0 mb-4 d-flex justify-content-between align-items-center">
+           <div>
+              <h6 class="fw-black text-uppercase m-0">Configuración de Unidades</h6>
+              <p class="small text-muted m-0">Gestión de reglas de conversión escalables.</p>
+           </div>
+           <button class="btn btn-dark fw-black" onclick="InventoryView.openNewRuleModal()">+ NUEVA REGLA</button>
+        </div>
+        
+        <div class="unified-block block-light">
+          <table class="table table-hover align-middle m-0">
+            <thead class="bg-light">
+              <tr>
+                <th class="ps-4">PRODUCTO</th>
+                <th>UNIDAD ORIGEN</th>
+                <th>FACTOR</th>
+                <th>UNIDAD DESTINO</th>
+                <th class="text-end pe-4">ACCIONES</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rules.map((r) => {
+                const prod = this.catalog.products?.find(p => p.id === r.product_id);
+                return `
+                <tr data-id="${r.id}" data-product-id="${r.product_id || ''}">
+                  <td class="ps-4">${prod ? escapeHTML(prod.nombre) : (r.base ? 'SISTEMA' : 'N/A')}</td>
+                  <td><input type="text" class="form-control form-control-sm" value="${escapeHTML(r.buy_unit)}" ${r.base ? 'disabled' : ''}></td>
+                  <td><input type="number" step="0.001" class="form-control form-control-sm factor-input" value="${r.factor}"></td>
+                  <td><input type="text" class="form-control form-control-sm" value="${escapeHTML(r.consume_unit)}" ${r.base ? 'disabled' : ''}></td>
+                  <td class="text-end pe-4">
+                     <button class="btn btn-sm btn-dark fw-black" onclick="InventoryView.saveUnitRule('${r.id}', this)">GUARDAR</button>
+                     ${!r.base ? `<button class="btn btn-sm btn-outline-danger ms-2" onclick="InventoryView.deleteRule('${r.id}')"><i class="bi bi-trash"></i></button>` : ''}
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  },
+  openNewRuleModal: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.style.zIndex = '120000';
+    this.currentModalOverlay = overlay;
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 400px;">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">NUEVA REGLA</h5></div>
+         <div class="h-modal-body bg-light p-4">
+            <label class="h-label-refined">PRODUCTO</label>
+            <select id="new-product-id" class="form-select h-form-control mb-3">
+                <option value="">-- SELECCIONE PRODUCTO --</option>
+                ${(this.catalog.products||[]).map(p => `<option value="${p.id}">${escapeHTML(p.nombre)}</option>`).join('')}
+            </select>
+            <label class="h-label-refined">UNIDAD ORIGEN</label>
+            <input type="text" id="new-buy-unit" class="form-control h-form-control mb-3" placeholder="EJ: CAJA">
+            <label class="h-label-refined">FACTOR</label>
+            <input type="number" step="0.001" id="new-factor" class="form-control h-form-control mb-3" value="1">
+            <label class="h-label-refined">UNIDAD DESTINO</label>
+            <input type="text" id="new-consume-unit" class="form-control h-form-control" placeholder="EJ: BOTELLA">
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-dark fw-black flex-grow-1" onclick="InventoryView.saveNewRule()">CREAR REGLA</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+  saveUnitRule: async function(id, btn) {
+    const row = btn.closest('tr');
+    const inputs = row.querySelectorAll('input');
+    const payload = {
+      id: id,
+      product_id: row.dataset.productId || null,
+      buy_unit: inputs[0].value.toUpperCase(),
+      factor: parseFloat(inputs[1].value),
+      consume_unit: inputs[2].value.toUpperCase()
+    };
+    const res = await HandooApp.api('inventory.save_conversion', payload);
+    if(res.ok) {
+        HandooApp.ui.showToast("Regla actualizada.");
+        this.renderUnitsConfig(document.getElementById('inv-content-area'));
+    } else HandooApp.ui.showToast(res.msg, "error");
+  },
+  saveNewRule: async function() {
+      const overlay = this.currentModalOverlay || document.body;
+      const product_id = overlay.querySelector('#new-product-id').value;
+      const buy_unit = overlay.querySelector('#new-buy-unit').value.toUpperCase();
+      const factor = parseFloat(overlay.querySelector('#new-factor').value);
+      const consume_unit = overlay.querySelector('#new-consume-unit').value.toUpperCase();
+      if(!product_id || !buy_unit || !factor || !consume_unit) return HandooApp.ui.showToast("Todos los campos son requeridos", "error");
+      const res = await HandooApp.api('inventory.save_conversion', { product_id, buy_unit, factor, consume_unit });
+      if(res.ok) {
+          overlay.remove();
+          HandooApp.ui.showToast("Regla creada.");
+          this.renderUnitsConfig(document.getElementById('inv-content-area'));
+      } else {
+          HandooApp.ui.showToast(res.msg, "error");
+      }
+  },
+  deleteRule: async function(id) {
+      if(id.startsWith('base-')) return HandooApp.ui.showToast("No se pueden borrar reglas base", "warning");
+      if(await HandooApp.ui.confirm("¿Eliminar esta regla?")) {
+          const res = await HandooApp.api('inventory.delete_conversion', { id });
+          if(res.ok) {
+              HandooApp.ui.showToast("Regla eliminada.");
+              this.renderUnitsConfig(document.getElementById('inv-content-area'));
+          } else HandooApp.ui.showToast(res.msg, "error");
+      }
+  },
+
+  /* =================================================================
+     8. LOGÍSTICA, FACTURAS Y PROVEEDORES
+  ================================================================= */
+  renderLogisticsTab: function(area) { 
+    const aliases = this.editingMaster.aliases || []; 
+    area.innerHTML = `
+      <div class="animate-slide">
+         <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+               <h6 class="fw-black text-uppercase m-0">Memoria Logística</h6>
+               <p class="small text-muted m-0">Referencias de proveedor vinculadas.</p>
+            </div>
+            <button class="btn btn-dark btn-sm fw-black px-4" onclick="InventoryView.addAliasRow()">+ VINCULAR PROVEEDOR</button>
+         </div>
+         <div id="m-aliases-list" class="mb-5">
+            ${aliases.length === 0 ? '<div class="p-4 text-center bg-white rounded-4 opacity-50 fw-bold border-dashed border-2">SIN REFERENCIAS</div>' : ''}
+            ${aliases.map((a, idx) => { 
+               const vendor = this.vendors.find(v => String(v.id) === String(a.vendor_id)); 
+               return `
+               <div class="unified-block block-dark mt-0 mb-3" style="border-left: 5px solid var(--brand) !important;">
+                  <div class="row align-items-center">
+                     <div class="col-md-1 text-center"><i class="bi bi-box-seam fs-2 text-brand"></i></div>
+                     <div class="col-md-10">
+                        <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">${vendor ? escapeHTML(vendor.nombre_fiscal) : 'PROVEEDOR DESCONOCIDO'}</h6>
+                        <div class="row mt-3 g-2">
+                           <div class="col-md-4"><label class="h-label-refined text-white-50">REF. PROV</label><input type="text" class="form-control bg-dark border-secondary text-white fw-bold h-form-control" value="${a.vendor_ref}" onchange="InventoryView.updateAlias(${idx}, 'vendor_ref', this.value)"></div>
+                           <div class="col-md-3"><label class="h-label-refined text-white-50">FORMATO</label><input type="text" class="form-control bg-dark border-secondary text-white h-form-control" value="${a.vendor_format}" onchange="InventoryView.updateAlias(${idx}, 'vendor_format', this.value)"></div>
+                           <div class="col-md-2"><label class="h-label-refined text-brand">FACTOR</label><input type="number" class="form-control bg-dark border-secondary text-brand h-form-control fw-black text-center" value="${a.conversion_factor}" onchange="InventoryView.updateAlias(${idx}, 'conversion_factor', this.value)"></div>
+                           <div class="col-md-3"><label class="h-label-refined text-white-50">PRECIO</label><input type="number" class="form-control bg-dark border-secondary text-white h-form-control fw-black text-end" readonly value="${a.last_price || 0}"></div>
+                        </div>
+                     </div>
+                     <div class="col-md-1 text-end"><button class="btn btn-link text-danger p-0" onclick="InventoryView.removeAlias(${idx})"><i class="bi bi-trash3 fs-5"></i></button></div>
+                  </div>
+               </div>`; 
+            }).join('')}
+         </div>
+         <hr class="my-5">
+         <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+               <h6 class="fw-black text-uppercase m-0">Entradas de Stock (Facturas)</h6>
+               <p class="small text-muted m-0">Vincule facturas para aumentar el stock disponible.</p>
+            </div>
+            <button class="btn btn-brand-titanium btn-sm fw-black px-4 shadow" onclick="InventoryView.toggleInlinePicker()">+ VINCULAR FACTURA</button>
+         </div>
+         <div id="inline-invoice-picker" class="border rounded-3 p-3 bg-light mb-3 shadow-inner" style="display: none; border-left: 4px solid var(--brand) !important;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+               <h6 class="m-0 fw-black small text-uppercase"><i class="bi bi-funnel me-1"></i> Seleccionar Factura de Gasto</h6>
+               <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="document.getElementById('inline-invoice-picker').style.display='none'">
+                  <i class="bi bi-x-circle-fill fs-5"></i>
+               </button>
+            </div>
+            <input type="text" id="inline-inv-search" class="form-control form-control-sm fw-bold mb-2 shadow-sm" placeholder="🔍 Buscar por proveedor, concepto o importe..." onkeyup="InventoryView.renderInlinePickerList(this.value)">
+            <div class="overflow-auto border border-secondary-subtle rounded bg-white shadow-sm" style="max-height: 220px;">
+               <table class="table table-hover align-middle m-0 small">
+                  <tbody id="inline-picker-list">
+                     <tr><td class="text-center p-4 opacity-50"><span class="spinner-border spinner-border-sm me-2"></span> Cargando facturas...</td></tr>
+                  </tbody>
+               </table>
+            </div>
+         </div>
+         <div id="linked-invoices-container" class="border rounded p-2 bg-white"></div>
+         <div class="mt-2 small text-muted">
+            <i class="bi bi-info-circle me-1"></i> Al vincular una factura, se registrará la entrada de unidades en el stock actual.
+         </div>
+      </div>`; 
+      this.renderLinkedInvoices();
+  },
+  renderLinkedInvoices: function() {
+    const container = document.getElementById('linked-invoices-container');
+    if (!container) return;
+    if (this.currentLinkedInvoices.length === 0) {
+      container.innerHTML = '<div class="small text-muted text-center p-3 fw-bold opacity-50">No hay facturas vinculadas a este artículo</div>';
+      return;
+    }
+    container.innerHTML = this.currentLinkedInvoices.map((inv, idx) => {
+        let pdfButton = '';
+        if(inv.url) {
+            pdfButton = `
+            <button type="button" class="btn btn-sm btn-outline-dark fw-bold border p-1 d-flex align-items-center gap-1" onclick="window.open('${inv.url.replace(/'/g, "\\'")}', '_blank')">
+               <i class="bi bi-file-earmark-pdf-fill text-danger fs-5"></i> 
+               <span style="font-size:9px">VER PDF</span>
+            </button>`;
+        }
+        return `
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2 px-2">
+           <div>
+              <div class="fw-black text-uppercase" style="font-size: 11px;">${escapeHTML(inv.proveedor || 'Factura')}</div>
+              <div class="text-muted fw-bold" style="font-size: 10px;">${inv.fecha} | ${parseFloat(inv.total).toLocaleString()} € | <span class="text-brand">${inv.qty || 0} Uds</span></div>
+           </div>
+           <div class="d-flex gap-2 align-items-center">
+              ${pdfButton}
+              <button type="button" class="btn btn-sm btn-outline-danger p-1 ms-2" onclick="InventoryView.removeLinkedInvoice(${idx})">
+                 <i class="bi bi-trash fs-5"></i>
+              </button>
+           </div>
+        </div>`;
+    }).join('');
+  },
+  toggleInlinePicker: async function() {
+    const picker = document.getElementById('inline-invoice-picker');
+    if(!picker) return;
+    if (picker.style.display === 'block') { picker.style.display = 'none'; return; }
+    picker.style.display = 'block';
+    if (!this._cachedExpenses) {
+        const res = await HandooApp.api('expense.list');
+        if (res.ok) {
+            this._cachedExpenses = res.data || [];
+        } else { 
+            const listContainer = document.getElementById('inline-picker-list');
+            if(listContainer) listContainer.innerHTML = '<tr><td class="text-danger text-center p-4">Error al cargar facturas</td></tr>'; 
+            return; 
+        }
+    }
+    this.renderInlinePickerList();
+  },
+  renderInlinePickerList: function(q = '') {
+    const tbody = document.getElementById('inline-picker-list');
+    if(!tbody) return;
+    q = q.toLowerCase();
+    const filtered = (this._cachedExpenses || []).filter(e => 
+        (e.beneficiario || '').toLowerCase().includes(q) || 
+        (e.concepto || '').toLowerCase().includes(q) || 
+        String(e.total || '').includes(q)
+    ).slice(0, 50);
+    if (filtered.length === 0) { 
+        tbody.innerHTML = '<tr><td class="text-center p-4 opacity-50 fw-bold">No se encontraron facturas</td></tr>'; 
+        return; 
+    }
+    tbody.innerHTML = filtered.map(e => `
+      <tr>
+        <td class="ps-3 text-muted" width="90">${e.fecha}</td>
+        <td class="fw-bold text-uppercase text-dark">${escapeHTML(e.beneficiario || e.concepto || 'S/N')}</td>
+        <td class="fw-black text-end text-brand" width="110">${parseFloat(e.total || 0).toLocaleString()} €</td>
+        <td class="text-end pe-3" width="100">
+           <button type="button" class="btn btn-sm btn-dark fw-black w-100" onclick="InventoryView.selectInvoice('${e.id}', '${escapeHTML(e.beneficiario || '').replace(/'/g, "\\'")}', '${e.fecha}', ${e.total || 0}, '${(e.attachment_url || e.file_url || '').replace(/'/g, "\\'")}')">VINCULAR</button>
+        </td>
+      </tr>`).join('');
+  },
+  selectInvoice: async function(id, proveedor, fecha, total, url) {
+    const qty = await HandooApp.ui.prompt("Unidades a añadir al stock", "1", "number");
+    if (qty === null) return;
+    this.currentLinkedInvoices.push({ id, proveedor, fecha, total, url, qty: parseFloat(qty) });
+    this.renderLinkedInvoices();
+    const picker = document.getElementById('inline-invoice-picker');
+    if(picker) picker.style.display = 'none';
+  },
+  removeLinkedInvoice: function(idx) {
+     this.currentLinkedInvoices.splice(idx, 1);
+     this.renderLinkedInvoices();
+  },
+  addAliasRow: async function() { 
+    if(!this.vendors || this.vendors.length === 0) {
+        window.HandooApp.ui.showToast("Cargando proveedores...", "info");
+        try {
+            const res = await window.HandooApp.api('vendor.list');
+            if(res && res.ok) this.vendors = Array.isArray(res.data) ? res.data : Object.values(res.data || {});
+        } catch(e) {}
+    }
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide'; overlay.style.zIndex='20000'; 
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width:600px">
+        <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black">VINCULAR PROVEEDOR</h5></div>
+        <div class="h-modal-body bg-light">
+          <div class="unified-block block-light mt-0">
+            <label class="h-label-refined">BUSCAR PROVEEDOR (NOMBRE O CIF)</label>
+            <input type="text" id="a-vendor-search" class="form-control h-form-control mb-2 fw-bold border-brand" placeholder="🔍 Escriba para buscar..." onkeyup="InventoryView.filterAliasVendors()">
+            <select id="a-vendor" class="form-select h-form-control mb-3 fw-black" size="4" style="height: 120px; overflow-y: auto;"></select>
+            <label class="h-label-refined">REFERENCIA DEL ARTÍCULO EN EL PROVEEDOR</label>
+            <input type="text" id="a-ref" class="form-control h-form-control mb-3 fw-bold text-uppercase" placeholder="EJ: REF-1234">
+            <div class="row g-2">
+              <div class="col-6"><label class="h-label-refined">FORMATO DE COMPRA</label><input type="text" id="a-format" class="form-control h-form-control text-uppercase" value="UNIDAD"></div>
+              <div class="col-6"><label class="h-label-refined">FACTOR CONVERSIÓN</label><input type="number" id="a-factor" class="form-control h-form-control fw-black text-brand text-center" value="1" step="0.01"></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-modal-footer">
+          <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+          <button class="btn btn-dark fw-black flex-grow-1" onclick="InventoryView.saveNewAlias()">GUARDAR VÍNCULO</button>
+        </div>
+      </div>`; 
+    document.body.appendChild(overlay); 
+    this.filterAliasVendors();
+  },
+
+  filterAliasVendors: function() {
+      const q = document.getElementById('a-vendor-search').value.toLowerCase();
+      const sel = document.getElementById('a-vendor');
+      if(!sel) return;
+      const filtered = (this.vendors || []).filter(v => (v.nombre_fiscal||'').toLowerCase().includes(q) || (v.cif||'').toLowerCase().includes(q));
+      sel.innerHTML = filtered.length === 0 ? `<option value="" disabled>No se encontraron proveedores</option>` : filtered.map(v => `<option value="${v.id}">${escapeHTML(v.nombre_fiscal)} ${v.cif ? '('+escapeHTML(v.cif)+')' : ''}</option>`).join('');
+  },
+  saveNewAlias: function() { 
+    const vId = document.getElementById('a-vendor').value; 
+    const ref = document.getElementById('a-ref').value; 
+    if(!vId || !ref) return; 
+    this.editingMaster.aliases.push({ vendor_id: vId, vendor_ref: ref.toUpperCase(), vendor_format: document.getElementById('a-format').value.toUpperCase(), conversion_factor: parseFloat(document.getElementById('a-factor').value||1), last_price: 0 }); 
+    document.querySelector('.h-modal-overlay[style*="z-index: 20000"]').remove(); 
+    this.renderModalContent(); 
+  },
+  updateAlias: function(idx, f, v) { this.editingMaster.aliases[idx][f] = (f==='conversion_factor')?parseFloat(v):v; },
+  removeAlias: async function(idx) { if(await HandooApp.ui.confirm("¿Eliminar vínculo?")) { this.editingMaster.aliases.splice(idx,1); this.renderModalContent(); } },
+
+  /* =================================================================
+     9. IMPORTACIÓN (EXCEL)
+  ================================================================= */
+  openImporter: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 800px;">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">IMPORTAR DESDE EXCEL</h5></div>
+         <div class="h-modal-body bg-light p-4">
+            <div class="alert alert-warning border-0 shadow-sm rounded-3 small">
+              <i class="bi bi-info-circle-fill me-2"></i><strong>Instrucciones:</strong> Ve a tu Excel, selecciona las filas de ingredientes de estas 4 columnas: <strong>Nombre | Unidad | Coste Neto | Merma%</strong>. Haz Copiar en Excel y Pegar aquí abajo.
+            </div>
+            <textarea id="import-data" class="form-control bg-dark text-success font-monospace p-3 rounded-3 border-0 shadow-inner" style="height: 300px; font-size: 12px; outline: none;" placeholder="Ej: Carne Smash\tKg\t11,55\t10%"></textarea>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-dark fw-black flex-grow-1" onclick="InventoryView.processImport()">INICIAR INYECCIÓN</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  processImport: async function() {
+    const text = document.getElementById('import-data').value;
+    if(!text.trim()) return HandooApp.ui.showToast("No hay datos para importar", "error");
+
+    const lines = text.split('\n');
+    const items = [];
+
+    for(let i = 0; i < lines.length; i++) {
+      if(!lines[i].trim()) continue;
+      const cols = lines[i].split('\t');
+      if(cols[0].toLowerCase().includes("nombre") || cols[0].toLowerCase().includes("ingrediente")) continue;
+
+      if(cols.length >= 3) {
+         let precioLimpio = cols[2].toString().replace('€','').replace(/\s/g,'').replace(',','.');
+         let mermaLimpia = cols[3] ? cols[3].toString().replace('%','').replace(/\s/g,'').replace(',','.') : "0";
+
+         items.push({
+           nombre: cols[0],
+           unidad: cols[1],
+           precio: parseFloat(precioLimpio) || 0,
+           merma: parseFloat(mermaLimpia) || 0
+         });
+      }
+    }
+
+    if(items.length === 0) return HandooApp.ui.showToast("No se detectaron datos válidos", "error");
+    HandooApp.ui.showToast("Inyectando catálogo...");
+    
+    const res = await new Promise((resolve) => {
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler((err) => resolve({ ok: false, msg: err.toString() }))
+            .api_inventory_bulk_import({ items: items });
+    });
+    
+    if(res.ok) {
+        document.querySelector('.h-modal-overlay').remove();
+        HandooApp.ui.showToast(res.msg, "success");
+        this.load();
+    } else {
+        HandooApp.ui.showToast(res.msg, "error");
+    }
+  },
+
+  /* =================================================================
+     10. CUARENTENA Y CONCILIACIÓN
+  ================================================================= */
+  renderQuarantine: async function(container) {
+    HandooApp.ui.showToast("Abriendo Aduanas...", "info");
+    const resMIG = await new Promise(resolve => {
+        google.script.run.withSuccessHandler(resolve).api_inventory_get_migration_quarantine();
+    });
+    
+    const migrationItems = resMIG.ok ? resMIG.data : [];
+
+    container.innerHTML = `
+      <div class="animate-slide">
+          <div class="unified-block block-dark mt-0 mb-4" style="border-left: 6px solid var(--brand) !important;">
+             <div class="d-flex justify-content-between align-items-center">
+                <div>
+                   <h6 class="fw-black text-uppercase m-0 text-white">Aduana de Importación</h6>
+                   <p class="small text-muted m-0">Productos del Excel esperando asignación de categoría</p>
+                </div>
+                <span class="badge bg-brand text-white px-3 py-2">${migrationItems.length} PENDIENTES</span>
+             </div>
+          </div>
+          <div class="bg-white rounded-4 shadow-sm overflow-hidden mb-5">
+             <div class="p-3 bg-light border-bottom d-flex gap-2 align-items-center">
+                <select id="mig-global-type" class="form-select form-select-sm fw-black" style="width: 250px;">
+                   <option value="RAW">ASIGNAR COMO: MATERIA PRIMA</option>
+                   <option value="SUPPLY">ASIGNAR COMO: SUMINISTRO/GASTO</option>
+                   <option value="FINAL_PRODUCT">ASIGNAR COMO: PRODUCTO VENTA</option>
+                </select>
+                <button class="btn btn-sm btn-brand text-white fw-black px-4" onclick="InventoryView.processMigration()">VALIDAR E INYECTAR SELECCIÓN</button>
+                <button class="btn btn-sm btn-outline-dark fw-black ms-auto" onclick="document.querySelectorAll('.mig-cb').forEach(c => c.checked = true)">MARCAR TODOS</button>
+             </div>
+             <div style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover m-0 align-middle">
+                   <thead class="bg-light sticky-top">
+                      <tr>
+                         <th class="ps-4" width="40"></th>
+                         <th>PRODUCTO</th>
+                         <th class="text-center">UNIDAD</th>
+                         <th class="text-end">COSTE NETO</th>
+                         <th class="text-end pe-4">MERMA</th>
+                      </tr>
+                   </thead>
+                   <tbody>
+                      ${migrationItems.map(item => `
+                        <tr>
+                           <td class="ps-4"><input type="checkbox" class="form-check-input mig-cb" value="${item.id}"></td>
+                           <td class="fw-bold small text-uppercase">${escapeHTML(item.nombre)}</td>
+                           <td class="text-center"><span class="badge bg-light text-dark border">${escapeHTML(item.unidad)}</span></td>
+                           <td class="text-end fw-black">${parseFloat(item.precio).toLocaleString()} €</td>
+                           <td class="text-end pe-4 text-muted">${parseFloat(item.merma || 0).toLocaleString()}%</td>
+                        </tr>
+                      `).join('')}
+                      ${migrationItems.length === 0 ? '<tr><td colspan="5" class="p-5 text-center opacity-25 fw-bold">NO HAY IMPORTACIONES PENDIENTES</td></tr>' : ''}
+                   </tbody>
+                </table>
+             </div>
+          </div>
+          <div class="unified-block block-dark mb-4">
+             <h6 class="fw-black text-uppercase m-0 text-white">Detecciones de Facturas</h6>
+          </div>
+          <div id="conciliacion-area">
+             <p class="small text-muted ps-2">No hay discrepancias detectadas en facturas.</p>
+          </div>
+      </div>`;
+  },
+
+  processMigration: async function() {
+    const checkboxes = document.querySelectorAll('.mig-cb:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    const globalType = document.getElementById('mig-global-type').value;
+    if (ids.length === 0) return HandooApp.ui.showToast("Selecciona artículos", "warning");
+    
+    HandooApp.ui.setLoading('main-stage', true, "GRADUANDO PRODUCTOS...");
+    const res = await new Promise(resolve => {
+        google.script.run.withSuccessHandler(resolve).api_inventory_process_quarantine_migration({ items: ids, globalType: globalType });
+    });
+    if (res.ok) { HandooApp.ui.showToast(res.msg, "success"); this.renderTabContent(); }
+    else { HandooApp.ui.showToast(res.msg, "error"); this.renderTabContent(); }
+  },
+
+  openConciliationModal: function(vendorId, vendorRef) { 
+    let itRef = null; let beneficiario = ''; 
+    for(const q of this.quarantine) { 
+      beneficiario = q.beneficiario; 
+      itRef = q.items.find(x => x.needs_conciliation && String(x.vendor_ref || 'S/R').toUpperCase() === String(vendorRef).toUpperCase()); 
+      if(itRef) break; 
+    } 
+    if(!itRef) return; 
+    
+    const masters = [...this.catalog.products, ...this.catalog.modules]; 
+    const overlay = document.createElement('div'); 
+    overlay.className = 'h-modal-overlay animate-slide'; 
+    overlay.style.zIndex = '11000';
+    this.currentModalOverlay = overlay;
+
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 600px">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black">CONCILIACIÓN TÉCNICA Y LOGÍSTICA</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <label class="h-label-refined">PROVEEDOR ORIGEN</label>
+               <div class="fw-black text-uppercase small mb-3">${escapeHTML(beneficiario)}</div>
+               
+               <label class="h-label-refined">ARTÍCULO DETECTADO (CONCEPTO PROVEEDOR)</label>
+               <div class="p-2 bg-white border rounded mb-3 small fw-bold text-dark">${escapeHTML(itRef.concept)}</div>
+               
+               <div class="row g-2 mb-3">
+                  <div class="col-md-6">
+                     <label class="h-label-refined">REF. PROVEEDOR</label>
+                     <div class="p-2 bg-white border rounded font-monospace fw-bold small">${escapeHTML(vendorRef)}</div>
+                  </div>
+                  <div class="col-md-6">
+                     <label class="h-label-refined">PRECIO REFERENCIA</label>
+                     <div class="p-2 bg-white border rounded fw-black text-brand small">${parseFloat(itRef.price).toLocaleString()} €</div>
+                  </div>
+               </div>
+               
+               <label class="h-label-refined">VINCULAR A NUESTRO ARTÍCULO MAESTRO</label>
+               <select id="con-master-id" class="form-select h-form-control fw-bold mb-3">
+                  <option value="">-- SELECCIONE NUESTRO PRODUCTO --</option>
+                  ${masters.map(m => `<option value="${m.id}">${escapeHTML(m.nombre)}</option>`).join('')}
+               </select>
+               
+               <div class="unified-block block-dark mt-3 p-3">
+                  <div class="row align-items-center mb-2">
+                     <div class="col-md-1"><i class="bi bi-box-seam fs-4 text-brand"></i></div>
+                     <div class="col-md-11"><h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Factor de Conversión Logístico</h6></div>
+                  </div>
+                  <div class="row g-2">
+                     <div class="col-md-6">
+                        <label class="h-label-refined text-white-50">FORMATO COMPRA (PROV)</label>
+                        <input type="text" id="con-format" class="form-control bg-dark border-secondary text-white h-form-control fw-black text-uppercase" placeholder="EJ: CAJA, BOLSA" value="${escapeHTML(itRef.format) || 'CAJA'}">
+                     </div>
+                     <div class="col-md-6">
+                        <label class="h-label-refined text-brand">CONVERSIÓN (UDS INTERNAS)</label>
+                        <input type="number" id="con-factor" class="form-control bg-dark border-secondary text-brand h-form-control fw-black text-center" value="1">
+                     </div>
+                  </div>
+               </div>
+            </div>
+            
+            <div class="unified-block block-dark mt-3">
+               <div class="row align-items-center">
+                  <div class="col-md-2 text-center"><i class="bi bi-plus-circle-dotted fs-2 text-brand"></i></div>
+                  <div class="col-md-10">
+                     <h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">¿Producto No Registrado?</h6>
+                     <p class="small text-muted m-0">Cree el activo ahora. Al finalizar, aparecerá en el desplegable superior.</p>
+                  </div>
+                  <div class="col-12 mt-3">
+                     <button class="btn btn-outline-light w-100 py-2 fw-black small" onclick="InventoryView.openMasterForm('new')">REGISTRAR NUEVO PRODUCTO MAESTRO</button>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button id="btn-con-exec" class="btn btn-dark fw-black flex-grow-1" onclick="InventoryView.executeConciliation('${vendorId}', '${escapeHTML(vendorRef)}')">VINCULAR Y APRENDER</button>
+         </div>
+      </div>`; 
+    document.body.appendChild(overlay); 
+  },
+
+  executeConciliation: async function(vendorId, vendorRef) { 
+    const mid = this.currentModalOverlay.querySelector('#con-master-id').value; 
+    if(!mid) return HandooApp.ui.showToast("Seleccione un artículo interno", "error"); 
+    let itRef = null; 
+    let beneficiario = ''; 
+    for(const q of this.quarantine) { 
+        itRef = q.items.find(x => x.needs_conciliation && String(x.vendor_ref || 'S/R').toUpperCase() === String(vendorRef).toUpperCase()); 
+        if(itRef) { beneficiario = q.beneficiario; break; } 
+    } 
+    const factor = parseFloat(this.currentModalOverlay.querySelector('#con-factor').value || 1); 
+    const format = this.currentModalOverlay.querySelector('#con-format').value || 'CAJA'; 
+    HandooApp.ui.setLoading('btn-con-exec', true); 
+    const res = await HandooApp.api('inventory.conciliate_quarantine', { vendorId, vendorRef, masterId: mid, price: itRef ? itRef.price : 0, factor, format }); 
+    if(res.ok) { 
+        this.currentModalOverlay.remove(); 
+        HandooApp.ui.showToast(res.msg || "Conciliación global asimilada."); 
+        this.load(); 
+    } else { 
+        HandooApp.ui.showToast(res.msg, "error"); 
+        HandooApp.ui.setLoading('btn-con-exec', false); 
+    } 
+  },
+
+  /* =================================================================
+     11. CHEMINAI: CEREBRO ESTRATÉGICO (Comandos de Voz/Texto)
+  ================================================================= */
+  openStrategicCommand: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.style.zIndex = '200000';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px; border: 2px solid var(--warning);">
+         <div class="h-modal-header bg-warning text-dark p-4 d-flex justify-content-between">
+            <h5 class="m-0 fw-black text-uppercase"><i class="bi bi-cpu-fill me-2"></i>Cheminai Smart Command</h5>
+            <button class="btn btn-sm btn-dark" onclick="this.closest('.h-modal-overlay').remove()">X</button>
+         </div>
+         <div class="h-modal-body bg-dark text-white p-4">
+            <label class="h-label-refined text-warning">Orden Técnica / Dictado de Voz</label>
+            <textarea id="cheminai-input" class="form-control bg-dark border-secondary text-white fw-bold mb-4" rows="3" placeholder="Handoo, una caja tiene 6 botellas..." style="font-size: 14px; border-radius: 12px;"></textarea>
+            
+            <div id="cheminai-feedback" class="p-3 rounded-4 border border-secondary mb-4 hidden bg-secondary-subtle text-dark small fw-bold">
+               <div id="cheminai-reply" class="mb-2"></div>
+               <div id="cheminai-intent" class="x-small opacity-50 font-monospace"></div>
+            </div>
+
+            <p class="x-small text-muted mb-0">Cheminai traducirá tu voz a órdenes técnicas automáticas para el inventario.</p>
+         </div>
+         <div class="h-modal-footer p-4">
+            <button id="btn-cheminai-exec" class="btn btn-warning w-100 fw-black shadow py-3" onclick="InventoryView.executeStrategicOrder()">EJECUTAR ORDEN ESTRATÉGICA</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('cheminai-input').focus(), 100);
+  },
+
+  executeStrategicOrder: async function() {
+    const text = document.getElementById('cheminai-input').value.trim();
+    if (!text) return;
+
+    HandooApp.ui.setLoading('btn-cheminai-exec', true, "PENSANDO...");
+    
+    try {
+        // 1. LLAMADA AL CEREBRO NEURAL (Backend AI)
+        const resAi = await HandooApp.api('ai.parse_voice_order', { text: text });
+        
+        let intent = resAi.intent || 'UNKNOWN';
+        let params = resAi.params || {};
+        let reply = resAi.reply || "Oído Chef, procesado.";
+
+        // FALLBACK LOCAL: Si la IA falla o no está configurada, aplicamos lógica regex básica
+        if (intent === 'UNKNOWN') {
+            const regexConv = /(?:una|un)\s+(\w+)\s+(?:tiene|equivale|trae|son)\s+(\d+)\s+(\w+)/i;
+            const regexAjuste = /(?:ajusta|stock|inventario|pon)\s+(\d+)\s+(?:de|unidades? de)?\s+(.+)/i;
+
+            if (regexConv.test(text)) {
+                const match = text.match(regexConv);
+                intent = "UNIT_CONV";
+                params = { buy_unit: match[1].toUpperCase(), factor: parseFloat(match[2]), consume_unit: match[3].toUpperCase() };
+                reply = `Oído Chef, configurada la escala de 1 ${params.buy_unit} a ${params.factor} ${params.consume_unit}`;
+                
+                // Ejecución técnica del fallback
+                await HandooApp.api('inventory.save_conversion', { 
+                    product_id: null, 
+                    buy_unit: params.buy_unit, 
+                    factor: params.factor, 
+                    consume_unit: params.consume_unit 
+                });
+            } else if (regexAjuste.test(text)) {
+                const match = text.match(regexAjuste);
+                intent = "INV_AJUSTE";
+                params = { cantidad: parseFloat(match[1]), producto_nombre: match[2].toUpperCase(), tipo: "SUMA" };
+                const catalog = [...(this.catalog.products||[])];
+                const prod = catalog.find(p => p.nombre.toUpperCase() === params.producto_nombre);
+                if (prod) {
+                    await HandooApp.api('inventory.adjust_stock', { producto_id: prod.id, cantidad: params.cantidad, tipo: "SUMA", unidad: prod.consume_unit });
+                    reply = `Oído Chef, ajustando stock de ${prod.nombre} en ${params.cantidad} unidades.`;
+                } else {
+                    reply = `Oído Chef, no encuentro el producto "${params.producto_nombre}" en el catálogo.`;
+                }
+            }
+        }
+
+        if (intent === 'UNKNOWN' && !resAi.reply) {
+            HandooApp.ui.showToast("Cheminai no comprende la instrucción", "error");
+            HandooApp.ui.setLoading('btn-cheminai-exec', false);
+            return;
+        }
+
+        // Mostrar feedback visual
+        const fb = document.getElementById('cheminai-feedback');
+        fb.classList.remove('hidden');
+        document.getElementById('cheminai-reply').innerText = reply;
+        document.getElementById('cheminai-intent').innerText = `INTENT: ${intent} | EXECUTED: ${resAi.executed || 'LOCAL_FALLBACK'}`;
+
+        HandooApp.ui.showToast(reply, "success");
+        if (resAi.executed || intent !== 'UNKNOWN') {
+             setTimeout(() => {
+                 const modal = document.querySelector('.h-modal-overlay');
+                 if(modal) modal.remove();
+                 this.load();
+             }, 1500);
+        }
+
+    } catch (e) {
+        console.error("Error Cheminai:", e);
+        HandooApp.ui.showToast("Error en el enlace neural", "error");
+    } finally {
+        HandooApp.ui.setLoading('btn-cheminai-exec', false);
+    }
+  }
+};
+window.inventoryview = window.InventoryView;
+</script>

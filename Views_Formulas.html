@@ -1,0 +1,719 @@
+<div id="view-formulas" class="animate__animated animate__fadeIn">
+  <div class="container mt-3">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="p-4 rounded-4 shadow-sm text-white d-flex align-items-center" style="background:#0f172a">
+          <div class="flex-grow-1">
+            <h6 class="text-uppercase small opacity-50 fw-bold mb-1">Fórmulas en Riesgo</h6>
+            <p class="h1 fw-black mb-0" id="risk-count">0</p>
+          </div>
+          <i class="bi bi-exclamation-octagon fs-1 text-danger"></i>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-4 rounded-4 shadow-sm text-white d-flex align-items-center" style="background:#0f172a">
+          <div class="flex-grow-1">
+            <h6 class="text-uppercase small opacity-50 fw-bold mb-1">Rentabilidad Media</h6>
+            <p class="h1 fw-black mb-0" id="avg-margin">0%</p>
+          </div>
+          <i class="bi bi-graph-up-arrow fs-1 text-success"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-4 shadow-sm mt-4 bg-white border">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h6 class="fw-black text-uppercase mb-0" style="font-size: 12px">Ingeniería de Escandallos</h6>
+          <p class="text-muted small mb-0">Gestión de fichas técnicas y costes vivos</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="text" class="form-control form-control-sm rounded-pill border shadow-sm px-3" 
+                 placeholder="🔍 Buscar producto..." 
+                 style="width: 250px; font-size: 11px; outline: none;" 
+                 onkeyup="FormulasView.filterTable(this.value)">
+                 
+          <button class="btn btn-dark rounded-pill px-4 fw-black shadow-sm text-nowrap" style="font-size: 12px; letter-spacing: 0.5px;" onclick="FormulasView.openEditor('new')">
+            <i class="bi bi-plus-lg me-1"></i> NUEVA FICHA
+          </button>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr class="small text-uppercase text-muted sticky-top bg-light" style="font-size: 10px">
+              <th style="width: 40%;">Ficha / Producto</th>
+              <th class="text-center" style="width: 20%;">Coste Materia Prima</th>
+              <th class="text-center" style="width: 30%;">Márgenes y Rentabilidad (L | T | D)</th>
+              <th class="text-end" style="width: 10%;">Estado Real</th>
+            </tr>
+          </thead>
+          <tbody id="formulas-list">
+            <tr><td colspan="4" class="text-center p-5"><div class="spinner-border text-brand"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<div class="modal fade" id="modal-formula-editor" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow-lg" style="font-size: 11px;">
+      <div class="modal-header text-white p-3 border-0" style="background:#0f172a">
+        <div class="flex-grow-1">
+          <h5 class="modal-title fw-black text-uppercase mb-0" id="editor-title" style="font-size: 14px;">Editor de Escandallo</h5>
+        </div>
+        <div class="d-flex text-center gap-3 border-start border-secondary ps-3">
+          <div>
+            <div class="small opacity-50 text-uppercase" style="font-size: 9px; letter-spacing: 1px;">LOCAL</div>
+            <div class="h6 fw-black mb-0 text-warning" id="m-local">0.00€</div>
+          </div>
+          <div>
+            <div class="small opacity-50 text-uppercase" style="font-size: 9px; letter-spacing: 1px;">TA</div>
+            <div class="h6 fw-black mb-0 text-warning" id="m-ta">0.00€</div>
+          </div>
+          <div>
+            <div class="small opacity-50 text-uppercase" style="font-size: 9px; letter-spacing: 1px;">DELIVERY</div>
+            <div class="h6 fw-black mb-0 text-warning" id="m-del">0.00€</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white ms-3" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" style="background-color: #f8fafc;">
+        <!-- Fila 1: Datos Básicos -->
+        <div class="row g-0 p-3 bg-light border-bottom">
+          <div class="col-md-5 px-2">
+            <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px; letter-spacing: 1px;">NOMBRE DE LA FICHA</label>
+            <input type="text" id="f-nombre" class="form-control form-control-sm border-0 shadow-none bg-white py-2" oninput="FormulasView.syncInput('f-nombre', 'nombre')">
+          </div>
+          <div class="col-md-5 px-2">
+             <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px; letter-spacing: 1px;">VINCULAR CON PRODUCTO DEL CATÁLOGO</label>
+             <select id="f-master-link" class="form-select form-select-sm fw-bold border-brand" onchange="FormulasView.syncInput('f-master-link', 'id_producto')">
+                <option value="">-- NO VINCULADO (BUSCAR ACTIVO...) --</option>
+             </select>
+          </div>
+          <div class="col-md-2 px-2 d-flex align-items-end">
+             <button class="btn btn-outline-dark btn-sm w-100 fw-black" onclick="FormulasView.quickCreateProduct()">
+                <i class="bi bi-plus-circle-fill"></i> NUEVO
+             </button>
+          </div>
+        </div>
+
+        <!-- Fila 2: Económicos -->
+        <div class="row g-0 p-3 bg-white border-bottom align-items-center">
+          <div class="col-md-2 px-1">
+            <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px; letter-spacing: 1px;">PVP LOCAL</label>
+            <input type="number" id="f-pvp-local" class="form-control form-control-sm border-0 shadow-none bg-light" oninput="FormulasView.syncInput('f-pvp-local', 'pvp_canales', 'local')">
+          </div>
+          <div class="col-md-2 px-1">
+            <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px; letter-spacing: 1px;">PVP DELIVERY</label>
+            <input type="number" id="f-pvp-delivery" class="form-control form-control-sm border-0 shadow-none bg-light" oninput="FormulasView.syncInput('f-pvp-delivery', 'pvp_canales', 'delivery')">
+          </div>
+          <div class="col-md-2 px-1">
+            <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px; letter-spacing: 1px;">PVP TA</label>
+            <input type="number" id="f-pvp-ta" class="form-control form-control-sm border-0 shadow-none bg-light" oninput="FormulasView.syncInput('f-pvp-ta', 'pvp_canales', 'takeaway')">
+          </div>
+          <div class="col-md-1 px-1">
+            <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:8px;">COM. DEL %</label>
+            <input type="number" id="f-comision-del" class="form-control form-control-sm border-0 shadow-none bg-light" oninput="FormulasView.syncInput('f-comision-del', 'comisiones', 'delivery')">
+          </div>
+          <div class="col-md-1 px-1">
+            <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:8px;">COM. TA %</label>
+            <input type="number" id="f-comision-ta" class="form-control form-control-sm border-0 shadow-none bg-light" oninput="FormulasView.syncInput('f-comision-ta', 'comisiones', 'takeaway')">
+          </div>
+          <div class="col-md-2 px-1">
+            <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px; letter-spacing: 1px;">COSTE PACK</label>
+            <input type="number" id="f-pack" class="form-control form-control-sm border-0 shadow-none bg-light" oninput="FormulasView.syncInput('f-pack', 'coste_pack')">
+          </div>
+          <div class="col-md-2 px-1">
+            <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:8px; letter-spacing: 0.5px; color: #ef4444;">VIDA ÚTIL (DÍAS)</label>
+            <input type="number" id="f-vida-util" class="form-control form-control-sm border-danger shadow-none bg-white font-monospace fw-bold" 
+                   oninput="FormulasView.syncInput('f-vida-util', 'vida_util')" 
+                   placeholder="Ej: 3">
+          </div>
+        </div>
+
+
+        <div class="p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-black text-uppercase small mb-0">Ingredientes</h6>
+            <button class="btn btn-sm btn-dark rounded-pill fw-black px-3" style="font-size: 10px;" onclick="FormulasView.addComponent()">
+              <i class="bi bi-plus-lg me-1"></i> AÑADIR INGREDIENTE
+            </button>
+          </div>
+          
+          <datalist id="catalog-list"></datalist>
+
+          <div class="table-responsive" id="ingredients-container" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
+            <table class="table table-borderless align-middle mb-0">
+              <thead class="small text-muted sticky-top bg-white">
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <th style="width: 50%;">Ingrediente</th>
+                  <th class="text-center" style="width: 15%;">Cant (g/u)</th>
+                  <th class="text-center" style="width: 15%;">Merma%</th>
+                  <th class="text-center" style="width: 15%;">Coste</th>
+                  <th style="width: 5%;"></th>
+                </tr>
+              </thead>
+              <tbody id="ingredients-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer p-3 border-0 bg-white">
+        <button class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">DESCARTAR</button>
+        <button class="btn btn-dark rounded-pill px-5 fw-black shadow" onclick="FormulasView.save()">GUARDAR FICHA TÉCNICA</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div> <script>
+// 🛡️ PARCHE DE SEGURIDAD TITANIUM (Base64 Unicode Fix)
+if (!window.btoa_patched) {
+  const originalBtoa = window.btoa;
+  window.btoa = function(str) {
+    try { return originalBtoa(str); }
+    catch(e) { return originalBtoa(unescape(encodeURIComponent(str))); }
+  };
+  window.btoa_patched = true;
+}
+
+window.FormulasView = {
+  data: [],
+  catalog: [],
+  current: null,
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    let vistaOriginal = document.getElementById('view-formulas');
+    
+    // 🛡️ Ajuste defensivo: Reintento si el template no está listo inmediatamente
+    if (!vistaOriginal) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+        vistaOriginal = document.getElementById('view-formulas');
+    }
+
+    if (vistaOriginal) {
+        stage.innerHTML = vistaOriginal.outerHTML;
+    } else {
+        console.error("❌ Error crítico: No se encontró el template view-formulas");
+        return;
+    }
+
+    document.getElementById('formulas-list').innerHTML = '<tr><td colspan="4" class="text-center p-5"><div class="spinner-border text-brand"></div><div class="small mt-2">Cargando Ingeniería...</div></td></tr>';
+
+    try {
+        const [formulasRes, catalogRes] = await Promise.all([
+          HandooApp.api('formula.list', {}),
+          HandooApp.api('inventory.get_catalog', {})
+        ]);
+
+        if (catalogRes && catalogRes.ok) this.catalog = catalogRes.data.products;
+
+        if(!formulasRes || !formulasRes.ok || formulasRes.data.length === 0) {
+            document.getElementById('formulas-list').innerHTML = '<tr><td colspan="4" class="text-center p-5 text-muted">No hay escandallos registrados.</td></tr>';
+            return;
+        }
+
+        this.data = formulasRes.data;
+        this.loadSkeleton(true); 
+
+    } catch (e) {
+        console.error("Fallo crítico en render:", e);
+        document.getElementById('formulas-list').innerHTML = '<tr><td colspan="4" class="text-center p-5 text-danger">Error de conexión.</td></tr>';
+    }
+  },
+
+  loadSkeleton: async function(skipHeavyData = false) {
+    const list = document.getElementById('formulas-list');
+    if (!this.data || this.data.length === 0) return; 
+
+    list.innerHTML = this.data.map(f => `
+        <tr id="row-${f.id}" class="table-hover align-middle border-bottom" style="cursor:pointer" onclick="FormulasView.openEditor('${f.id}')">
+          <td class="ps-3" style="width: 40%;">
+            <div class="fw-black text-dark" style="font-size:13px">${f.nombre}</div>
+            <div class="small text-muted" style="font-size:10px">Link: ${f.master_link || '---'}</div>
+            <div class="mt-1 d-flex flex-wrap gap-1">
+              ${(f.components || []).map(c => {
+                const p = this.catalog.find(p => String(p.id) === String(c.master_id));
+                const name = p ? p.nombre : '?';
+                return `<span class="badge bg-light text-muted border-0 p-0 text-truncate fw-normal" style="font-size:8.5px; max-width: 150px;" title="${name}">• ${name} (${parseFloat(c.cantidad_bruta).toFixed(1)}${c.unidad || 'g'})</span>`;
+              }).join(' ')}
+            </div>
+          </td>
+          <td class="text-center" style="width: 20%;" id="cost-${f.id}">
+             <div class="spinner-border spinner-border-sm text-brand" style="width: 1rem; height: 1rem;"></div>
+          </td>
+          <td class="text-center" style="width: 30%;" id="margin-profit-${f.id}">
+             <div class="spinner-border spinner-border-sm text-brand" style="width: 1rem; height: 1rem;"></div>
+          </td>
+          <td class="text-end pe-3" style="width: 10%;">
+              <div class="d-flex justify-content-end align-items-center gap-2">
+                <div id="status-${f.id}"><div class="spinner-border spinner-border-sm text-brand" style="width: 1rem; height: 1rem;"></div></div>
+                <button type="button" class="btn btn-sm btn-outline-secondary p-1 border-0" title="Duplicar Ficha" onclick="event.stopPropagation(); FormulasView.openEditor('new', '${f.id}')">
+                   <i class="bi bi-files fs-6"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger p-1 border-0" title="Mandar a la papelera" onclick="event.stopPropagation(); FormulasView.deleteFormula('${f.id}')">
+                   <i class="bi bi-trash3 fs-6"></i>
+                </button>
+              </div>
+          </td>
+        </tr>
+    `).join('');
+
+    if (skipHeavyData) this._loadLiveCostsOnly(); 
+    else this.loadHeavyData();
+  },
+
+  deleteFormula: async function(id) {
+      if(await HandooApp.ui.confirm("¿Seguro que quieres enviar este escandallo a la Papelera?")) {
+          const row = document.getElementById('row-' + id);
+          if (row) row.style.display = 'none';
+          try {
+              const res = await HandooApp.api('formula.delete', { id: id }); 
+              if(res && res.ok) {
+                  HandooApp.ui.showToast("Movido a la Papelera.", "success");
+                  this.data = this.data.filter(f => f.id !== id);
+              } else {
+                  if (row) row.style.display = '';
+                  HandooApp.ui.showToast("Error al enviar a la papelera.", "error");
+              }
+          } catch(e) {
+              if (row) row.style.display = '';
+              HandooApp.ui.showToast("Fallo de conexión.", "error");
+          }
+      }
+  },
+
+  loadHeavyData: async function() { await this._loadLiveCostsOnly(); },
+
+  _loadLiveCostsOnly: async function() {
+    const formulaIds = this.data.map(f => f.id);
+    const chunkSize = 5; 
+    let risks = 0; let totalMargin = 0; let processed = 0;
+
+    for (let i = 0; i < formulaIds.length; i += chunkSize) {
+      const chunk = formulaIds.slice(i, i + chunkSize);
+      HandooApp.api('formula.get_live_costs', { formulaIds: chunk }).then(costsRes => {
+        if (!costsRes || !costsRes.ok) return;
+        const costs = costsRes.data;
+
+        for (const fId of chunk) {
+          const f = this.data.find(form => form.id === fId);
+          const c = costs[fId];
+          if(!f || !c) continue;
+          
+          const baseCost = Number(c.coste_base_unitario) || 0;
+          const packCost = Number(c.coste_packaging) || 0;
+          const mLocal = Number(c.margen_local) || 0;
+          const mDeliv = Number(c.margen_delivery) || 0;
+          const mTake = Number(c.margen_takeaway) || 0;
+          const mpPerc = Number(c.porcentaje_materia_prima) || 0;
+
+          const pvpLocalSinIva = (parseFloat(f.pvp_canales?.local) || 1) / 1.10;
+          const pvpDelSinIva = (parseFloat(f.pvp_canales?.delivery) || 1) / 1.10;
+          const pvpTaSinIva = (parseFloat(f.pvp_canales?.takeaway) || 1) / 1.10;
+          
+          const localPerc = (mLocal / pvpLocalSinIva) * 100 || 0;
+          const delPerc = (mDeliv / pvpDelSinIva) * 100 || 0;
+          const taPerc = (mTake / pvpTaSinIva) * 100 || 0; 
+
+          const isCritical = c.status === 'CRITICAL';
+          if(isCritical) risks++;
+          totalMargin += localPerc;
+          processed++;
+
+          const costCell = document.getElementById(`cost-${fId}`);
+          if (costCell) {
+            costCell.innerHTML = `
+              <div class="fw-black text-brand">${baseCost.toFixed(2)}€</div>
+              <div class="text-muted" style="font-size:9px">+ Pack: ${packCost.toFixed(2)}€</div>
+            `;
+            document.getElementById(`margin-profit-${fId}`).innerHTML = `
+              <div class="d-flex flex-column gap-1 align-items-center">
+                <div class="d-flex gap-1 justify-content-center flex-wrap">
+                  <span class="badge bg-light text-dark border small">L: ${mLocal.toFixed(2)}€</span>
+                  <span class="badge bg-light text-dark border small">TA: ${mTake.toFixed(2)}€</span>
+                  <span class="badge bg-light text-dark border small">D: ${mDeliv.toFixed(2)}€</span>
+                  <span class="badge bg-warning text-dark border small">%MP: ${mpPerc.toFixed(1)}%</span>
+                </div>
+                <div class="d-flex gap-1 justify-content-center">
+                  <span class="badge ${localPerc >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} border small">L: ${localPerc.toFixed(1)}%</span>
+                  <span class="badge ${taPerc >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} border small">TA: ${taPerc.toFixed(1)}%</span>
+                  <span class="badge ${delPerc >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} border small">D: ${delPerc.toFixed(1)}%</span>
+                </div>
+              </div>
+            `;
+            document.getElementById(`status-${fId}`).innerHTML = `
+              <span class="badge rounded-pill ${isCritical ? 'bg-danger text-white' : 'bg-success-subtle text-success'} px-3" style="font-size:9px">
+                ${isCritical ? 'RIESGO' : 'ÓPTIMO'}
+              </span>
+            `;
+          }
+        }
+        document.getElementById('risk-count').innerText = risks;
+        document.getElementById('avg-margin').innerText = processed > 0 ? Math.round(totalMargin / processed) + "%" : "0%";
+      }).catch(err => console.warn("Lote de cálculos retrasado:", err));
+    }
+  },
+
+  filterTable: function(query) {
+    const term = query.toLowerCase();
+    const rows = document.querySelectorAll('#formulas-list tr');
+    rows.forEach(row => {
+      row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
+    });
+  },
+
+  openEditor: async function(id, cloneSourceId = null) {
+    try {
+        // 1. Mostrar indicación de carga (opcional, pero ayuda a la UX)
+        console.log("Abriendo escandallo ID:", id);
+
+        const resCat = await window.HandooApp.api('inventory.get_catalog', {});
+        this.catalog = (resCat && resCat.ok) ? resCat.data.products : [];
+
+        let item;
+        if (cloneSourceId) {
+            const source = this.data.find(f => String(f.id) === String(cloneSourceId));
+            item = JSON.parse(JSON.stringify(source || {})); 
+            item.id = 'new';
+            item.nombre = (item.nombre || 'Nuevo') + " (Copia)";
+        } else {
+            item = (id === 'new') ? { 
+                nombre: '', 
+                components: [], 
+                pvp_canales: { local:0, delivery:0, takeaway:0 },
+                comisiones: { local:0, delivery:0, takeaway:0 },
+                coste_pack: 0,
+                vida_util: 3
+            } : this.data.find(f => String(f.id) === String(id));
+        }
+
+        if (!item) throw new Error("No se encontró el escandallo seleccionado.");
+
+        // 2. Normalización de seguridad (Evita que el modal falle si faltan campos)
+        this.current = item;
+        this.current.components = this.current.components || [];
+        this.current.pvp_canales = this.current.pvp_canales || { local:0, delivery:0, takeaway:0 };
+        this.current.comisiones = this.current.comisiones || { local:0, delivery:0, takeaway:0 };
+        this.current.coste_pack = this.current.coste_pack || 0;
+        this.current.vida_util = this.current.vida_util || 0;
+
+        const linkReal = this.current.master_link || this.current.id_producto || '';
+        this.current.master_link = linkReal;
+        this.current.id_producto = linkReal;
+
+        const selectLink = document.getElementById('f-master-link');
+        if (selectLink) {
+            selectLink.innerHTML = '<option value="">-- NO VINCULADO (BUSCAR ACTIVO...) --</option>' + 
+                this.catalog.map(p => `<option value="${p.id}" ${String(linkReal) === String(p.id) ? 'selected' : ''}>${p.nombre} (${p.id})</option>`).join('');
+        }
+
+        const modalEl = document.getElementById('modal-formula-editor');
+        const setText = (id, val) => { const el = document.getElementById(id); if(el) el.value = val !== undefined ? val : 0; };
+        
+        document.getElementById('editor-title').innerText = cloneSourceId ? 'DUPLICAR FICHA' : (id === 'new' ? 'NUEVA FICHA' : 'EDITAR FICHA');
+        
+        document.getElementById('f-nombre').value = this.current.nombre || '';
+        setText('f-vida-util', this.current.vida_util);
+        setText('f-pvp-local', this.current.pvp_canales.local);
+        setText('f-pvp-delivery', this.current.pvp_canales.delivery);
+        setText('f-pvp-ta', this.current.pvp_canales.takeaway);
+        setText('f-pack', this.current.coste_pack);
+        setText('f-comision-ta', this.current.comisiones.takeaway);
+        setText('f-comision-del', this.current.comisiones.delivery);
+
+        this.renderIngredients();
+        this.calculateModalMargins();
+
+        // 3. Inicialización segura del Modal (evita duplicidad de backdrops)
+        const modalInstance = (window.bootstrap || bootstrap).Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+
+    } catch (e) { 
+        console.error("Error al abrir editor:", e);
+        HandooApp.ui.showToast("Error al abrir la ficha: " + e.message, "danger");
+    }
+  },
+
+  // 🚀 FUNCIÓN ESTRELLA: Alta de producto sin salir de Fórmulas
+  quickCreateProduct: function() {
+    const nombrePropuesto = document.getElementById('f-nombre').value;
+    if(!nombrePropuesto) return HandooApp.ui.showToast("Escribe primero el nombre de la fórmula", "warning");
+
+    if(confirm(`Se abrirá la ficha de alta para: ${nombrePropuesto.toUpperCase()}. ¿Continuar?`)) {
+        // 1. Escuchamos el evento de creación
+        const handler = (e) => {
+            window.removeEventListener('handoo:product-created', handler);
+            
+            // 2. Re-abrimos el editor
+            FormulasView.openEditor(FormulasView.current.id);
+            
+            // 3. Seleccionamos el nuevo producto
+            const { productId } = e.detail;
+            setTimeout(() => {
+                const selectLink = document.getElementById('f-master-link');
+                if(selectLink) {
+                    selectLink.value = productId;
+                    selectLink.dispatchEvent(new Event('change'));
+                }
+            }, 500);
+        };
+        window.addEventListener('handoo:product-created', handler);
+
+        // 4. Cerramos el modal de fórmulas y abrimos el catálogo
+        bootstrap.Modal.getInstance(document.getElementById('modal-formula-editor')).hide();
+        
+        InventoryView.openMasterForm('new', { 
+            nombre: nombrePropuesto,
+            type: 'VENTA_FINAL' // Tipo por defecto para platos
+        });
+    }
+  },
+
+  renderIngredients: function() {
+    const list = document.getElementById('ingredients-list');
+    if (!list) return;
+
+    list.innerHTML = this.current.components.map((c, idx) => {
+      const prod = this.catalog.find(p => String(p.id) === String(c.master_id));
+      
+      let unitCost = 0;
+      if (prod) {
+          unitCost = parseFloat(prod.last_purchase_price || prod.pvp || prod.coste || 0);
+          if (unitCost === 0 && prod.aliases && prod.aliases.length > 0) {
+              unitCost = parseFloat(prod.aliases[0].last_price || prod.aliases[0].tariff_price || 0);
+          }
+      }
+
+      const yieldDiv = 1 - (parseFloat(c.merma_perc)/100 || 0);
+      const cant = parseFloat(c.cantidad_bruta || 0);
+      const cost = unitCost * (cant / (yieldDiv || 1));
+
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td class="p-1" style="width: 50%;">
+            <div class="dropdown">
+              <button class="btn btn-light bg-light border-0 w-100 text-start d-flex justify-content-between align-items-center fw-bold text-dark" 
+                      style="font-size: 10px; padding: 4px 8px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="text-truncate">${prod ? prod.nombre : 'Seleccionar ingrediente...'}</span>
+                <i class="bi bi-chevron-down ms-1" style="font-size: 8px;"></i>
+              </button>
+              <div class="dropdown-menu w-100 p-2 shadow-sm border-0" style="max-height: 250px; overflow-y: auto;">
+                <input type="text" class="form-control form-control-sm mb-2" placeholder="🔍 Filtrar ingrediente..." 
+                       onkeyup="FormulasView.filterDropdown(this)" onclick="event.stopPropagation()">
+                <ul class="list-unstyled mb-0" style="font-size: 10px;">
+                  ${this.catalog.map(p => `
+                    <li class="dropdown-item-li">
+                      <a class="dropdown-item px-2 py-1 text-truncate rounded" href="#" 
+                         onclick="event.preventDefault(); FormulasView.updateCompDropdown(${idx}, '${p.id}')">
+                        ${p.nombre}
+                      </a>
+                    </li>
+                  `).join('')}
+                </ul>
+              </div>
+            </div>
+          </td>
+          <td class="text-center p-1" style="width: 15%;">
+             <input type="text" class="form-control form-control-sm text-center fw-bold border-0 bg-light" value="${c.cantidad_bruta || 0}" oninput="FormulasView.updateComp(${idx}, 'cantidad_bruta', this.value)">
+          </td>
+          <td class="text-center p-1" style="width: 15%;">
+            <input type="text" class="form-control form-control-sm text-center fw-bold border-0 bg-light" value="${c.merma_perc || 0}" oninput="FormulasView.updateComp(${idx}, 'merma_perc', this.value)">
+          </td>
+          <td class="fw-black text-brand text-center align-middle p-1" style="width: 15%; font-size: 13px;">${cost.toFixed(3)}€</td>
+          <td class="text-end p-1 align-middle" style="width: 5%;">
+            <button class="btn btn-link text-danger p-0" onclick="FormulasView.removeComp(${idx})"><i class="bi bi-trash fs-6"></i></button>
+          </td>
+        </tr>`;
+    }).join('');
+  },
+
+  addComponent: function() {
+    this.current.components.push({ master_id: '', cantidad_bruta: 0, merma_perc: 0, tipo_componente: 'MATERIA_PRIMA', unidad: 'g' });
+    this.renderIngredients();
+
+    // 🔥 AUTO-SCROLL SUAVE AL FINAL DE LA LISTA
+    setTimeout(() => {
+      // Busca la caja de la tabla directamente por su clase para no fallar
+      const container = document.getElementById('ingredients-container') || document.querySelector('.modal-body .table-responsive');
+      
+      if (container) {
+          // ScrollTo con "smooth" hace que baje como un ascensor, no de golpe
+          container.scrollTo({
+              top: container.scrollHeight,
+              behavior: 'smooth'
+          });
+      }
+    }, 100); // 100 milisegundos aseguran que el HTML ya se ha repintado
+  },
+
+  // 🔥 NUEVA FUNCIÓN PARA EL BUSCADOR DEL DESPLEGABLE
+  filterDropdown: function(inputEl) {
+    const term = inputEl.value.toLowerCase();
+    const items = inputEl.parentElement.querySelectorAll('.dropdown-item-li');
+    items.forEach(li => {
+      const text = li.innerText.toLowerCase();
+      li.style.display = text.includes(term) ? '' : 'none';
+    });
+  },
+
+  // 🔥 NUEVA FUNCIÓN PARA SELECCIONAR DESDE EL DESPLEGABLE
+  updateCompDropdown: function(idx, masterId) {
+    this.current.components[idx].master_id = masterId;
+    this.renderIngredients();
+    this.calculateModalMargins();
+  },
+  
+  updateComp: function(idx, key, val) {
+    this.current.components[idx][key] = val;
+    this.renderIngredients();
+    this.calculateModalMargins();
+  },
+
+  removeComp: function(idx) {
+    this.current.components.splice(idx, 1);
+    this.renderIngredients();
+    this.calculateModalMargins();
+  },
+
+  calculateModalMargins: function() {
+    const pvpLocal = parseFloat(document.getElementById('f-pvp-local').value) || 0;
+    const pvpDelivery = parseFloat(document.getElementById('f-pvp-delivery').value) || 0;
+    const pvpTakeAway = parseFloat(document.getElementById('f-pvp-ta').value) || 0;
+    const costePack = parseFloat(document.getElementById('f-pack').value.replace(',', '.')) || 0;
+    const comisionDelivery = parseFloat(document.getElementById('f-comision-del').value) || 0;
+    const comisionTakeAway = parseFloat(document.getElementById('f-comision-ta').value) || 0;
+
+    let costRaw = 0;
+    this.current.components.forEach(c => {
+      const prod = this.catalog.find(p => String(p.id) === String(c.master_id));
+      let unitCost = 0;
+      if (prod) {
+        unitCost = parseFloat(prod.last_purchase_price || prod.pvp || prod.coste || 0);
+        if (unitCost === 0 && prod.aliases && prod.aliases.length > 0) {
+          unitCost = parseFloat(prod.aliases[0].last_price || prod.aliases[0].tariff_price || 0);
+        }
+      }
+      const yieldDiv = 1 - (parseFloat(c.merma_perc)/100 || 0);
+      const cant = parseFloat(c.cantidad_bruta || 0);
+      if (c.tipo_componente !== 'SOPORTE') costRaw += unitCost * (cant / (yieldDiv || 1));
+    });
+
+    const pvpLocalSinIva = pvpLocal / 1.10;
+    const pvpDeliverySinIva = pvpDelivery / 1.10;
+    const pvpTakeAwaySinIva = pvpTakeAway / 1.10;
+
+    const margenLocal = pvpLocalSinIva - costRaw;
+    const margenTA = (pvpTakeAwaySinIva * (1 - comisionTakeAway/100)) - costRaw - costePack;
+    const margenDel = (pvpDeliverySinIva * (1 - comisionDelivery/100)) - costRaw - costePack;
+
+    const updateDisplay = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.innerText = val.toFixed(2) + '€';
+        el.classList.toggle('text-danger', val < (pvpLocalSinIva * 0.30));
+      }
+    };
+
+    updateDisplay('m-local', margenLocal);
+    updateDisplay('m-ta', margenTA);
+    updateDisplay('m-del', margenDel);
+  },
+
+  syncInput: function(id, path, subkey) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const val = el.value;
+    
+    // Tratamos como texto el nombre y el link
+    const isText = (id === 'f-nombre' || id === 'f-master-link');
+    const finalVal = isText ? val : (parseFloat(String(val).replace(',', '.')) || 0);
+
+    if (subkey) {
+      if (!this.current[path]) this.current[path] = {};
+      this.current[path][subkey] = finalVal;
+    } else {
+      this.current[path] = finalVal;
+    }
+
+    // 🚨 ASEGURAMOS EL CAMBIO EN MEMORIA EN AMBOS CAMPOS
+    if (id === 'f-master-link') {
+        this.current.master_link = val;
+        this.current.id_producto = val;
+    }
+    
+    // 🔥 ACTUALIZACIÓN FORZADA DE VIDA ÚTIL SI ES EL CAMPO
+    if (id === 'f-vida-util') {
+        this.current.vida_util = finalVal;
+    }
+    
+    this.calculateModalMargins();
+  },
+
+  save: async function() {
+    const btn = document.querySelector('[onclick="FormulasView.save()"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>SINCRONIZANDO...';
+    }
+
+    try {
+        const linkDelDesplegable = document.getElementById('f-master-link').value;
+        const payload = {
+          ...this.current,
+          id: this.current.id,
+          // 🔗 ASEGURAMOS EL VÍNCULO: Forzamos que lea el ID del desplegable antes de enviar
+          master_link: linkDelDesplegable,
+          id_producto: linkDelDesplegable, 
+          nombre: document.getElementById('f-nombre').value,
+          vida_util: parseFloat(document.getElementById('f-vida-util')?.value || 0),
+          pvp_canales: {
+            local: parseFloat(document.getElementById('f-pvp-local')?.value || 0),
+            delivery: parseFloat(document.getElementById('f-pvp-delivery')?.value || 0),
+            takeaway: parseFloat(document.getElementById('f-pvp-ta')?.value || 0)
+          },
+          coste_pack: parseFloat(document.getElementById('f-pack')?.value?.replace(',', '.') || 0),
+          comisiones: {
+            takeaway: parseFloat(document.getElementById('f-comision-ta')?.value || 0),
+            delivery: parseFloat(document.getElementById('f-comision-del')?.value || 0)
+          },
+          components: this.current.components 
+        };
+        
+        const res = await HandooApp.api('formula.save', payload);
+        
+        if(res && res.ok) {
+          const modalEl = document.getElementById('modal-formula-editor');
+          const modalInstance = bootstrap.Modal.getInstance(modalEl);
+          if (modalInstance) modalInstance.hide();
+          
+          HandooApp.ui.showToast("Escandallo guardado y vinculado correctamente", "success");
+          
+          // 🔥 FIX REFRESH: Descargamos los datos frescos en lugar de usar los viejos de memoria
+          const resList = await HandooApp.api('formula.list', {});
+          if(resList && resList.ok) {
+              this.data = resList.data;
+          }
+          this.loadSkeleton(true); 
+          
+          // Notificar a otras vistas (ej. Inventario) que el catálogo ha cambiado
+          window.dispatchEvent(new CustomEvent('handoo:inventory-updated'));
+
+        } else {
+          throw new Error(res.msg || "Error desconocido");
+        }
+    } catch (e) {
+        console.error("❌ Fallo al guardar:", e);
+        HandooApp.ui.showToast("Error al guardar: " + e.message, "danger");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'GUARDAR FICHA TÉCNICA';
+        }
+    }
+  }
+};
+</script>

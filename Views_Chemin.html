@@ -1,0 +1,352 @@
+<style>
+  /* Fix para el selector invisible */
+  #chemin-location-selector {
+    background: #1e293b !important; /* Fondo azul oscuro Titanium */
+    color: #ffffff !important;      /* Texto blanco puro */
+    border: 1px solid #334155 !important;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    appearance: none; /* Quita el estilo nativo de Windows/Mac */
+    cursor: pointer;
+  }
+  
+  #chemin-location-selector option {
+    background: #0f172a;
+    color: white;
+  }
+
+  /* Animación para el label que no cambia */
+  .city-highlight {
+    color: var(--brand) !important;
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+</style>
+<div id="view-chemin" class="container-fluid p-4 animate__animated animate__fadeIn">
+
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <div class="fiscal-selector-wrapper w-100" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+        <i class="bi bi-geo-alt-fill text-brand ms-2"></i>
+        <select id="chemin-location-selector" onchange="CheminView.render()" class="flex-grow-1">
+          <option value="GLOBAL">🌎 VISIÓN GLOBAL (TODA LA EMPRESA)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row mb-4">
+    <div class="col-12 bg-dark text-white p-4 rounded-4 shadow-lg position-relative" style="background: #0f172a !important;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-black text-uppercase mb-0" style="font-size: 12px; letter-spacing: 1px;">Estado de la Red Neural</h6>
+        <span class="badge bg-success-subtle text-success rounded-pill px-3" style="font-size: 9px;">AI OMNISCIENTE ACTIVA</span>
+      </div>
+      
+      <div class="row g-4">
+        <div class="col-md-3 border-end border-secondary border-opacity-25">
+          <label class="small opacity-50 text-uppercase d-block mb-1" style="font-size: 10px;">Clima Santander</label>
+          <div id="chemin-weather" class="h6 fw-bold mb-0">Cargando...</div>
+        </div>
+        <div class="col-md-3 border-end border-secondary border-opacity-25">
+          <label class="small opacity-50 text-uppercase d-block mb-1" style="font-size: 10px;">Eventos Hoy</label>
+          <div id="chemin-events" class="h6 fw-bold mb-0 text-warning">Buscando...</div>
+        </div>
+        <div class="col-md-4 border-end border-secondary border-opacity-25">
+          <label class="small opacity-50 text-uppercase d-block mb-1" style="font-size: 10px;">Análisis Proactivo</label>
+          <div id="chemin-proactive" class="small mb-0">Calculando riesgos de tesorería...</div>
+        </div>
+        <div class="col-md-2 text-center">
+          <button class="btn btn-warning rounded-circle shadow-lg p-3" onclick="CheminView.startVoiceCommand()" title="Hablar con Chemin">
+            <i class="bi bi-mic-fill fs-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-7">
+      <div class="bg-white p-4 rounded-4 shadow-sm border h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h6 class="fw-black text-uppercase mb-0" style="font-size: 12px">Consola de Comando CheminAI</h6>
+            <p class="text-muted small mb-0">Interacción directa con el cerebro estratégico</p>
+          </div>
+          <div class="d-flex gap-2">
+             <button class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold" onclick="CheminView.clearChat()" style="font-size: 11px;">
+              LIMPIAR
+            </button>
+            <button class="btn btn-dark btn-sm rounded-pill px-3 fw-bold" onclick="CheminView.openEventModal()" style="font-size: 11px;">
+              <i class="bi bi-plus-lg me-1"></i> SUCESO
+            </button>
+          </div>
+        </div>
+        
+        <div id="chemin-chat-container" class="flex-grow-1 overflow-auto mb-3 p-3 bg-light rounded-4" style="max-height: 400px; min-height: 300px;">
+          <div class="text-center text-muted small mt-5">
+            <i class="bi bi-robot fs-1 d-block mb-2 opacity-25"></i>
+            Esperando órdenes...<br>Prueba: "Una caja de cerveza tiene 24 botellas"
+          </div>
+        </div>
+
+        <div class="input-group">
+          <input type="text" id="chemin-chat-input" class="form-control border-0 bg-light rounded-start-pill px-4" placeholder="Escribe o pulsa el micro..." onkeypress="if(event.key==='Enter') CheminView.sendChat()">
+          <button class="btn btn-dark rounded-end-pill px-4" onclick="CheminView.sendChat()">
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-5">
+      <div class="bg-light p-4 rounded-4 shadow-sm border h-100">
+        <div class="mb-4">
+          <h6 class="fw-black text-uppercase mb-0" style="font-size: 12px">Histórico de Sucesos</h6>
+          <p class="text-muted small mb-0">Eventos que afectan a la demanda</p>
+        </div>
+        <div id="chemin-history-container" class="table-responsive" style="max-height: 450px;">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-chemin-event" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-0 bg-dark text-white p-4">
+        <h5 class="modal-title fw-black text-uppercase" style="font-size: 14px;">Registrar Acontecimiento</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="small fw-bold text-muted text-uppercase mb-1">Tipo de Suceso</label>
+          <select id="event-type" class="form-select border-0 bg-light">
+            <option value="EVENTO">Evento Local (Partido, Feria...)</option>
+            <option value="FOODIE">Visita de Foodie / Influencer</option>
+            <option value="ANOMALIA">Anomalía (Obras, Clima extremo...)</option>
+            <option value="FESTIVO">Día Festivo</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="small fw-bold text-muted text-uppercase mb-1">Descripción</label>
+          <input type="text" id="event-desc" class="form-control border-0 bg-light" placeholder="Ej: Racing vs Oviedo">
+        </div>
+        <div class="row">
+          <div class="col-6">
+            <label class="small fw-bold text-muted text-uppercase mb-1">Fecha</label>
+            <input type="date" id="event-date" class="form-control border-0 bg-light">
+          </div>
+          <div class="col-6">
+            <label class="small fw-bold text-muted text-uppercase mb-1">Repercusión</label>
+            <select id="event-impact" class="form-select border-0 bg-light">
+              <option value="BAJO">Baja</option>
+              <option value="MEDIO" selected>Media</option>
+              <option value="ALTO">Alta (Pico)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 p-4">
+        <button class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">CANCELAR</button>
+        <button class="btn btn-dark rounded-pill px-4 fw-black" onclick="CheminView.saveEvent()">GUARDAR EN HISTÓRICO</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.CheminView = {
+  chatHistory: [],
+
+  render: async function() {
+    // 1. Asegurar tablas
+    await HandooApp.api('admin.check_and_init_db', {});
+
+    const weatherEl = document.getElementById('chemin-weather');
+
+    try {
+      const locationId = document.getElementById('chemin-location-selector').value;
+      const res = await HandooApp.api('ai.get_ai_context', { locationId: locationId });
+      
+      if (res.ok) {
+        const d = res.data;
+        weatherEl.innerText = d.clima || "No disp.";
+        
+        const deuda = d.tesoreria_deuda_15d || 0;
+        document.getElementById('chemin-proactive').innerHTML = deuda > 0 
+          ? `<span class="text-warning"><i class="bi bi-exclamation-triangle-fill"></i> Ojo: ${deuda}€ por pagar en 15 días.</span>` 
+          : '<span class="text-success">Tesorería estable a corto plazo.</span>';
+      }
+
+      this.loadHistory();
+      this.renderChat();
+
+    } catch (e) {
+      weatherEl.innerText = "Error de enlace";
+    }
+  },
+
+  renderChat: function() {
+    const container = document.getElementById('chemin-chat-container');
+    if (this.chatHistory.length === 0) return;
+
+    container.innerHTML = this.chatHistory.map(msg => `
+      <div class="mb-3 d-flex ${msg.role === 'user' ? 'justify-content-end' : 'justify-content-start'}">
+        <div class="p-3 rounded-4 shadow-sm ${msg.role === 'user' ? 'bg-dark text-white' : 'bg-white text-dark border'}" style="max-width: 85%; font-size: 13px;">
+          <div class="small opacity-50 mb-1 fw-bold text-uppercase" style="font-size: 9px;">${msg.role === 'user' ? 'Tú' : 'CheminAI'}</div>
+          ${msg.text}
+          ${msg.intent ? `<div class="mt-2 pt-2 border-top border-secondary border-opacity-25 small font-monospace" style="font-size: 10px;">INTENT: ${msg.intent}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+    container.scrollTop = container.scrollHeight;
+  },
+
+  sendChat: async function() {
+    const input = document.getElementById('chemin-chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    this.chatHistory.push({ role: 'user', text: text });
+    this.renderChat();
+
+    HandooApp.ui.showToast("Procesando con CheminAI...", "info");
+
+    const res = await HandooApp.api('ai.parse_voice_order', { text: text });
+    if (res.ok) {
+      const ai = res.data;
+      this.chatHistory.push({ 
+        role: 'assistant', 
+        text: ai.reply || "Oído Chef, procesado.",
+        intent: ai.intent 
+      });
+      
+      // PERSISTENCIA TITANIUM: Guardamos en Firestore si el intent es procesable
+      if (window.db && ai.intent && ['UNIT_CONV', 'INV_AJUSTE', 'WASTE_REG'].includes(ai.intent)) {
+        try {
+          const collectionName = ai.intent === 'UNIT_CONV' ? 'unit_conversions' : 'inventory_adjustments';
+          const payload = {
+            ...ai.params,
+            timestamp: new Date().toISOString(),
+            user_id: "admin@handoo.app" // TODO: Usar ID real de sesión
+          };
+          await window.db.collection(collectionName).add(payload);
+          console.log("CheminAI: Persistencia en Firestore OK");
+        } catch (err) {
+          console.error("CheminAI: Error persistiendo en Firestore", err);
+        }
+      }
+
+      if (ai.executed) HandooApp.ui.showToast("Acción ejecutada automáticamente", "success");
+    } else {
+      this.chatHistory.push({ role: 'assistant', text: "Lo siento Chef, ha habido un error: " + res.msg });
+    }
+    this.renderChat();
+  },
+
+  clearChat: function() {
+    this.chatHistory = [];
+    document.getElementById('chemin-chat-container').innerHTML = `
+      <div class="text-center text-muted small mt-5">
+        <i class="bi bi-robot fs-1 d-block mb-2 opacity-25"></i>
+        Esperando órdenes...<br>Prueba: "Una caja de cerveza tiene 24 botellas"
+      </div>`;
+  },
+
+  startVoiceCommand: function() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'es-ES';
+    recognition.start();
+
+    HandooApp.ui.showToast("Escuchando...", "warning");
+
+    recognition.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      document.getElementById('chemin-chat-input').value = text;
+      this.sendChat();
+    };
+  },
+
+  loadHistory: async function() {
+    const container = document.getElementById('chemin-history-container');
+    const res = await HandooApp.api('db.get_table', { table: 'DB_EVENTS' });
+    
+    if (res.ok && res.data.length > 0) {
+      container.innerHTML = `
+        <table class="table table-sm table-borderless align-middle" style="font-size: 11px;">
+          <thead><tr class="text-muted border-bottom"><th class="py-2">FECHA</th><th>TIPO</th><th>DETALLE</th><th class="text-end">IMP.</th></tr></thead>
+          <tbody>
+            ${res.data.filter(e => !e.is_placeholder).sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).map(e => `
+              <tr class="border-bottom">
+                <td class="py-2 fw-bold">${new Date(e.fecha).toLocaleDateString()}</td>
+                <td><span class="badge bg-light text-dark border">${e.tipo}</span></td>
+                <td>${e.descripcion}</td>
+                <td class="text-end fw-black text-brand">${e.impacto || 'MEDIO'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    } else {
+      container.innerHTML = '<div class="text-center p-5 text-muted small">No hay sucesos registrados.</div>';
+    }
+  },
+
+  loadDrafts: async function() {
+    const list = document.getElementById('chemin-drafts-list');
+    const res = await HandooApp.api('db.get_table', { table: 'DB_EXPENSE_ORDERS' });
+    
+    // SIEMPRE LIMPIAMOS EL SPINNER AL EMPEZAR
+    list.innerHTML = ''; 
+
+    if (res.ok && res.data) {
+      const drafts = res.data.filter(o => o.status === 'DRAFT' && !o.is_placeholder);
+      if (drafts.length === 0) {
+        list.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-muted small">Bandeja vacía.</td></tr>';
+      } else {
+        list.innerHTML = drafts.map(d => `
+          <tr>
+            <td class="fw-bold">${d.proveedor || 'Proveedor...'}</td>
+            <td class="text-center">${new Date(d.timestamp || Date.now()).toLocaleDateString()}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-dark rounded-pill px-3" onclick="HandooApp.navTo('Expenses', {id:'${d.id}'})">REVISAR</button>
+            </td>
+          </tr>`).join('');
+      }
+    } else {
+      list.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-muted small">Bandeja vacía.</td></tr>';
+    }
+  },
+
+  openEventModal: function() {
+    // REPARACIÓN CRÍTICA: Buscamos el modal dentro del main-stage para evitar duplicados
+    const modalEl = document.querySelector('#main-stage #modal-chemin-event');
+    if(!modalEl) return console.error("Modal no encontrado en el stage");
+
+    document.querySelector('#main-stage #event-date').value = new Date().toISOString().split('T')[0];
+    const myModal = new bootstrap.Modal(modalEl);
+    myModal.show();
+  },
+
+  saveEvent: async function() {
+    const modalEl = document.querySelector('#main-stage #modal-chemin-event');
+    const data = {
+      tipo: modalEl.querySelector('#event-type').value,
+      descripcion: modalEl.querySelector('#event-desc').value,
+      fecha: modalEl.querySelector('#event-date').value,
+      impacto: modalEl.querySelector('#event-impact').value
+    };
+
+    if (!data.descripcion) return HandooApp.ui.showToast("Escribe qué ha pasado", "warning");
+
+    const res = await HandooApp.api('db.save_row', { table: 'DB_EVENTS', data: data });
+    if (res.ok) {
+      bootstrap.Modal.getInstance(modalEl).hide();
+      HandooApp.ui.showToast("Suceso registrado", "success");
+      this.render();
+    }
+  }
+};
+</script>

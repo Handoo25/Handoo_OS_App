@@ -1,0 +1,1913 @@
+<style>
+  /* --- FRAMEWORK TITANIUM TREASURY V55.0 (EDA & MODULAR ARCHITECTURE) --- */
+  .t-shell { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .t-sidebar { width: 280px; background: #f8fafc; border-right: 1px solid #e2e8f0; flex-shrink: 0; padding-top: 25px; display: flex; flex-direction: column; }
+  .nav-link-treasury { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border: none; background: none; width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: background 0.2s, color 0.2s; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; border-radius: 12px; margin-bottom: 2px; }
+  .nav-link-treasury:hover { background: #f1f5f9; color: var(--dark); }
+  .nav-link-treasury.active { background: var(--dark); color: white; box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.2); }
+  .nav-link-treasury i { font-size: 1.2rem; transition: 0.3s; }
+  .nav-link-treasury.active i { color: var(--brand); }
+
+  .unified-block { padding: 24px; border-radius: 20px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 16px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .block-dark .text-muted { color: #94a3b8 !important; }
+  .block-dark .form-control, .block-dark .form-select { background: #1e293b; border-color: #334155; color: #fff; font-size: 11px; }
+
+  .table-erp { font-size: 11px !important; width: 100%; border-collapse: separate; border-spacing: 0; }
+  .table-erp th { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #f1f5f9; text-align: left; }
+  .table-erp td { padding: 12px 15px !important; vertical-align: middle; border-bottom: 1px solid #f8fafc; transition: 0.1s; }
+  .table-erp tr:not(.no-hover):hover td { background-color: #f8fafc; cursor: pointer; }
+
+  .h-label-refined { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+  .h-form-control { height: 42px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+  
+  .badge-status { padding: 5px 12px; border-radius: 8px; font-weight: 900; font-size: 9px; text-transform: uppercase; border: 1px solid transparent; }
+  .badge-pendiente { background: #fff; color: #64748b; border: 1px solid #e2e8f0; }
+  .badge-cobrado { background: #22c55e; color: #fff; }
+  .badge-pagado { background: #3b82f6; color: #fff; }
+  .badge-remesado { background: #f97316; color: #fff; }
+  .badge-devuelto { background: #ef4444; color: #fff; }
+  
+  .t-batch-bar { background: #0f172a; color: white; border-radius: 16px; padding: 15px 30px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; border-left: 6px solid var(--brand); box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
+  .row-selected td { background: #fffdf5 !important; border-top: 1px solid var(--brand); border-bottom: 1px solid var(--brand); }
+
+  /* LEDGER SPECIFIC CLASSES */
+  .balance-badge { padding: 8px 15px; border-radius: 10px; font-weight: 900; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .balance-positive { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .balance-negative { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .movement-origin { font-size: 9px; font-weight: 900; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; }
+  .origin-manual { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+  .origin-invoice { background: #fffdf5; color: #92400e; border-color: #fde68a; }
+  .origin-expense { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+
+  .settlement-option { cursor: pointer; border: 2px solid transparent !important; transition: 0.2s; }
+  .settlement-option:hover { border-color: #e2e8f0 !important; transform: scale(1.02); }
+  .settlement-option.active { border-color: var(--brand) !important; background: #fffdf5 !important; }
+
+  .split-input { border: 1px solid var(--brand); background: #fffdf5; border-radius: 6px; padding: 4px 8px; font-weight: 900; text-align: right; width: 100px; font-family: 'JetBrains Mono', monospace; }
+  .wiz-section-header { background: #f8fafc; padding: 10px 20px; font-weight: 900; font-size: 10px; text-transform: uppercase; color: #64748b; letter-spacing: 1px; border-bottom: 1px solid #e2e8f0; }
+  
+  .compact-card { display: flex; align-items: stretch; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 10px; background: white; transition: 0.2s; overflow: hidden; }
+  .compact-card:hover { border-color: var(--brand); transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+  .compact-body { flex-grow: 1; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .compact-actions { width: 50px; background: #f8fafc; border-left: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+  .compact-actions:hover { background: #fee2e2; color: #ef4444; }
+
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+
+<script>
+/**
+ * 1. BUS DE EVENTOS (HANDOO EDA CORE)
+ */
+
+/**
+ * 2. ESTADO GLOBAL SILENCIOSO
+ */
+window.selectedIds = new Set();
+
+/**
+ * 3. MÓDULOS DE LÓGICA DE NEGOCIO (INDEPENDIENTES)
+ */
+
+// --- MÓDULO DE TRIPLE CAJA ---
+const TripleCajaModule = {
+  init() {
+    this.renderDashboard();
+  },
+
+  renderDashboard() {
+    const container = document.getElementById('triple-caja-area');
+    if (!container) return;
+    
+    // Obtener saldos reales para el arqueo
+    const balances = TreasuryView.settings?.balances || {};
+    const tpvBalance = parseFloat(balances['570000001'] || 0);
+
+    container.innerHTML = `
+      <div class="row g-3">
+        <div class="col-md-4"><div class="p-4 rounded-4 shadow-sm block-dark"><i class="bi bi-calculator fs-2 text-brand"></i><h6 class="fw-black text-uppercase text-white-50 mt-2">TPV</h6><div class="fw-black text-white fs-3">${tpvBalance.toLocaleString()} €</div></div></div>
+        <div class="col-md-4"><div class="p-4 rounded-4 shadow-sm block-dark"><i class="bi bi-safe2 fs-2 text-brand"></i><h6 class="fw-black text-uppercase text-white-50 mt-2">CAJA FUERTE</h6><div class="fw-black text-white fs-3">${parseFloat(balances['570000002'] || 0).toLocaleString()} €</div></div></div>
+        <div class="col-md-4"><div class="p-4 rounded-4 shadow-sm block-dark"><i class="bi bi-truck fs-2 text-brand"></i><h6 class="fw-black text-uppercase text-white-50 mt-2">TRÁNSITO</h6><div class="fw-black text-white fs-3">${parseFloat(balances['570000003'] || 0).toLocaleString()} €</div></div></div>
+      </div>
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-brand-titanium fw-black shadow" onclick="TripleCajaModule.openTransferModal()">TRASPASO INTERNO</button>
+        <button class="btn btn-danger fw-black shadow" onclick="TripleCajaModule.openGastoCajaModal()">+ GASTO CAJA</button>
+        <button class="btn btn-warning fw-black shadow" onclick="TripleCajaModule.openClosureModal(${tpvBalance})"><i class="bi bi-safe2 me-2"></i> REALIZAR ARQUEO / CIERRE</button>
+      </div>
+    `;
+  },
+
+  openGastoCajaModal() {
+    const categories = TreasuryView.settings?.masters?.expense_categories || [];
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide';
+    overlay.style.zIndex = '12000';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px; background: #0f172a; color: white;">
+         <div class="h-modal-header border-bottom border-secondary"><h5 class="m-0 fw-black text-uppercase">GASTO DIRECTO POR CAJA</h5></div>
+         <div class="h-modal-body">
+            <div class="unified-block block-dark mt-0">
+               <label class="h-label-refined text-white-50">ORIGEN DEL DINERO</label>
+               <select id="gc-origen" class="form-select h-form-control bg-dark border-secondary text-white fw-bold mb-3">
+                  <option value="570000001">TPV (570000001)</option>
+                  <option value="570000002">CAJA FUERTE (570000002)</option>
+                  <option value="570000003">DINERO EN TRÁNSITO (570000003)</option>
+               </select>
+               <label class="h-label-refined text-white-50">IMPORTE (€)</label>
+               <input type="number" step="0.01" id="gc-imp" class="form-control h-form-control bg-dark border-secondary text-brand fw-black mb-3" value="0.00">
+               <label class="h-label-refined text-white-50">CATEGORÍA DE GASTO</label>
+               <select id="gc-cat" class="form-select h-form-control bg-dark border-secondary text-white fw-bold mb-3">
+                  ${categories.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('')}
+               </select>
+               <label class="h-label-refined text-white-50">CONCEPTO</label>
+               <input type="text" id="gc-concepto" class="form-control h-form-control bg-dark border-secondary text-white fw-bold" placeholder="Ej: Compra de limones urgente">
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button id="btn-exec-gasto" class="btn btn-danger fw-black flex-grow-1 shadow" onclick="TripleCajaModule.executeGastoCaja()">REGISTRAR GASTO 💸</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  async executeGastoCaja() {
+    const origen = document.getElementById('gc-origen').value;
+    const p = {
+      cuenta_origen: origen,
+      importe: document.getElementById('gc-imp').value,
+      categoria: document.getElementById('gc-cat').value,
+      concepto: document.getElementById('gc-concepto').value,
+      fecha: new Date().toISOString().split('T')[0]
+    };
+    
+    // Si es Tránsito, vinculamos a la liquidación del día (asumiendo backend gestiona el ID de liquidación actual)
+    if (origen === '570000003') {
+        p.vinculo_liquidacion = 'DAILY_SETTLEMENT_CURRENT';
+    }
+
+    if (parseFloat(p.importe) <= 0) return HandooApp.ui.showToast("Importe no válido", "error");
+    if (!p.concepto) return HandooApp.ui.showToast("Indique un concepto", "error");
+    
+    HandooApp.ui.setLoading('btn-exec-gasto', true);
+    // Assuming treasury.create_manual_expense exists or similar
+    const res = await HandooApp.api('treasury.create_manual_expense', p);
+    if(res.ok) { 
+      document.querySelector('.h-modal-overlay[style*="z-index: 12000"]').remove(); 
+      await TreasuryView.load(); 
+    } else {
+      HandooApp.ui.setLoading('btn-exec-gasto', false);
+    }
+  },
+
+  openClosureModal(tpvBalance) {
+    this.renderClosureModal(tpvBalance);
+  },
+
+  async renderClosureModal(tpvBalance) {
+    const journalRes = await HandooApp.api('treasury.get_daily_cash_journal');
+    const movements = journalRes.ok ? journalRes.data.movements : [];
+    const initialBalance = journalRes.ok ? journalRes.data.initial_balance : 0;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 700px">
+         <div class="h-modal-header" style="background: #0f172a; color: white;"><h5 class="m-0 fw-black">CONCILIACIÓN Y CIERRE DE CAJA</h5></div>
+         <div class="h-modal-body bg-light">
+            <h6 class="fw-black text-uppercase mb-3">Validación de Movimientos</h6>
+            <div style="max-height: 300px; overflow-y: auto;" class="mb-4">
+              <table class="table table-erp">
+                <thead><tr><th>VALIDAR</th><th>CONCEPTO</th><th>IMPORTE</th></tr></thead>
+                <tbody id="c-movements-body">
+                  ${movements.map(m => `
+                    <tr>
+                      <td><input type="checkbox" class="c-movement-check" data-id="${m.ref_id}" data-amount="${m.importe}" checked></td>
+                      <td>${m.concepto}</td>
+                      <td class="${m.importe >= 0 ? 'text-success' : 'text-danger'} fw-bold">${m.importe.toFixed(2)} €</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+            <h6 class="fw-black text-uppercase mb-3">Arqueo Físico</h6>
+            <label class="h-label-refined">EFECTIVO REAL EN CAJÓN (€)</label>
+            <input type="number" id="c-real" class="form-control mb-3 fw-black text-brand fs-4 text-center" placeholder="0.00" oninput="TripleCajaModule.calculateDifference(${initialBalance})">
+            <div class="small text-muted mb-3">Saldo teórico calculado: <span class="fw-bold" id="c-teorico">${initialBalance.toFixed(2)} €</span></div>
+            <div id="c-diff-badge" class="badge p-2 mb-3 w-100" style="display:none"></div>
+            <label class="h-label-refined">OBSERVACIONES</label>
+            <textarea id="c-obs" class="form-control" rows="2"></textarea>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-dark" onclick="TripleCajaModule.executeClosure(${initialBalance})">CONFIRMAR CIERRE</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    
+    document.querySelectorAll('.c-movement-check').forEach(cb => cb.onchange = () => TripleCajaModule.calculateDifference(initialBalance));
+    TripleCajaModule.calculateDifference(initialBalance);
+  },
+
+  calculateDifference(initialBalance) {
+    const checked = Array.from(document.querySelectorAll('.c-movement-check:checked'));
+    const sumChecked = checked.reduce((sum, cb) => sum + parseFloat(cb.dataset.amount), 0);
+    const real = parseFloat(document.getElementById('c-real').value || 0);
+    
+    const theoretical = initialBalance + sumChecked;
+    document.getElementById('c-teorico').innerText = theoretical.toFixed(2) + ' €';
+    
+    const diff = real - theoretical;
+    const badge = document.getElementById('c-diff-badge');
+    if (Math.abs(diff) > 0.01) {
+        badge.style.display = 'block';
+        badge.className = 'badge p-2 mb-3 w-100 bg-danger text-white';
+        badge.innerText = `DIFERENCIA DE ARQUEO: ${diff.toFixed(2)} €`;
+    } else {
+        badge.style.display = 'none';
+    }
+  },
+
+  async executeClosure(initialBalance) {
+    const real = parseFloat(document.getElementById('c-real').value || 0);
+    const checked = Array.from(document.querySelectorAll('.c-movement-check:checked'));
+    const validatedIds = checked.map(cb => cb.dataset.id);
+    
+    const p = {
+        tpv_real: real,
+        saldo_teorico: initialBalance,
+        validated_movement_ids: validatedIds,
+        observaciones: document.getElementById('c-obs').value
+    };
+    
+    const res = await HandooApp.api('treasury.execute_daily_closure', p);
+    if(res.ok) {
+        HandooApp.ui.showToast("Cierre diario procesado correctamente");
+        document.querySelector('.h-modal-overlay').remove();
+        this.renderDashboard();
+    } else {
+        HandooApp.ui.showToast(res.msg, "error");
+    }
+  },
+
+  openTransferModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 400px">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black">TRASPASO INTERNO</h5></div>
+         <div class="h-modal-body bg-light">
+            <select id="t-from" class="form-select mb-2"><option value="TPV">TPV</option><option value="CAJA_FUERTE">CAJA FUERTE</option><option value="TRANSITO">TRÁNSITO</option></select>
+            <select id="t-to" class="form-select mb-2"><option value="CAJA_FUERTE">CAJA FUERTE</option><option value="TPV">TPV</option><option value="TRANSITO">TRÁNSITO</option></select>
+            <input type="number" id="t-amt" class="form-control mb-3" placeholder="Importe">
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-dark" onclick="TripleCajaModule.executeTransfer()">TRASPASAR</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  async executeTransfer() {
+    const from = document.getElementById('t-from').value;
+    const to = document.getElementById('t-to').value;
+    const amt = document.getElementById('t-amt').value;
+    const res = await HandooApp.api('treasury.internal_transfer', { from_id: from, to_id: to, importe: amt, fecha: new Date().toISOString().split('T')[0] });
+    if(res.ok) {
+       HandooApp.ui.showToast("Traspaso realizado");
+       document.querySelector('.h-modal-overlay').remove();
+       this.renderDashboard();
+    } else {
+       HandooApp.ui.showToast(res.msg, "error");
+    }
+  }
+};
+
+// --- MÓDULO DE MOVIMIENTOS BANCARIOS (LEDGER) ---
+const LedgerModule = {
+  init() {
+    HandooEvents.on('ledgerQuery', () => this.fetchLedger());
+  },
+
+  /**
+   * Ejecuta la consulta al Kernel con los filtros activos.
+   */
+  async fetchLedger() {
+    const filters = TreasuryView.ledgerFilters;
+    const area = document.getElementById('ledger-results-area');
+    if(!area) return;
+
+    area.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="mt-3 small fw-bold text-muted">Recuperando movimientos...</p></div>`;
+    
+    try {
+      const res = await HandooApp.api('treasury.get_ledger', filters);
+      if(res.ok) {
+         TreasuryView.ledgerData = res.data;
+         this.renderLedgerTable();
+      } else {
+         area.innerHTML = `<div class="p-5 text-center text-danger fw-black"><i class="bi bi-exclamation-octagon fs-2 mb-2"></i><br>${res.msg}</div>`;
+      }
+    } catch(e) {
+      area.innerHTML = `<div class="p-5 text-center text-danger fw-black">Fallo crítico de comunicación con Kernel.</div>`;
+    }
+  },
+
+  /**
+   * Renderiza la tabla contable con saldos acumulados y rastro de origen.
+   */
+  renderLedgerTable() {
+    const { movements, initial_balance } = TreasuryView.ledgerData || { movements: [], initial_balance: 0 };
+    const area = document.getElementById('ledger-results-area');
+    if(!area) return;
+    
+    area.innerHTML = `
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden animate-slide">
+         <div class="p-4 bg-light border-bottom d-flex justify-content-between align-items-center">
+            <div><h6 class="fw-black text-uppercase m-0 small">Extracto de Operaciones Realizadas</h6><p class="small text-muted m-0">Movimientos contables detallados para auditoría.</p></div>
+            <div class="balance-badge ${initial_balance >= 0 ? 'balance-positive' : 'balance-negative'}">
+               <span class="small fw-bold" style="font-size:10px">SALDO INICIAL:</span>
+               <span>${parseFloat(initial_balance).toLocaleString('es-ES', {minimumFractionDigits: 2})} €</span>
+            </div>
+         </div>
+         <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+            <table class="table table-hover m-0 align-middle table-erp">
+               <thead class="bg-white sticky-top shadow-sm">
+                  <tr>
+                     <th class="ps-4">FECHA</th>
+                     <th>CONCEPTO</th>
+                     <th class="text-center">ORIGEN</th>
+                     <th class="text-end">CARGO (SALIDA)</th>
+                     <th class="text-end">ABONO (ENTRADA)</th>
+                     <th class="text-end pe-4">SALDO ACUM.</th>
+                  </tr>
+               </thead>
+               <tbody id="ledger-body">
+                  ${movements.map(m => `
+                     <tr onclick="LedgerModule.goToLedgerOrigin('${m.ref_id}', '${m.origin}')" style="cursor:pointer" title="Haga clic para abrir documento origen">
+                        <td class="ps-4 small text-muted font-monospace">${new Date(m.fecha).toLocaleDateString()}</td>
+                        <td>
+                           <div class="fw-bold text-dark text-uppercase" style="font-size:10px">${escapeHTML(m.concepto)}</div>
+                           <div class="x-small text-muted font-monospace" style="font-size:8px">REF: ${m.ref_id}</div>
+                        </td>
+                        <td class="text-center">
+                           <span class="movement-origin ${m.origin==='MANUAL'?'origin-manual':(m.origin==='INVOICE'?'origin-invoice':'origin-expense')}">
+                              ${m.origin}
+                           </span>
+                        </td>
+                        <td class="text-end fw-bold text-danger">${m.cargo > 0 ? '-' + m.cargo.toLocaleString('es-ES', {minimumFractionDigits: 2}) + ' €' : ''}</td>
+                        <td class="text-end fw-bold text-success">${m.abono > 0 ? '+' + m.abono.toLocaleString('es-ES', {minimumFractionDigits: 2}) + ' €' : ''}</td>
+                        <td class="text-end fw-black pe-4 ${m.saldo < 0 ? 'text-danger' : 'text-dark'}" style="font-size:12px">
+                           ${parseFloat(m.saldo).toLocaleString('es-ES', {minimumFractionDigits: 2})} €
+                        </td>
+                     </tr>
+                  `).join('') || '<tr><td colspan="6" class="p-5 text-center opacity-25 fw-black">SIN MOVIMIENTOS EN EL RANGO SELECCIONADO</td></tr>'}
+               </tbody>
+            </table>
+         </div>
+      </div>`;
+  },
+
+  async goToLedgerOrigin(refId, origin) {
+    if(!refId || origin === 'MANUAL') return HandooApp.ui.showToast("Movimiento de ajuste interno sin documento vinculado.", "info");
+    try {
+      if(origin === 'INVOICE') {
+         HandooApp.ui.showToast("Recuperando factura vinculada...", "info");
+         await InvoicesView.openManualModal(refId);
+      } else if(origin === 'EXPENSE') {
+         HandooApp.ui.showToast("Recuperando gasto vinculado...", "info");
+         await ExpensesView.openExpenseModal(refId);
+      }
+    } catch(e) {
+      HandooApp.ui.showToast("No se pudo cargar el documento origen.", "error");
+    }
+  }
+};
+
+// --- MÓDULO DE COBROS Y PAGOS (RESTAURADO) ---
+const CobrosModule = {
+  init() {
+    HandooEvents.on('openAudit', (id) => this.openOperationsSheet(id));
+    HandooEvents.on('selectionChanged', () => this.refreshBatchBar());
+  },
+
+  refreshBatchBar() {
+    const barContainer = document.getElementById('batch-bar-area');
+    if (!barContainer) return;
+    
+    const active = TreasuryView.settings?.active_modules || [];
+    const direction = TreasuryView.subTab === 'efectos' ? 'INBOUND' : 'OUTBOUND';
+    const batchFeat = direction === 'INBOUND' ? 'FEAT_BATCH_COBRO' : 'FEAT_BATCH_PAGO';
+    const hasBatch = active.includes(batchFeat);
+
+    if (window.selectedIds.size > 0 && hasBatch) {
+      const total = Array.from(window.selectedIds).reduce((s, id) => s + (parseFloat(TreasuryView.effects.find(e => String(e.id) === String(id))?.importe) || 0), 0);
+      barContainer.innerHTML = `
+        <div class="t-batch-bar">
+           <div><h6 class="m-0 fw-black text-uppercase">${window.selectedIds.size} ELEMENTOS SELECCIONADOS</h6><p class="small m-0 opacity-50">Total bloque: ${total.toLocaleString()} €</p></div>
+           <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-light fw-bold px-4 border-0" id="btn-batch-cancel">CANCELAR</button>
+              <button class="btn btn-sm btn-brand-titanium fw-black px-4 shadow" id="btn-batch-exec">LIQUIDAR BLOQUE ✅</button>
+           </div>
+        </div>`;
+      
+      document.getElementById('btn-batch-cancel').addEventListener('click', () => { window.selectedIds.clear(); HandooEvents.emit('selectionChanged'); TreasuryView.renderContent(); });
+      document.getElementById('btn-batch-exec').addEventListener('click', () => this.openSettlementSelector(Array.from(window.selectedIds)));
+    } else {
+      barContainer.innerHTML = '';
+    }
+  },
+
+  openOperationsSheet(id) {
+    const e = TreasuryView.effects.find(x => String(x.id) === String(id));
+    if(!e) return;
+    const active = TreasuryView.settings?.active_modules || [];
+    const direction = e.direction || 'INBOUND';
+    const remesaFeat = direction === 'INBOUND' ? 'FEAT_SEPA_COBRO' : 'FEAT_SEPA_PAGO';
+    const hasRemesas = active.includes(remesaFeat);
+    const isSettled = ['COBRADO', 'PAGADO'].includes(e.status);
+    const isReturned = e.status === 'DEVUELTO';
+    const canRevert = isSettled || isReturned;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 750px">
+         <div class="h-modal-header bg-dark text-white d-flex justify-content-between">
+            <h5 class="m-0 fw-black text-uppercase">AUDITORÍA DE DOCUMENTO: ${e.invoice_id || e.id}</h5>
+         </div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-dark mt-0">
+               <div class="mb-4"><h6 class="h-label-refined text-white-50">TITULAR / TERCERO</h6><div class="fw-black text-white fs-5">${escapeHTML(e.client_name || e.entity_name || e.beneficiario)}</div></div>
+               <div class="row g-3 align-items-end border-top border-secondary pt-3">
+                  <div class="col-md-6"><label class="h-label-refined text-brand">VENCIMIENTO</label><input type="date" id="op-vto" class="form-control h-form-control bg-dark border-secondary text-white fw-bold" value="${String(e.vencimiento).split('T')[0]}" ${isSettled?'disabled':''}></div>
+                  <div class="col-md-6 text-end"><label class="h-label-refined text-white-50">NOMINAL (€)</label><input type="number" step="0.01" id="op-imp" class="form-control h-form-control bg-dark border-secondary text-brand fw-black text-end fs-4" value="${parseFloat(e.importe).toFixed(2)}" ${isSettled?'disabled':''}></div>
+               </div>
+            </div>
+            <div class="row g-3 mt-3">
+               <div class="${hasRemesas ? 'col-md-4' : 'col-md-6'}"><button class="btn btn-success w-100 py-3 fw-black" ${isSettled?'disabled':''} onclick="CobrosModule.openSettlementSelector(['${e.id}'])">LIQUIDAR ✅</button></div>
+               <div class="${hasRemesas ? 'col-md-4' : 'col-md-6'}"><button class="btn btn-warning w-100 py-3 fw-black" ${isSettled?'disabled':''} onclick="CobrosModule.uiOpenSplitAssistant('${e.id}')">FRACCIONAR (SPLIT)</button></div>
+               ${hasRemesas ? `<div class="col-md-4"><button class="btn btn-danger w-100 py-3 fw-black" ${isSettled?'disabled':''} onclick="CobrosModule.uiReturnProtocol('${e.id}')">PROTOCOLO DEVOLUCIÓN</button></div>` : ''}
+            </div>
+            ${!isSettled ? `<div class="mt-3"><button class="btn btn-dark w-100 py-2 fw-bold" id="btn-save-op-meta">GUARDAR CAMBIOS EN DOCUMENTO 💾</button></div>` : ''}
+            ${canRevert ? `<div class="mt-3"><button class="btn btn-outline-danger w-100 py-2 fw-bold" id="btn-undo-liq">REVERTIR OPERACIÓN CONTABLE ↩️</button></div>` : ''}
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CERRAR FICHA</button>
+            <button class="btn btn-outline-danger fw-bold flex-grow-0 px-4" id="btn-del-eff"><i class="bi bi-trash"></i></button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    
+    // Asegurar que el botón de cerrar funcione incluso si hay overlays anidados
+    overlay.querySelector('button[onclick*="remove()"]').onclick = (ev) => {
+       ev.stopPropagation();
+       overlay.remove();
+    };
+    document.getElementById('btn-del-eff').addEventListener('click', () => this.deleteEffect(e.id));
+    if(!isSettled) {
+      document.getElementById('btn-save-op-meta').addEventListener('click', (ev) => this.executeSaveOpMeta(e.id, ev.currentTarget));
+    }
+    if(canRevert) {
+      document.getElementById('btn-undo-liq').addEventListener('click', (ev) => this.executeUndoLiquidacion(e.id, ev.currentTarget));
+    }
+  },
+
+  async executeSaveOpMeta(id, btnEl) {
+    const vto = document.getElementById('op-vto').value;
+    const imp = document.getElementById('op-imp').value;
+    HandooApp.ui.setLoading(btnEl, true);
+    try {
+      const res = await HandooApp.api('treasury.update_effect', { id, vencimiento: vto, importe: imp });
+      if(res.ok) {
+         btnEl.closest('.h-modal-overlay').remove();
+         await TreasuryView.load();
+         HandooApp.ui.showToast("Documento actualizado", "success");
+      } else {
+         HandooApp.ui.showToast(res.msg || "Error al actualizar", "error");
+         HandooApp.ui.setLoading(btnEl, false);
+      }
+    } catch (e) {
+      HandooApp.ui.showToast("Error de red", "error");
+      HandooApp.ui.setLoading(btnEl, false);
+    }
+  },
+
+  async executeUndoLiquidacion(id, btnEl) {
+    const msg = "¿DESHACER OPERACIÓN?";
+    const sub = "El documento volverá a estado PENDIENTE y se ajustará el balance contable.";
+    if(await HandooApp.ui.confirm(msg, sub)) {
+       HandooApp.ui.setLoading(btnEl, true);
+       try {
+         const res = await HandooApp.api('treasury.update_effect', { 
+           id, 
+           status: 'PENDIENTE', 
+           canal_pago: null, 
+           fecha_cobro_real: null 
+         });
+         if(res.ok) { 
+            btnEl.closest('.h-modal-overlay').remove(); 
+            await TreasuryView.load(); 
+            HandooApp.ui.showToast("Operación revertida con éxito", "success");
+         } else {
+            HandooApp.ui.showToast(res.msg || "Error al revertir la operación", "error");
+            HandooApp.ui.setLoading(btnEl, false);
+         }
+       } catch (err) {
+         HandooApp.ui.showToast("Fallo de comunicación con el servidor", "error");
+         HandooApp.ui.setLoading(btnEl, false);
+       }
+    }
+  },
+
+  async deleteEffect(id) {
+    if(await HandooApp.ui.confirm("¿ELIMINAR DOCUMENTO?")) {
+      await HandooApp.api('treasury.delete_effect', {id});
+      document.querySelector('.h-modal-overlay').remove();
+      await TreasuryView.load();
+    }
+  },
+
+  openSettlementSelector(ids) {
+    const active = TreasuryView.settings?.active_modules || [];
+    const isBatch = ids.length > 1;
+    
+    const firstEffect = TreasuryView.effects.find(e => String(e.id) === String(ids[0]));
+    const direction = firstEffect?.direction || 'INBOUND';
+    const showStripe = direction === 'INBOUND';
+    const remesaFeat = direction === 'INBOUND' ? 'FEAT_SEPA_COBRO' : 'FEAT_SEPA_PAGO';
+    const batchFeat = direction === 'INBOUND' ? 'FEAT_BATCH_COBRO' : 'FEAT_BATCH_PAGO';
+
+    const totalSuma = ids.reduce((sum, id) => sum + (parseFloat(TreasuryView.effects.find(e => String(e.id) === String(id))?.importe) || 0), 0);
+    const banks = TreasuryView.getOperativeBanks();
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide'; overlay.id = 'settle-overlay';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 600px">
+         <div class="h-modal-header bg-success text-white"><h5 class="m-0 fw-black text-uppercase">LIQUIDACIÓN ${isBatch?'MÁSIVA':'INDIVIDUAL'}</h5></div>
+         <div class="h-modal-body bg-light">
+            <!-- Upsell Batch -->
+            ${isBatch && !active.includes(batchFeat) ? `
+               <div class="alert alert-warning border-0 shadow-sm rounded-4 p-4 mb-4">
+                  <div class="d-flex align-items-center mb-2">
+                     <i class="bi bi-lightning-charge-fill fs-3 me-3"></i>
+                     <h6 class="fw-black m-0 text-uppercase">Función de Procesamiento Masivo</h6>
+                  </div>
+                  <p class="small m-0">Esta capacidad es exclusiva del Plan Industrial. Permite liquidar cientos de documentos en un solo clic.</p>
+                  <button class="btn btn-warning btn-sm fw-black mt-3 px-4" onclick="HandooApp.navTo('LicenseControl')">ACTUALIZAR LICENCIA</button>
+               </div>
+            ` : ''}
+
+            <!-- OPCIONES BÁSICAS: Siempre disponibles -->
+            <div class="p-4 rounded-4 shadow-sm mt-3 block-light row align-items-center settlement-option" id="opt-cash">
+               <div class="col-md-2 text-center"><i class="bi bi-cash-coin fs-2"></i></div>
+               <div class="col-md-10"><h6 class="fw-black text-uppercase m-0">Efectivo / Caja (570)</h6><p class="small text-muted m-0">Registro inmediato en movimientos.</p></div>
+            </div>
+            
+            <div class="p-4 rounded-4 shadow-sm mt-3 block-light row align-items-center settlement-option" id="opt-bank">
+               <div class="col-md-2 text-center"><i class="bi bi-bank fs-2 text-brand"></i></div>
+               <div class="col-md-10"><h6 class="fw-black text-uppercase m-0">Transferencia Bancaria</h6><p class="small text-muted m-0">Abono directo en cuenta comercial.</p></div>
+            </div>
+
+            <!-- OPCIONES PREMIUM: Con candado visual si no hay licencia -->
+            <div class="p-4 rounded-4 shadow-sm mt-3 block-light row align-items-center settlement-option ${!active.includes('FEAT_CONCILIACION_STRIPE')?'opacity-50':''}" id="opt-stripe" style="${!showStripe ? 'display:none' : ''}">
+               <div class="col-md-2 text-center"><i class="bi bi-stripe fs-2 text-primary"></i></div>
+               <div class="col-md-10"><h6 class="fw-black text-uppercase m-0">Stripe / Pasarela ${!active.includes('FEAT_CONCILIACION_STRIPE')?'<i class="bi bi-lock-fill ms-2"></i>':''}</h6><p class="small text-muted m-0">Cobro automático mediante tarjeta.</p></div>
+            </div>
+
+            <div class="p-4 rounded-4 shadow-sm mt-3 block-dark row align-items-center settlement-option ${!active.includes(remesaFeat)?'opacity-50':''}" id="opt-remesa">
+               <div class="col-md-2 text-center"><i class="bi bi-boxes fs-2 text-warning"></i></div>
+               <div class="col-md-10"><h6 class="fw-black text-uppercase m-0 text-white">REMESAR (SEPA ISO 20022) ${!active.includes(remesaFeat)?'<i class="bi bi-lock-fill ms-2"></i>':''}</h6><p class="small text-muted m-0 text-white-50">Generar lote bancario de cobro/pago.</p></div>
+            </div>
+
+            <div id="bank-choice-area" class="mt-3 px-3" style="display:none">
+               <label class="h-label-refined">BANCO DE ABONO / SALIDA</label>
+               <select id="settle-bank-id" class="form-select h-form-control fw-bold">
+                  ${banks.length > 0 ? banks.map(b=>`<option value="${b.nombre}">${b.nombre}</option>`).join('') : '<option value="">SIN BANCOS CONFIGURADOS</option>'}
+               </select>
+            </div>
+            <div class="unified-block block-light mt-4">
+               <label class="h-label-refined">IMPORTE TOTAL (SUMA ATÓMICA)</label>
+               <input type="number" id="settle-amount" class="form-control h-form-control fw-black text-center fs-4" value="${totalSuma.toFixed(2)}">
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="document.getElementById('settle-overlay').remove()">CANCELAR</button>
+            <button id="btn-exec-liq" class="btn btn-dark fw-black flex-grow-1 shadow" disabled>EJECUTAR OPERACIÓN ✅</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    let method = null;
+    const btn = document.getElementById('btn-exec-liq');
+    const cash = document.getElementById('opt-cash');
+    const bank = document.getElementById('opt-bank');
+    const stripe = document.getElementById('opt-stripe');
+    const remesa = document.getElementById('opt-remesa');
+    const bArea = document.getElementById('bank-choice-area');
+
+    const checkLock = (feat, msg) => {
+       if (!active.includes(feat)) {
+          HandooApp.ui.confirm("Módulo Bloqueado", msg + " ¿Deseas ver los planes de precios?").then(ok => {
+             if(ok) { 
+                const overlay = document.getElementById('settle-overlay');
+                if(overlay) overlay.remove(); 
+                HandooApp.navTo('LicenseControl'); 
+             }
+          });
+          return true;
+       }
+       return false;
+    };
+
+    cash.onclick = () => { method='CAJA'; cash.classList.add('active'); bank.classList.remove('active'); remesa.classList.remove('active'); stripe.classList.remove('active'); bArea.style.display='none'; btn.disabled=false; };
+    bank.onclick = () => { method='BANCO'; bank.classList.add('active'); cash.classList.remove('active'); remesa.classList.remove('active'); stripe.classList.remove('active'); bArea.style.display='block'; btn.disabled=false; };
+    
+    stripe.onclick = () => { 
+       method='STRIPE'; stripe.classList.add('active'); cash.classList.remove('active'); remesa.classList.remove('active'); bank.classList.remove('active'); bArea.style.display='none'; btn.disabled=false; 
+    };
+    
+    remesa.onclick = () => { 
+       method='REMESA'; remesa.classList.add('active'); bank.classList.remove('active'); cash.classList.remove('active'); stripe.classList.remove('active'); bArea.style.display='none'; btn.disabled=false; 
+    };
+    
+    btn.onclick = async () => {
+      if (isBatch && !active.includes(batchFeat)) {
+         HandooApp.ui.showToast("Tu licencia actual no permite procesamiento por lotes.", "error");
+         return;
+      }
+      if (method === 'STRIPE' && !active.includes('FEAT_CONCILIACION_STRIPE')) {
+         checkLock('FEAT_CONCILIACION_STRIPE', "La conexión con Stripe requiere el módulo de Pasarela Activo.");
+         return;
+      }
+      if (method === 'REMESA') {
+         document.getElementById('settle-overlay').remove();
+         RemesasModule.openRemittanceWizard(ids[0], true);
+         return;
+      }
+      HandooApp.ui.setLoading('btn-exec-liq', true);
+      const res = await HandooApp.api('treasury.process_liquidacion', { effect_ids: ids, action: 'COBRAR', canal_pago: method === 'CAJA' ? 'CAJA' : (method === 'STRIPE' ? 'STRIPE' : document.getElementById('settle-bank-id').value), importe_real: parseFloat(document.getElementById('settle-amount').value) });
+      if(res.ok) { document.getElementById('settle-overlay').remove(); window.selectedIds.clear(); await TreasuryView.load(); }
+    };
+  },
+
+  uiOpenSplitAssistant(id) {
+    const e = TreasuryView.effects.find(x => String(x.id) === String(id));
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide'; overlay.style.zIndex = '11000'; overlay.id = 'split-overlay';
+    const total = parseFloat(e.importe);
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 850px; height: 80vh">
+         <div class="h-modal-header bg-dark text-white d-flex justify-content-between align-items-center"><h5 class="m-0 fw-black text-uppercase">PLAN DE FRACCIONAMIENTO (SPLIT)</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-dark mt-0">
+               <div class="row g-3 align-items-end">
+                  <div class="col-md-4"><label class="h-label-refined text-white-50">Nº FRACCIONES</label><input type="number" id="split-parts" class="form-control h-form-control fw-black" value="12" min="2"></div>
+                  <div class="col-md-4"><label class="h-label-refined text-white-50">DIFERENCIAL (DÍAS)</label><input type="number" id="split-gap" class="form-control h-form-control fw-black" value="30"></div>
+                  <div class="col-md-4 text-center"><div class="h-label text-white-50">NOMINAL A DIVIDIR</div><h3 class="fw-black text-white m-0">${total.toLocaleString()} €</h3></div>
+               </div>
+            </div>
+            <div class="card-industrial mt-4 border-0 overflow-hidden shadow-sm bg-white">
+               <div style="max-height: 350px; overflow-y: auto;"><table class="table table-hover table-erp m-0"><thead class="bg-light"><tr><th>ORDEN</th><th>VENCIMIENTO</th><th class="text-end">IMPORTE (€)</th></tr></thead><tbody id="split-body"></tbody></table></div>
+               <div id="split-sum-bar" class="p-3 bg-light border-top text-end fw-black small">Suma Validada: 0,00 €</div>
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button id="btn-exec-split" class="btn btn-dark fw-black flex-grow-1 shadow" disabled>GENERAR VENCIMIENTOS</button>
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="document.getElementById('split-overlay').remove()">CANCELAR</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const updatePreview = () => {
+      const parts = parseInt(document.getElementById('split-parts').value) || 1;
+      const gap = parseInt(document.getElementById('split-gap').value) || 30;
+      const partAmt = Math.floor((total / parts) * 100) / 100;
+      const lastPartAmt = parseFloat((total - (partAmt * (parts - 1))).toFixed(2));
+      let html = ''; const base = new Date(e.vencimiento);
+      for(let i=0; i<parts; i++) {
+        const d = new Date(base); d.setDate(d.getDate() + (i * gap));
+        const val = (i === parts - 1) ? lastPartAmt : partAmt;
+        html += `<tr><td>${i+1}/${parts}</td><td>${d.toLocaleDateString()}</td><td class="text-end"><input type="number" step="0.01" class="split-input wiz-input-inline text-end fw-black" value="${val}"> €</td></tr>`;
+      }
+      document.getElementById('split-body').innerHTML = html;
+      document.querySelectorAll('.split-input').forEach(inp => inp.oninput = validateSum);
+      validateSum();
+    };
+
+    const validateSum = () => {
+      const inputs = document.querySelectorAll('.split-input');
+      let sum = 0; inputs.forEach(i => sum += parseFloat(i.value || 0));
+      const diff = Math.abs(sum - total);
+      const bar = document.getElementById('split-sum-bar');
+      const btn = document.getElementById('btn-exec-split');
+      bar.innerText = `Suma Validada: ${sum.toLocaleString('es-ES', {minimumFractionDigits:2})} €`;
+      if(diff < 0.05) { bar.className = 'p-3 bg-light border-top text-end fw-black small text-success'; btn.disabled = false; }
+      else { bar.className = 'p-3 bg-light border-top text-end fw-black small text-danger'; btn.disabled = true; }
+    };
+
+    document.getElementById('split-parts').onchange = updatePreview;
+    document.getElementById('split-gap').onchange = updatePreview;
+    document.getElementById('btn-exec-split').onclick = async () => {
+       const frs = Array.from(document.querySelectorAll('.split-input')).map((inp, idx) => {
+          const d = new Date(e.vencimiento); d.setDate(d.getDate() + (idx * parseInt(document.getElementById('split-gap').value)));
+          return { vencimiento: d.toISOString().split('T')[0], importe: parseFloat(inp.value) };
+       });
+       await HandooApp.api('treasury.split_effect', { parent_id: e.id, fractions: frs });
+       document.getElementById('split-overlay').remove(); document.querySelector('.h-modal-overlay').remove(); await TreasuryView.load();
+    };
+    updatePreview();
+  },
+
+  uiReturnProtocol(id) {
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide'; overlay.id = 'ret-overlay'; overlay.style.zIndex='12000';
+    overlay.innerHTML = `<div class="h-modal shadow-lg" style="width: 450px"><div class="h-modal-header bg-danger text-white"><h5 class="m-0 fw-black">INCIDENCIA DE IMPAGO (D-)</h5></div><div class="h-modal-body bg-light text-center"><i class="bi bi-shield-exclamation fs-1 text-danger"></i><h6 class="fw-black text-uppercase mt-2">Protocolo Devuelto</h6><p class="small text-muted">Se generará un nuevo efecto con prefijo D- y gastos.</p><label class="h-label-refined">GASTOS (€) - CTA 626</label><input type="number" id="ret-gastos" class="form-control h-form-control fw-black text-danger text-center" value="4.50"></div><div class="h-modal-footer d-flex gap-2"><button class="btn btn-danger fw-black flex-grow-1 shadow" id="btn-exec-ret">CONFIRMAR 🚨</button><button class="btn btn-light border fw-bold flex-grow-1" onclick="document.getElementById('ret-overlay').remove()">DESCARTAR</button></div></div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('btn-exec-ret').onclick = async () => {
+      await HandooApp.api('treasury.process_liquidacion', { effect_ids: [id], action: 'DEVOLVER', gastos: document.getElementById('ret-gastos').value });
+      document.getElementById('ret-overlay').remove(); document.querySelector('.h-modal-overlay').remove(); await TreasuryView.load();
+    };
+  }
+};
+
+// --- MÓDULO DE REMESAS ---
+const RemesasModule = {
+  wizRem: { id: null, selectedIds: new Set(), overrides: {}, fecha_remesa: '', direction: 'INBOUND' },
+
+  init() {
+    HandooEvents.on('openRemittance', (id) => this.openRemittanceWizard(id));
+  },
+
+  openRemittanceWizard(remIdOrSeed = null, isSeed = false, direction = 'INBOUND') {
+    this.wizRem = { id: null, selectedIds: new Set(), overrides: {}, fecha_remesa: new Date().toISOString().split('T')[0], direction: direction };
+    if (isSeed) { 
+      const e = TreasuryView.effects.find(x => String(x.id) === String(remIdOrSeed)); 
+      if (e) { this.wizRem.selectedIds.add(String(e.id)); } 
+    } 
+    else if (remIdOrSeed) { 
+      this.wizRem.id = String(remIdOrSeed); 
+      const r = TreasuryView.remittances.find(x => String(x.id) === String(remIdOrSeed)); 
+      if (r) { 
+        this.wizRem.direction = r.direction || 'INBOUND'; 
+        this.wizRem.fecha_remesa = r.fecha_remesa || r.created_at?.split('T')[0]; 
+        TreasuryView.effects.filter(e => String(e.remittance_id) === String(remIdOrSeed)).forEach(e => this.wizRem.selectedIds.add(String(e.id))); 
+      } 
+    }
+    this.renderWizModal();
+  },
+
+  renderWizModal() {
+    const isEdit = !!this.wizRem.id;
+    const r = isEdit ? TreasuryView.remittances.find(x => String(x.id) === String(this.wizRem.id)) : null;
+    const status = r?.status || 'BORRADOR';
+    const banks = TreasuryView.getOperativeBanks();
+    const dir = this.wizRem.direction;
+    const normas = dir === 'INBOUND' ? ['CORE (19)', 'B2B (58)'] : ['N34', 'CONFIRMING'];
+
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 1200px; height: 90vh;">
+         <div class="h-modal-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="m-0 fw-black text-uppercase">LOTE SEPA: ${dir} (${status})</h5>
+         </div>
+         <div class="h-modal-body bg-light p-0">
+            <div class="p-4 block-dark border-bottom shadow-sm">
+               <div class="row align-items-center">
+                  <div class="col-md-3"><label class="h-label-refined text-white-50">BANCO ORIGEN</label><select id="wiz-bank" class="form-select h-form-control fw-bold" ${status!=='BORRADOR'?'disabled':''}>${banks.map(b => `<option value="${b.nombre}" ${r?.banco_destino===b.nombre?'selected':''}>${b.nombre}</option>`).join('')}</select></div>
+                  <div class="col-md-2"><label class="h-label-refined text-white-50">MODALIDAD</label><select id="wiz-norma" class="form-select h-form-control fw-black" ${status!=='BORRADOR'?'disabled':''}>${normas.map(n => `<option value="${n}" ${r?.norma===n?'selected':''}>${n}</option>`).join('')}</select></div>
+                  <div class="col-md-2"><label class="h-label-refined text-white-50">FECHA OPERACIÓN</label><input type="date" id="wiz-fecha-rem" class="form-control h-form-control fw-black" value="${this.wizRem.fecha_remesa}" ${status!=='BORRADOR'?'disabled':''}></div>
+                  <div class="col-md-5 text-end"><label class="h-label-refined text-white-50">NOMINAL TOTAL DEL LOTE</label><h2 class="fw-black text-brand m-0" id="wiz-total">0,00 €</h2></div>
+               </div>
+            </div>
+            <div class="p-4" style="height:calc(90vh - 300px); overflow-y:auto;">
+               <div class="wiz-section-header rounded-top">EFECTOS VINCULADOS</div>
+               <table class="table table-hover align-middle table-erp bg-white mb-4"><tbody id="wiz-body-linked"></tbody></table>
+               ${status === 'BORRADOR' ? `<div class="wiz-section-header rounded-top">POOL DISPONIBLES EN CARTERA</div><table class="table table-hover align-middle table-erp bg-white"><tbody id="wiz-body-pool"></tbody></table>` : ''}
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button class="btn btn-light border fw-bold px-4" onclick="this.closest('.h-modal-overlay').remove()">CERRAR</button>
+            <div class="ms-auto d-flex gap-2">
+               ${status === 'BORRADOR' ? `
+                 <button id="btn-save-rem" class="btn btn-dark fw-black px-4 shadow" onclick="RemesasModule.executeSaveRem('CREATE')">GUARDAR BORRADOR</button>
+                 <button id="btn-gen-sepa" class="btn btn-brand-titanium fw-black px-5 shadow" onclick="RemesasModule.executeSaveRem('SAVE_AND_GENERATE')">EMITIR ISO 20022 📥</button>
+               ` : `
+                 <button class="btn btn-success fw-black px-4 shadow" onclick="RemesasModule.downloadSepaXML('${r.id}')">DESCARGAR XML</button>
+                 <button class="btn btn-outline-danger fw-bold px-4" onclick="RemesasModule.executeUndoRemittance('${r.id}')">REVERTIR A BORRADOR</button>
+               `}
+               ${isEdit ? `<button class="btn btn-link text-danger" onclick="RemesasModule.deleteRemittance('${r.id}')"><i class="bi bi-trash"></i></button>` : ''}
+            </div>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    this.renderWizTables();
+  },
+
+  renderWizTables() {
+    const linkedBody = document.getElementById('wiz-body-linked');
+    const poolBody = document.getElementById('wiz-body-pool');
+    const dir = this.wizRem.direction;
+    const pool = TreasuryView.effects.filter(e => (e.direction || 'INBOUND') === dir && (String(e.remittance_id) === String(this.wizRem.id) || (e.status === 'PENDIENTE' && !e.remittance_id)));
+    let linkedHtml = '', poolHtml = '', total = 0;
+
+    pool.forEach(e => {
+      const isSelected = this.wizRem.selectedIds.has(String(e.id));
+      if(isSelected) {
+        total += parseFloat(e.importe);
+        linkedHtml += `<tr><td width="30" class="text-center"><i class="bi bi-check-circle-fill text-brand"></i></td><td><div class="fw-bold small text-uppercase">${escapeHTML(e.client_name || e.beneficiario)}</div></td><td class="font-monospace">${new Date(e.vencimiento).toLocaleDateString()}</td><td class="text-end fw-black">${parseFloat(e.importe).toLocaleString()}€</td><td class="text-end pe-3"><button class="btn btn-sm btn-outline-danger" onclick="RemesasModule.wizToggleSelect('${e.id}', false)"><i class="bi bi-x"></i></button></td></tr>`;
+      } else if (poolBody) {
+        poolHtml += `<tr onclick="RemesasModule.wizToggleSelect('${e.id}', true)" style="cursor:pointer"><td><i class="bi bi-circle text-muted"></i></td><td class="fw-bold small">${escapeHTML(e.client_name || e.beneficiario)}</td><td>${e.invoice_id || e.id}</td><td class="text-end fw-black">${parseFloat(e.importe).toLocaleString()}€</td><td class="text-end pe-3 font-monospace">${new Date(e.vencimiento).toLocaleDateString()}</td></tr>`;
+      }
+    });
+    linkedBody.innerHTML = linkedHtml || '<tr><td colspan="5" class="p-4 text-center opacity-25">SIN EFECTOS SELECCIONADOS</td></tr>';
+    if(poolBody) poolBody.innerHTML = poolHtml || '<tr><td colspan="5" class="p-4 text-center opacity-25">CARTERA LIMPIA</td></tr>';
+    document.getElementById('wiz-total').innerText = total.toLocaleString() + ' €';
+  },
+
+  wizToggleSelect(id, checked) { if(checked) this.wizRem.selectedIds.add(String(id)); else this.wizRem.selectedIds.delete(String(id)); this.renderWizTables(); },
+
+  async executeSaveRem(action) {
+    if (action === 'SAVE_AND_GENERATE') {
+       const active = TreasuryView.settings?.active_modules || [];
+       const feat = this.wizRem.direction === 'INBOUND' ? 'FEAT_SEPA_COBRO' : 'FEAT_SEPA_PAGO';
+       if (!active.includes(feat)) {
+          HandooApp.ui.confirm("Módulo Bloqueado", "La generación de ficheros SEPA XML requiere el módulo de Remesas Activo. ¿Deseas ver los planes de precios?").then(ok => {
+             if(ok) HandooApp.navTo('LicenseControl');
+          });
+          return;
+       }
+    }
+    const p = { id: this.wizRem.id, action, direction: this.wizRem.direction, banco_destino: document.getElementById('wiz-bank').value, norma: document.getElementById('wiz-norma').value, fecha_remesa: document.getElementById('wiz-fecha-rem').value, selected_effects: Array.from(this.wizRem.selectedIds).map(id => ({id})) };
+    HandooApp.ui.setLoading(action==='SAVE_AND_GENERATE'?'btn-gen-sepa':'btn-save-rem', true);
+    const res = await HandooApp.api('treasury.manage_remittance', p);
+    if(res.ok) { document.querySelector('.h-modal-overlay').remove(); await TreasuryView.load(); }
+  },
+
+  async downloadSepaXML(id) { const res = await HandooApp.api('treasury.get_sepa_xml', { id }); if(res.ok) window.open(res.data.url, '_blank'); },
+  async executeUndoRemittance(id) { if(await HandooApp.ui.confirm("¿REVERTIR A BORRADOR?")) { await HandooApp.api('treasury.manage_remittance', { action: 'UPDATE', id, status: 'BORRADOR' }); await TreasuryView.load(); this.openRemittanceWizard(id); } },
+  async deleteRemittance(id) { if(await HandooApp.ui.confirm("¿ELIMINAR LOTE?")) { await HandooApp.api('treasury.manage_remittance', { action: 'DELETE', id }); document.querySelector('.h-modal-overlay').remove(); await TreasuryView.load(); } }
+};
+
+// --- MÓDULO DE FINANCIACIÓN - MOTOR DE INGENIERÍA DE PASIVO ---
+const FinanciacionModule = {
+  currentFinancingId: null,
+  tempCuadro: [],
+  currentSubFinancing: null,
+
+  init() {
+    HandooEvents.on('openFinancing', (id) => this.openFinancingModal(id));
+    HandooEvents.on('executeReclassification', () => this.executeReclassification());
+  },
+
+  handleBankSelect(val) {
+    const customGroup = document.getElementById('f-entidad-custom-group');
+    const customInput = document.getElementById('f-entidad-custom');
+    const select = document.getElementById('f-entidad-select');
+    
+    if (val === 'NEW_BANK') {
+      customGroup.classList.remove('d-none');
+      select.classList.add('d-none');
+      customInput.value = '';
+      customInput.focus();
+    } else if (val === '') {
+      customGroup.classList.add('d-none');
+      select.classList.remove('d-none');
+      select.value = '';
+      customInput.value = '';
+    } else {
+      customGroup.classList.add('d-none');
+      select.classList.remove('d-none');
+      customInput.value = val;
+    }
+  },
+
+  /**
+   * Modal Principal de Edición de Préstamos
+   */
+  openFinancingModal(id = null) {
+    const isEdit = !!id && id !== 'new';
+    this.currentFinancingId = id;
+    
+    let f = isEdit ? TreasuryView.financing.find(x => String(x.id) === String(id)) : {
+      id: 'new', entidad: '', poliza: '', capital: 0, capital_pendiente: 0, periodicidad: 'Mensual',
+      gastos_apertura: 0, fecha_firma: new Date().toISOString().split('T')[0], fecha_primera: '',
+      carencia: 'No', carencia_meses: 0, interes: 0, tae: 0, num_mensualidades: 12,
+      gastos_amort_parcial: 0, gastos_amort_total: 0, interes_demora: 12, tipo_amortizacion: 'Francesa',
+      cuadro_amortizacion: []
+    };
+
+    this.currentSubFinancing = f;
+    this.tempCuadro = f.cuadro_amortizacion || [];
+
+    const banks = TreasuryView.getOperativeBanks();
+    const isKnownBank = banks.some(b => b.nombre === f.entidad);
+    const showCustom = f.entidad && !isKnownBank;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.id = 'financing-modal-main';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 1250px; height: 95vh; top: 2.5vh;">
+         <div class="h-modal-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="m-0 fw-black text-uppercase">${isEdit ? 'EDITOR DE FINANCIACIÓN: ' + f.id : 'NUEVA PÓLIZA DE DEUDA'}</h5>
+            <span class="badge bg-brand text-dark fw-black">CORE V217.5</span>
+         </div>
+         <div class="h-modal-body bg-light p-4">
+            <div class="row g-3">
+               <div class="col-md-4">
+                  <div class="unified-block block-light mt-0">
+                     <h6 class="h-label border-bottom pb-2 mb-3">Identificación Legal</h6>
+                     <label class="h-label-refined">ENTIDAD CONCEDENTE</label>
+                     <div class="mb-3">
+                        <select id="f-entidad-select" class="form-select h-form-control fw-black text-uppercase ${showCustom ? 'd-none' : ''}" onchange="FinanciacionModule.handleBankSelect(this.value)">
+                           <option value="">-- SELECCIONE BANCO --</option>
+                           ${banks.map(b => `<option value="${b.nombre}" ${f.entidad === b.nombre ? 'selected' : ''}>${b.nombre}</option>`).join('')}
+                           <option value="NEW_BANK" class="bg-light fw-bold text-brand" style="color: var(--brand) !important;">+ AGREGAR NUEVO BANCO...</option>
+                        </select>
+                        <div id="f-entidad-custom-group" class="d-flex gap-2 ${showCustom ? '' : 'd-none'}">
+                           <input type="text" id="f-entidad-custom" class="form-control h-form-control fw-black text-uppercase" placeholder="NOMBRE DE LA ENTIDAD" value="${f.entidad}">
+                           <button class="btn btn-sm btn-light border px-3" onclick="FinanciacionModule.handleBankSelect('')" title="Volver a la lista"><i class="bi bi-arrow-left"></i></button>
+                        </div>
+                     </div>
+                     <label class="h-label-refined">Nº PÓLIZA / OPERACIÓN</label><input type="text" id="f-poliza" class="form-control h-form-control mb-3 fw-bold font-monospace" value="${f.poliza}">
+                     <div class="row g-2">
+                        <div class="col-6"><label class="h-label-refined">FECHA FIRMA</label><input type="date" id="f-firma" class="form-control h-form-control" value="${f.fecha_firma}"></div>
+                        <div class="col-6"><label class="h-label-refined">1ª CUOTA</label><input type="date" id="f-primera" class="form-control h-form-control" value="${f.fecha_primera || f.fecha_firma}"></div>
+                     </div>
+                  </div>
+                  <div class="unified-block block-dark">
+                     <h6 class="h-label text-white-50 border-bottom border-secondary pb-2 mb-3">Ingeniería Financiera</h6>
+                     <label class="h-label-refined text-white-50">CAPITAL NOMINAL (€)</label><input type="number" step="0.01" id="f-capital" class="form-control h-form-control bg-dark border-secondary text-brand fw-black mb-3" value="${f.capital}">
+                     <div class="row g-2">
+                        <div class="col-6"><label class="h-label-refined text-white-50">PLAZO (MESES)</label><input type="number" id="f-plazo" class="form-control h-form-control bg-dark border-secondary text-white fw-bold" value="${f.num_mensualidades}"></div>
+                        <div class="col-6"><label class="h-label-refined text-white-50">INTERÉS TIN (%)</label><input type="number" step="0.01" id="f-interes" class="form-control h-form-control bg-dark border-secondary text-white" value="${f.interes}"></div>
+                        <div class="col-12 mt-2">
+                           <label class="h-label-refined text-white-50">SISTEMA DE AMORTIZACIÓN</label>
+                           <select id="f-tipo-amort" class="form-select h-form-control bg-dark border-secondary text-white fw-bold">
+                              <option value="Francesa" ${f.tipo_amortizacion === 'Francesa' ? 'selected' : ''}>MÉTODO FRANCÉS (CUOTA FIJA)</option>
+                              <option value="Lineal" ${f.tipo_amortizacion === 'Lineal' ? 'selected' : ''}>LINEAL / ALEMÁN (CAPITAL FIJO)</option>
+                           </select>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="unified-block block-light">
+                     <h6 class="h-label border-bottom pb-2 mb-3">Carencia y Comisiones</h6>
+                     <div class="row g-2 mb-3">
+                        <div class="col-6"><label class="h-label-refined">¿HAY CARENCIA?</label>
+                           <select id="f-has-carencia" class="form-select h-form-control fw-bold" onchange="document.getElementById('f-meses-carencia').disabled = this.value === 'No'">
+                              <option value="No" ${f.carencia === 'No' ? 'selected' : ''}>NO</option>
+                              <option value="Sí" ${f.carencia === 'Sí' ? 'selected' : ''}>SÍ (INTERESES)</option>
+                           </select>
+                        </div>
+                        <div class="col-6"><label class="h-label-refined">MESES CARENCIA</label><input type="number" id="f-meses-carencia" class="form-control h-form-control fw-bold" value="${f.carencia_meses || 0}" ${f.carencia === 'No' ? 'disabled' : ''}></div>
+                     </div>
+                     <div class="row g-2">
+                        <div class="col-12"><label class="h-label-refined">GASTOS APERTURA / ESTUDIO (€)</label><input type="number" step="0.01" id="f-apertura" class="form-control h-form-control fw-bold text-danger" value="${f.gastos_apertura}"></div>
+                        <div class="col-6"><label class="h-label-refined">GTO. AMORT. PARCIAL (%)</label><input type="number" step="0.01" id="f-amort-parcial" class="form-control h-form-control" value="${f.gastos_amort_parcial || 0}"></div>
+                        <div class="col-6"><label class="h-label-refined">GTO. AMORT. TOTAL (%)</label><input type="number" step="0.01" id="f-amort-total" class="form-control h-form-control" value="${f.gastos_amort_total || 0}"></div>
+                     </div>
+                  </div>
+                  ${isEdit ? `<div class="mt-4"><button class="btn btn-warning w-100 py-3 fw-black shadow text-dark" onclick="FinanciacionModule.openPartialCapitalAmortModal('${f.id}')"><i class="bi bi-piggy-bank-fill me-2"></i> AMORTIZACIÓN EXTRAORDINARIA</button></div>` : ''}
+               </div>
+               <div class="col-md-8">
+                  <div class="unified-block block-light mt-0" style="height: 100%;">
+                     <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center gap-3">
+                           <h6 class="fw-black text-uppercase m-0 small">Simulación de Cuadro de Amortización</h6>
+                           <div id="vto-final-label" class="badge bg-dark text-white py-2 px-3 font-monospace">FIN: --/--/----</div>
+                        </div>
+                        <button class="btn btn-dark btn-sm fw-black px-4" onclick="FinanciacionModule.calculateAmortization()">CALCULAR ESTRATEGIA</button>
+                     </div>
+                     <div class="card border-0 shadow-sm overflow-hidden" style="max-height: 650px; overflow-y: auto;">
+                        <table class="table table-hover align-middle m-0 table-erp">
+                           <thead class="bg-light sticky-top"><tr><th>CUOTA</th><th>VENCIMIENTO</th><th>CAPITAL</th><th>INTERÉS</th><th class="text-end">TOTAL</th><th class="text-center">ESTADO</th></tr></thead>
+                           <tbody id="f-amort-body">${this.renderAmortizationRows()}</tbody>
+                        </table>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            ${isEdit ? `<button class="btn btn-outline-danger fw-bold px-4" onclick="FinanciacionModule.executeDeleteFinancing('${f.id}')">ELIMINAR PRÉSTAMO</button>` : ''}
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CERRAR</button>
+            <button id="btn-save-fin" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="FinanciacionModule.executeSaveFinancing()">SINCRONIZAR DEUDA ✅</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  calculateAmortization() {
+    const capital = parseFloat(document.getElementById('f-capital').value || 0);
+    const interesAnual = parseFloat(document.getElementById('f-interes').value || 0) / 100;
+    const plazoTotal = parseInt(document.getElementById('f-plazo').value || 12);
+    const fechaIni = new Date(document.getElementById('f-primera').value || document.getElementById('f-firma').value);
+    const carenciaMeses = parseInt(document.getElementById('f-meses-carencia').value || 0);
+    const hasCarencia = document.getElementById('f-has-carencia').value === 'Sí';
+    const tipoAmort = document.getElementById('f-tipo-amort').value;
+    const interesMensual = interesAnual / 12;
+    const plazoCapital = hasCarencia ? (plazoTotal - carenciaMeses) : plazoTotal;
+    if (plazoCapital <= 0) return HandooApp.ui.showToast("Plazo total insuficiente.", "error");
+    const cuotaFrancesa = (capital * interesMensual) / (1 - Math.pow(1 + interesMensual, -plazoCapital));
+    let saldoPendiente = capital; const cuadro = [];
+    for (let i = 1; i <= plazoTotal; i++) {
+      let interesCuota = Math.round(saldoPendiente * interesMensual * 100) / 100;
+      let capitalCuota = 0; let totalCuota = 0;
+      if (hasCarencia && i <= carenciaMeses) { capitalCuota = 0; totalCuota = interesCuota; } else {
+        if (tipoAmort === 'Lineal') { capitalCuota = Math.round((capital / plazoCapital) * 100) / 100; totalCuota = capitalCuota + interesCuota; } else { capitalCuota = Math.round((cuotaFrancesa - interesCuota) * 100) / 100; totalCuota = Math.round(cuotaFrancesa * 100) / 100; }
+        if (i === plazoTotal) { capitalCuota = Math.round(saldoPendiente * 100) / 100; totalCuota = capitalCuota + interesCuota; }
+        saldoPendiente -= capitalCuota;
+      }
+      const d = new Date(fechaIni); d.setMonth(d.getMonth() + (i - 1));
+      cuadro.push({ vencimiento: d.toISOString().split('T')[0], capital_cuota: capitalCuota, interes_cuota: interesCuota, total_cuota: totalCuota, pagado: false });
+      if (i === plazoTotal) document.getElementById('vto-final-label').innerText = `FIN: ${d.toLocaleDateString()}`;
+    }
+    this.tempCuadro = cuadro; this.refreshAmortTable();
+  },
+
+  renderAmortizationRows() { return this.tempCuadro.map((c, i) => `<tr onclick="FinanciacionModule.openInstallmentManager(${i})" style="cursor:pointer" class="${c.pagado ? 'bg-light opacity-75' : ''}"><td>${i+1}</td><td>${new Date(c.vencimiento).toLocaleDateString()}</td><td>${parseFloat(c.capital_cuota).toFixed(2)}€</td><td>${parseFloat(c.interes_cuota).toFixed(2)}€</td><td class="text-end fw-black">${parseFloat(c.total_cuota).toFixed(2)}€</td><td class="text-center"><span class="badge ${c.pagado ? 'bg-success' : 'bg-secondary'}" style="font-size:9px">${c.pagado ? 'PAGADO' : 'PEND.'}</span></td></tr>`).join('') || '<tr><td colspan="6" class="p-5 text-center opacity-25">SIN CUADRO CALCULADO</td></tr>'; },
+  refreshAmortTable() { const body = document.getElementById('f-amort-body'); if(body) body.innerHTML = this.renderAmortizationRows(); },
+  openInstallmentManager(idx) {
+    const installment = this.tempCuadro[idx]; const today = new Date().toISOString().split('T')[0];
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide'; overlay.style.zIndex = '11000';
+    overlay.innerHTML = `<div class="h-modal shadow-lg" style="width: 500px"><div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">CUOTA Nº ${idx+1}</h5></div><div class="h-modal-body bg-light"><div class="unified-block block-light mt-0"><div class="row g-2 text-center mb-3"><div class="col-6"><label class="h-label">NOMINAL</label><div class="fw-black fs-4">${parseFloat(installment.total_cuota).toFixed(2)}€</div></div><div class="col-6"><label class="h-label">VENCIMIENTO</label><div class="fw-bold">${new Date(installment.vencimiento).toLocaleDateString()}</div></div></div><div class="row g-3"><div class="col-md-12"><label class="h-label-refined">FECHA PAGO REAL</label><input type="date" id="inst-fecha-pago" class="form-control h-form-control fw-black" value="${installment.fecha_pago_real || today}" onchange="FinanciacionModule.recalcLateFees(${idx})"></div><div class="col-md-6"><label class="h-label-refined">GASTOS DEMORA (€)</label><input type="number" step="0.01" id="inst-late-fees" class="form-control h-form-control fw-black text-danger" value="${installment.gastos_demora || 0}"></div><div class="col-md-6"><label class="h-label-refined">TOTAL ABONADO</label><input type="number" step="0.01" id="inst-amount-paid" class="form-control h-form-control fw-black text-success" value="${parseFloat(installment.importe_real_pagado || installment.total_cuota).toFixed(2)}"></div></div><div class="mt-3"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="inst-pagado-toggle" ${installment.pagado ? 'checked' : ''}><label class="form-check-label fw-bold small" for="inst-pagado-toggle">MARCAR COMO LIQUIDADA</label></div></div></div></div><div class="h-modal-footer"><button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button><button class="btn btn-success fw-black flex-grow-1 shadow" onclick="FinanciacionModule.confirmInstallmentPayment(${idx})">CONFIRMAR</button></div></div>`;
+    document.body.appendChild(overlay);
+  },
+  recalcLateFees(idx) { const inst = this.tempCuadro[idx]; const fPago = new Date(document.getElementById('inst-fecha-pago').value); const fVto = new Date(inst.vencimiento); if (fPago > fVto) { const diff = Math.ceil((fPago - fVto) / (1000 * 60 * 60 * 24)); document.getElementById('inst-late-fees').value = (diff * 0.75).toFixed(2); } else document.getElementById('inst-late-fees').value = 0; },
+  confirmInstallmentPayment(idx) { const inst = this.tempCuadro[idx]; inst.pagado = document.getElementById('inst-pagado-toggle').checked; inst.fecha_pago_real = document.getElementById('inst-fecha-pago').value; inst.gastos_demora = parseFloat(document.getElementById('inst-late-fees').value || 0); inst.importe_real_pagado = parseFloat(document.getElementById('inst-amount-paid').value || 0); document.querySelector('.h-modal-overlay[style*="z-index: 11000"]').remove(); this.refreshAmortTable(); },
+  openPartialCapitalAmortModal(loanId) {
+    const f = this.currentSubFinancing; const capitalPendiente = parseFloat(f.capital_pendiente || f.capital);
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide'; overlay.style.zIndex = '11000';
+    overlay.innerHTML = `<div class="h-modal shadow-lg" style="width: 550px"><div class="h-modal-header bg-warning text-dark"><h5 class="m-0 fw-black text-uppercase">AMORTIZACIÓN DE CAPITAL</h5></div><div class="h-modal-body bg-light"><div class="p-4 rounded-4 shadow-sm block-dark mb-3 text-center"><label class="h-label-refined text-white-50">CAPITAL VIVO ACTUAL</label><h2 class="fw-black text-brand m-0">${capitalPendiente.toLocaleString()} €</h2></div><div class="unified-block block-light"><label class="h-label-refined">CANTIDAD A AMORTIZAR (€)</label><input type="number" step="0.01" id="am-cantidad" class="form-control h-form-control fw-black text-brand text-center fs-4" value="0.00" oninput="FinanciacionModule.recalcAmortFees()"><label class="h-label-refined mt-3">COMISIÓN (${f.gastos_amort_parcial || 0}%)</label><input type="number" id="am-gastos" class="form-control h-form-control bg-white text-danger fw-bold" readonly value="0.00"></div></div><div class="h-modal-footer"><button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button><button id="btn-exec-amort-cap" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="FinanciacionModule.executePartialAmortization()">EJECUTAR</button></div></div>`;
+    document.body.appendChild(overlay);
+  },
+  recalcAmortFees() { const cant = parseFloat(document.getElementById('am-cantidad').value || 0); const perc = parseFloat(this.currentSubFinancing.gastos_amort_parcial || 0); document.getElementById('am-gastos').value = (cant * (perc / 100)).toFixed(2); },
+  async executePartialAmortization() { const cant = parseFloat(document.getElementById('am-cantidad').value || 0); if (cant <= 0) return; if (await HandooApp.ui.confirm("¿AMORTIZAR?", `Se restarán ${cant}€ del capital.`)) { const currentCap = parseFloat(document.getElementById('f-capital').value || 0); document.getElementById('f-capital').value = (currentCap - cant).toFixed(2); this.calculateAmortization(); document.querySelector('.h-modal-overlay[style*="z-index: 11000"]').remove(); } },
+  async executeSaveFinancing() { 
+    if (this.tempCuadro.length === 0) return HandooApp.ui.showToast("Calcule el cuadro", "error"); 
+    
+    const entidad = document.getElementById('f-entidad-custom').value;
+    if (!entidad) return HandooApp.ui.showToast("Debe indicar la entidad concedente", "error");
+
+    const payload = { 
+      id: this.currentFinancingId || 'new', 
+      entidad: entidad,
+      poliza: document.getElementById('f-poliza').value, 
+      capital: parseFloat(document.getElementById('f-capital').value).toFixed(2), 
+      num_mensualidades: document.getElementById('f-plazo').value, 
+      interes: document.getElementById('f-interes').value, 
+      tipo_amortizacion: document.getElementById('f-tipo-amort').value, 
+      carencia: document.getElementById('f-has-carencia').value, 
+      carencia_meses: document.getElementById('f-meses-carencia').value, 
+      gastos_apertura: document.getElementById('f-apertura').value, 
+      gastos_amort_parcial: document.getElementById('f-amort-parcial').value, 
+      gastos_amort_total: document.getElementById('f-amort-total').value, 
+      fecha_firma: document.getElementById('f-firma').value, 
+      fecha_primera: document.getElementById('f-primera').value, 
+      cuadro_amortizacion: this.tempCuadro 
+    }; 
+    
+    HandooApp.ui.setLoading('btn-save-fin', true); 
+    const res = await HandooApp.api('treasury.save_financing', payload); 
+    if(res.ok) { 
+      document.getElementById('financing-modal-main').remove(); 
+      await TreasuryView.load(); 
+    } else HandooApp.ui.setLoading('btn-save-fin', false); 
+  },
+  async executeDeleteFinancing(id) { if (await HandooApp.ui.confirm("¿ELIMINAR PRÉSTAMO?")) { await HandooApp.api('treasury.delete_financing', { id }); document.getElementById('financing-modal-main').remove(); await TreasuryView.load(); } },
+  async executeReclassification() { if(await HandooApp.ui.confirm("¿RECLASIFICAR?", "Moverá la deuda de los próximos 12 meses a C/P.")) { const res = await HandooApp.api('treasury.reclassify_debt'); if(res.ok) { await TreasuryView.load(); } } }
+};
+
+// --- MÓDULO DE CONCILIACIÓN ---
+const ConciliacionModule = {
+  init() {
+    HandooEvents.on('bankSelected', (id) => this.loadBankMovements(id));
+  },
+  async loadBankMovements(id) {
+    HandooApp.ui.showToast("Recuperando extracto...", "info");
+    const res = await HandooApp.api('treasury.get_bank_movements', { bank_account_id: id });
+    if(res.ok) { TreasuryView.bankMovements = res.data; TreasuryView.renderContent(); }
+  },
+  async executeBulkAutonomousMatch() {
+    if (await HandooApp.ui.confirm(`¿VALIDAR ${TreasuryView.autonomousMatches.length} CONCILIACIONES?`)) {
+       const bank = TreasuryView.getOperativeBanks().find(b => String(b.id) === String(TreasuryView.selectedBankAccountId));
+       const bankName = TreasuryView.selectedBankAccountId === 'INTERNAL_CAJA' ? 'CAJA CENTRAL' : (bank?.nombre || 'BANCO');
+       for (const match of TreasuryView.autonomousMatches) { await HandooApp.api('treasury.match_reconciliation', { bank_movement_id: match.bank_mov_id, target_ids: [match.effect_id], bank_name: bankName }); }
+       TreasuryView.autonomousMatches = []; await TreasuryView.load();
+    }
+  },
+  async executeUndoMatch(movId) {
+    if(await HandooApp.ui.confirm("¿REVERTIR CUADRE?")) {
+       const res = await HandooApp.api('treasury.undo_match', { bank_movement_id: movId });
+       if(res.ok) { await TreasuryView.load(); }
+    }
+  },
+
+  openMatchingModal(movId) {
+    const mov = TreasuryView.bankMovements.find(m => String(m.id) === String(movId));
+    if(!mov) return;
+    const pending = TreasuryView.effects.filter(e => e.status === 'PENDIENTE');
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 700px">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">CONCILIACIÓN DE MOVIMIENTO</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-dark mt-0 mb-3">
+               <div class="row align-items-center">
+                  <div class="col-md-8"><h6 class="h-label-refined text-white-50">CONCEPTO BANCARIO</h6><div class="fw-bold text-white">${mov.concepto}</div></div>
+                  <div class="col-md-4 text-end"><h6 class="h-label-refined text-white-50">IMPORTE</h6><div class="fw-black text-brand fs-4">${parseFloat(mov.importe).toLocaleString()} €</div></div>
+               </div>
+            </div>
+            <div class="wiz-section-header">SELECCIONE DOCUMENTOS A VINCULAR</div>
+            <div class="card bg-white overflow-auto" style="max-height: 400px">
+               <table class="table table-hover table-erp m-0">
+                  <tbody>
+                     ${pending.map(e => `
+                        <tr onclick="ConciliacionModule.toggleMatchSelection(this, '${e.id}')" style="cursor:pointer">
+                           <td width="30"><i class="bi bi-circle text-muted"></i></td>
+                           <td><div class="fw-bold text-uppercase">${escapeHTML(e.client_name || e.entity_name)}</div><div class="small text-muted">${e.invoice_id || e.id}</div></td>
+                           <td class="text-end fw-black">${parseFloat(e.importe).toLocaleString()} €</td>
+                        </tr>`).join('') || '<tr><td class="p-4 text-center opacity-25">SIN DOCUMENTOS PENDIENTES</td></tr>'}
+                  </tbody>
+               </table>
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-sm btn-outline-brand fw-black" onclick="document.getElementById('matching-area').insertAdjacentHTML('afterend', ConciliacionModule_Extensions.renderQuickExpenseForm('${movId}'))">+ CREAR GASTO Y VINCULAR</button>
+            <button id="btn-exec-match" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="ConciliacionModule.executeMatch('${movId}')">CONCILIAR SELECCIÓN ✅</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    this.selectedMatchIds = new Set();
+  },
+
+  toggleMatchSelection(tr, id) {
+    const icon = tr.querySelector('i');
+    if(this.selectedMatchIds.has(id)) {
+       this.selectedMatchIds.delete(id);
+       icon.className = 'bi bi-circle text-muted';
+       tr.classList.remove('row-selected');
+    } else {
+       this.selectedMatchIds.add(id);
+       icon.className = 'bi bi-check-circle-fill text-brand';
+       tr.classList.add('row-selected');
+    }
+  },
+
+  async executeMatch(movId) {
+    if(this.selectedMatchIds.size === 0) return HandooApp.ui.showToast("Seleccione al menos un documento", "error");
+    const bank = TreasuryView.getOperativeBanks().find(b => String(b.id) === String(TreasuryView.selectedBankAccountId));
+    const bankName = TreasuryView.selectedBankAccountId === 'INTERNAL_CAJA' ? 'CAJA CENTRAL' : (bank?.nombre || 'BANCO');
+    HandooApp.ui.setLoading('btn-exec-match', true);
+    const res = await HandooApp.api('treasury.match_reconciliation', { bank_movement_id: movId, target_ids: Array.from(this.selectedMatchIds), bank_name: bankName });
+    if(res.ok) { document.querySelector('.h-modal-overlay').remove(); await TreasuryView.load(); }
+  },
+
+  renderQuickExpenseFormInline: function(movId) {
+    const row = document.getElementById(`mov-row-${movId}`);
+    if (!row) return;
+    
+    // Check if already open
+    if (document.getElementById(`quick-form-${movId}`)) {
+      document.getElementById(`quick-form-${movId}`).remove();
+      return;
+    }
+    
+    const formHtml = ConciliacionModule_Extensions.renderQuickExpenseForm(movId);
+    const newRow = document.createElement('tr');
+    newRow.id = `quick-form-${movId}`;
+    newRow.innerHTML = `<td colspan="4" class="p-0">${formHtml}</td>`;
+    
+    row.after(newRow);
+  }
+};
+
+const ConciliacionModule_Extensions = {
+  renderQuickExpenseForm: function(movId) {
+    const mov = TreasuryView.bankMovements.find(m => String(m.id) === String(movId));
+    const vendors = TreasuryView.settings?.masters?.vendors || [];
+    const pgc = TreasuryView.settings?.masters?.pgc_accounts || [];
+
+    return `
+      <div id="quick-expense-box-${movId}" class="unified-block block-dark animate-slide border-start border-4 border-brand mt-3">
+        <h6 class="fw-black text-uppercase mb-3" style="font-size: 10px; color: var(--brand) !important;">
+          <i class="bi bi-plus-circle-dotted me-2"></i> Alta de Gasto Instantánea
+        </h6>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <label class="h-label-refined text-white-50">Proveedor / Acreedor</label>
+            <input type="text" id="qe-vendor-search-${movId}" class="form-control h-form-control fw-bold" list="qe-vendors-list-${movId}" placeholder="Buscar...">
+            <datalist id="qe-vendors-list-${movId}">
+              ${vendors.map(v => `<option value="${v.nombre_fiscal}" data-id="${v.id}">`).join('')}
+            </datalist>
+          </div>
+          <div class="col-md-6">
+            <label class="h-label-refined text-white-50">Categoría PGC</label>
+            <select id="qe-pgc-${movId}" class="form-select h-form-control fw-bold">
+              ${pgc.map(p => `<option value="${p.cuenta}">${p.cuenta} - ${p.nombre}</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-md-12 mt-2">
+            <label class="h-label-refined text-white-50">Concepto del Gasto</label>
+            <input type="text" id="qe-concept-${movId}" class="form-control h-form-control fw-bold" value="${mov.concepto}">
+          </div>
+          <div class="col-md-12 mt-2">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="qe-remember-${movId}">
+              <label class="form-check-label text-white-50" for="qe-remember-${movId}">Recordar para el futuro (Smart Pattern)</label>
+            </div>
+          </div>
+          <div class="col-md-6 mt-2">
+            <label class="h-label-refined text-white-50">Importe Autodetectado</label>
+            <div class="fw-black fs-5 text-white">${Math.abs(mov.importe).toLocaleString()} €</div>
+          </div>
+          <div class="col-md-6 mt-2 d-flex align-items-end">
+            <button id="btn-exec-quick-expense-${movId}" class="btn btn-brand-titanium w-100 fw-black shadow" 
+                    onclick="ConciliacionModule_Extensions.executeQuickExpense('${movId}')">
+              CONTABILIZAR Y VINCULAR ✅
+            </button>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  executeQuickExpense: async function(movId) {
+    const btn = document.getElementById(`btn-exec-quick-expense-${movId}`);
+    btn.disabled = true; // Prohibición de duplicados
+    
+    const vendorName = document.getElementById(`qe-vendor-search-${movId}`).value;
+    const vendor = (TreasuryView.settings?.masters?.vendors || []).find(v => v.nombre_fiscal === vendorName);
+    
+    const payload = {
+      bank_movement_id: movId,
+      vendor_id: vendor ? vendor.id : 'VARIOUS',
+      pgc_account: document.getElementById(`qe-pgc-${movId}`).value,
+      concept: document.getElementById(`qe-concept-${movId}`).value,
+      remember: document.getElementById(`qe-remember-${movId}`).checked
+    };
+
+    const res = await HandooApp.api('treasury.impute_movement_as_expense', payload);
+    if(res.ok) {
+      // Remove the inline form row
+      const formRow = document.getElementById(`quick-form-${movId}`);
+      if (formRow) formRow.remove();
+      
+      await TreasuryView.load();
+      HandooApp.ui.showToast("Gasto creado y conciliado automáticamente");
+    } else {
+      btn.disabled = false;
+      HandooApp.ui.showToast(res.msg, "error");
+    }
+  }
+};
+
+/**
+ * 4. VISTA DE TESORERÍA (UI ROUTER)
+ */
+window.TreasuryView = {
+  subTab: 'caja_operativa',
+  effects: [], remittances: [], bankMovements: [], financing: [], creditLines: [], autonomousMatches: [],
+  settings: null, filterStatus: 'ALL', remittanceFilterStatus: 'PENDING', selectedBankAccountId: null,
+  ledgerFilters: { cuenta: '570000001', start: '', end: '' },
+  
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">MI DINERO</h6><h2 class="fw-black m-0 text-uppercase">Cobros, Pagos y Bancos</h2></div>
+         <div class="d-flex gap-2">
+            <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="TreasuryView.openInternalTransferModal()"><i class="bi bi-arrow-left-right me-2"></i> TRASPASO INTERNO</button>
+            <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="TreasuryView.load()"><i class="bi bi-arrow-clockwise me-2"></i> RECARGAR</button>
+         </div>
+      </div>
+      <div class="p-5">
+         <div class="t-shell">
+            <aside class="p-4 border-end" id="treasury-sidebar" style="width: 280px; background: #f8fafc; overflow-y: auto;"></aside>
+            <main class="flex-grow-1 p-0 overflow-auto" id="treasury-sub-content">
+               <div id="treasury-content-main" class="p-5 animate-slide">
+                  <div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="mt-3 small fw-bold text-muted">EXTRAYENDO LIBRO DIARIO...</p></div>
+               </div>
+            </main>
+         </div>
+      </div>`;
+    
+    LedgerModule.init();
+    CobrosModule.init();
+    RemesasModule.init();
+    FinanciacionModule.init();
+    ConciliacionModule.init();
+    TripleCajaModule.init();
+    
+    await this.load();
+  },
+
+  load: async function() {
+    const [resE, resR, resS, resF, resL] = await Promise.all([
+      HandooApp.api('treasury.list_all_effects'),
+      HandooApp.api('treasury.manage_remittance', { action: 'LIST' }),
+      HandooApp.api('admin.get_settings'),
+      HandooApp.api('treasury.list_financing'),
+      HandooApp.api('treasury.list_credit_lines')
+    ]);
+    this.effects = resE.ok ? resE.data : [];
+    this.remittances = resR.ok ? resR.data : [];
+    this.settings = resS.ok ? resS.data : {};
+    this.financing = resF.ok ? resF.data : [];
+    this.creditLines = resL.ok ? resL.data : [];
+
+    if(!this.ledgerFilters.start) {
+        const d = new Date(); d.setMonth(d.getMonth() - 1);
+        this.ledgerFilters.start = d.toISOString().split('T')[0];
+        this.ledgerFilters.end = new Date().toISOString().split('T')[0];
+    }
+
+    this.renderSidebar();
+    this.renderContent();
+  },
+
+  renderSidebar() {
+    const active = this.settings?.active_modules || [];
+    const menuGroups = [
+      { title: 'CONTROL OPERATIVO', items: [
+          { id: 'caja_operativa', label: 'Control de Triple Caja', icon: 'bi-safe2' }
+      ]},
+      { title: 'GESTIÓN DE ACTIVOS', items: [
+          { id: 'efectos', label: 'Documentos de Cobro', icon: 'bi-wallet2', license: 'FEAT_DOC_COBRO' },
+          { id: 'remesas', label: 'Lotes SEPA (Entrada)', icon: 'bi-collection-play', license: 'FEAT_SEPA_COBRO' },
+          { id: 'calendar_cobro', label: 'Calendario de Cobros', icon: 'bi-calendar-check', license: 'FEAT_CALENDAR_COBRO' }
+      ]},
+      { title: 'GESTIÓN DE PASIVOS', items: [
+          { id: 'pagos', label: 'Obligaciones de Pago', icon: 'bi-receipt', license: 'FEAT_DOC_PAGO' },
+          { id: 'remesas_pago', label: 'Lotes SEPA (Salida)', icon: 'bi-send-check', license: 'FEAT_SEPA_PAGO' },
+          { id: 'calendar_pago', label: 'Calendario de Pagos', icon: 'bi-calendar-event', license: 'FEAT_CALENDAR_PAGO' }
+      ]},
+      { title: 'FINANCIACIÓN', items: [
+          { id: 'prestamos', label: 'Ingeniería de Pasivo', icon: 'bi-bank', license: 'FEAT_FINANCIACION' },
+          { id: 'circulante', label: 'Líneas de Crédito', icon: 'bi-arrow-repeat', license: 'FEAT_CIRCULANTE' }
+      ]},
+      { title: 'AUDITORÍA Y CONTROL', items: [
+          { id: 'conciliacion', label: 'Conciliación Bancaria', icon: 'bi-arrow-left-right', license: 'FEAT_CONCILIACION' },
+          { id: 'movimientos', label: 'Movimientos Bancarios', icon: 'bi-journal-text', license: 'FEAT_LIBRO_MAYOR' },
+          { id: 'riesgo', label: 'Análisis de Riesgo', icon: 'bi-graph-up-arrow', license: 'FEAT_ANALISIS_RIESGO' }
+      ]}
+    ];
+    const nav = document.getElementById('treasury-sidebar');
+    nav.innerHTML = menuGroups.map(group => {
+        const items = group.items.filter(it => !it.license || active.includes(it.license));
+        if (!items.length) return '';
+        return `<div class="mb-4"><h6 class="h-label-refined mb-3" style="font-size:9px; opacity:0.5; padding-left:15px">${group.title}</h6>
+        ${items.map(it => `<button class="nav-link-treasury ${this.subTab===it.id?'active':''}" onclick="TreasuryView.setSubTab('${it.id}')"><i class="bi ${it.icon}"></i> ${it.label}</button>`).join('')}</div>`;
+    }).join('');
+  },
+
+  setSubTab(tab) { this.subTab = tab; window.selectedIds.clear(); this.renderSidebar(); this.renderContent(); },
+
+  renderContent() {
+    const container = document.getElementById('treasury-content-main');
+    if (!container) return;
+    if (this.subTab === 'caja_operativa') this.renderCajaOperativa(container);
+    else if (this.subTab === 'efectos') this.renderEfectos(container, 'INBOUND');
+    else if (this.subTab === 'pagos') this.renderEfectos(container, 'OUTBOUND');
+    else if (this.subTab === 'remesas') this.renderRemesas(container, 'INBOUND');
+    else if (this.subTab === 'remesas_pago') this.renderRemesas(container, 'OUTBOUND');
+    else if (this.subTab === 'calendar_cobro') this.renderCalendar(container, 'INBOUND');
+    else if (this.subTab === 'calendar_pago') this.renderCalendar(container, 'OUTBOUND');
+    else if (this.subTab === 'prestamos') this.renderPrestamos(container);
+    else if (this.subTab === 'circulante') this.renderCirculante(container);
+    else if (this.subTab === 'conciliacion') this.renderConciliacion(container);
+    else if (this.subTab === 'movimientos') this.renderHistorialMovimientos(container);
+    else if (this.subTab === 'riesgo') this.renderRiskDashboard(container);
+    else container.innerHTML = `<div class="p-5 text-center opacity-50">MÓDULO ${this.subTab.toUpperCase()} CARGADO.</div>`;
+  },
+
+  renderCajaOperativa(container) {
+    container.innerHTML = `
+      <div id="triple-caja-area" class="mb-4"></div>
+      <div class="wiz-section-header mt-5">ÚLTIMOS MOVIMIENTOS DE EFECTIVO</div>
+      <div id="caja-historial-area" class="mt-3">
+        <div class="text-center p-5 opacity-25 fw-black">CARGANDO HISTORIAL...</div>
+      </div>
+    `;
+    TripleCajaModule.renderDashboard();
+    this.renderCajaHistorial();
+  },
+
+  async renderCajaHistorial() {
+    const res = await HandooApp.api('treasury.get_ledger', { cuenta: '570000001', start: '1970-01-01', end: '9999-12-31' });
+    const area = document.getElementById('caja-historial-area');
+    if(!area) return;
+    if(res.ok) {
+       const movements = res.data.movements.slice(0, 10);
+       area.innerHTML = `
+         <table class="table table-hover table-erp bg-white shadow-sm rounded-4">
+            <thead><tr><th>FECHA</th><th>CONCEPTO</th><th class="text-end">IMPORTE</th></tr></thead>
+            <tbody>
+               ${movements.map(m => `<tr><td>${new Date(m.fecha).toLocaleDateString()}</td><td>${m.concepto}</td><td class="text-end fw-black ${m.importe < 0 ? 'text-danger' : 'text-success'}">${m.importe.toLocaleString()} €</td></tr>`).join('')}
+            </tbody>
+         </table>`;
+    } else {
+       area.innerHTML = `<div class="p-5 text-center text-danger">Error cargando historial</div>`;
+    }
+  },
+
+
+  renderEfectos(container, direction) {
+    const active = this.settings?.active_modules || [];
+    const hasRemesas = active.includes(direction === 'INBOUND' ? 'FEAT_SEPA_COBRO' : 'FEAT_SEPA_PAGO');
+    const hasBatch = active.includes(direction === 'INBOUND' ? 'FEAT_BATCH_COBRO' : 'FEAT_BATCH_PAGO');
+    
+    const filtered = this.effects.filter(e => {
+      const matchDir = (e.direction || 'INBOUND') === direction;
+      const matchStatus = this.filterStatus === 'ALL' || e.status === this.filterStatus;
+      return matchDir && matchStatus;
+    });
+
+    container.innerHTML = `
+      <div id="batch-bar-area"></div>
+      <div class="unified-block block-dark mt-0 mb-4">
+         <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+               <i class="bi ${direction==='INBOUND'?'bi-wallet2':'bi-receipt'} fs-3 text-brand me-3"></i>
+               <div>
+                  <h6 class="fw-black text-uppercase m-0">${direction==='INBOUND'?'Auditoría de Cobros':'Gestión de Pagos a Proveedores'}</h6>
+                   <div class="d-flex gap-3 mt-2 bg-white/10 p-2 rounded-3" style="width: fit-content;">
+                     <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input" type="radio" name="eff-filter" id="f-pend" value="PENDIENTE" ${this.filterStatus==='PENDIENTE'?'checked':''}>
+                        <label class="form-check-label x-small fw-black text-white" for="f-pend" style="font-size: 9px; cursor:pointer">PENDIENTES</label>
+                     </div>
+                     ${hasRemesas ? `
+                     <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input" type="radio" name="eff-filter" id="f-rem" value="REMESADO" ${this.filterStatus==='REMESADO'?'checked':''}>
+                        <label class="form-check-label x-small fw-black text-white" for="f-rem" style="font-size: 9px; cursor:pointer">REMESADOS</label>
+                     </div>
+                     ` : ''}
+                     <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input" type="radio" name="eff-filter" id="f-settled" value="${direction==='INBOUND'?'COBRADO':'PAGADO'}" ${this.filterStatus===(direction==='INBOUND'?'COBRADO':'PAGADO')?'checked':''}>
+                        <label class="form-check-label x-small fw-black text-white" for="f-settled" style="font-size: 9px; cursor:pointer">${hasRemesas ? 'LIQUIDADOS' : (direction==='INBOUND'?'COBRADOS':'PAGADOS')}</label>
+                     </div>
+                     ${hasRemesas ? `
+                     <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input" type="radio" name="eff-filter" id="f-ret" value="DEVUELTO" ${this.filterStatus==='DEVUELTO'?'checked':''}>
+                        <label class="form-check-label x-small fw-black text-white" for="f-ret" style="font-size: 9px; cursor:pointer">DEVUELTOS</label>
+                     </div>
+                     ` : ''}
+                     <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input" type="radio" name="eff-filter" id="f-all" value="ALL" ${this.filterStatus==='ALL'?'checked':''}>
+                        <label class="form-check-label x-small fw-black text-white" for="f-all" style="font-size: 9px; cursor:pointer">VER TODO</label>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <button class="btn btn-brand-titanium fw-black px-4 shadow" onclick="TreasuryView.openManualEffectModal('${direction}')">+ REGISTRO MANUAL</button>
+         </div>
+      </div>
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+         <table class="table table-hover m-0 table-erp">
+            <thead class="bg-light">
+               <tr>
+                  ${hasBatch ? '<th width="40" class="ps-4"><input type="checkbox" id="check-all-eff"></th>' : '<th width="20" class="ps-4"></th>'}
+                  <th>REFERENCIA</th>
+                  <th>VENCIMIENTO</th>
+                  <th>TITULAR</th>
+                  <th class="text-end">IMPORTE</th>
+                  <th class="text-center">ESTADO</th>
+               </tr>
+            </thead>
+            <tbody id="tbody-eff">
+               ${filtered.map(e => `
+                  <tr data-id="${e.id}" class="${window.selectedIds.has(String(e.id))?'row-selected':''}" style="cursor:pointer">
+                     <td class="ps-4">${hasBatch ? `<input type="checkbox" class="eff-check" ${window.selectedIds.has(String(e.id))?'checked':''}>` : ''}</td>
+                     <td class="font-monospace fw-bold text-dark">${e.invoice_id || e.id}</td>
+                     <td class="small text-muted fw-bold">${new Date(e.vencimiento).toLocaleDateString()}</td>
+                     <td class="fw-black text-uppercase text-dark">${escapeHTML(e.client_name || e.entity_name || e.beneficiario)}</td>
+                     <td class="text-end fw-black">${parseFloat(e.importe).toLocaleString()} €</td>
+                     <td class="text-center"><span class="badge-status badge-${e.status.toLowerCase()}">${e.status}</span></td>
+                  </tr>`).join('') || '<tr><td colspan="6" class="p-5 text-center opacity-25">SIN REGISTROS</td></tr>'}
+            </tbody>
+         </table>
+      </div>`;
+    
+    document.querySelectorAll('input[name="eff-filter"]').forEach(radio => {
+      radio.onchange = (e) => { this.filterStatus = e.target.value; this.renderContent(); };
+    });
+
+    this.setupTableDelegation('tbody-eff', 'check-all-eff', '.eff-check');
+    if (hasBatch) {
+      HandooEvents.emit('selectionChanged');
+    }
+  },
+
+  setupTableDelegation(tbodyId, masterCheckId, rowCheckClass) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+
+    tbody.addEventListener('click', (e) => {
+       const tr = e.target.closest('tr');
+       if (!tr || !tr.dataset.id) return;
+       const id = tr.dataset.id;
+
+       if (e.target.type === 'checkbox') {
+          if (e.target.checked) window.selectedIds.add(id); else window.selectedIds.delete(id);
+          tr.classList.toggle('row-selected', e.target.checked);
+          HandooEvents.emit('selectionChanged');
+          return;
+       }
+       HandooEvents.emit('openAudit', id);
+    });
+
+    const master = document.getElementById(masterCheckId);
+    if (master) {
+      master.onchange = (e) => {
+        tbody.querySelectorAll(rowCheckClass).forEach(c => {
+           const tr = c.closest('tr'); const id = tr.dataset.id;
+           c.checked = e.target.checked;
+           tr.classList.toggle('row-selected', e.target.checked);
+           if (e.target.checked) window.selectedIds.add(id); else window.selectedIds.delete(id);
+        });
+        HandooEvents.emit('selectionChanged');
+      };
+    }
+  },
+
+  renderRemesas(container, direction) {
+    const filteredRem = this.remittances.filter(r => (r.direction || 'INBOUND') === direction && (this.remittanceFilterStatus === 'ALL' || r.status === this.remittanceFilterStatus));
+    container.innerHTML = `
+      <div class="unified-block block-dark mt-0 mb-4 d-flex justify-content-between align-items-center">
+         <div class="d-flex align-items-center"><i class="bi ${direction==='INBOUND'?'bi-collection-play':'bi-send-fill'} fs-2 text-brand me-3"></i><h6 class="fw-black text-uppercase m-0">Lotes SEPA de ${direction==='INBOUND'?'Cobro':'Pago'}</h6></div>
+         <button class="btn btn-brand-titanium fw-black px-4 shadow" onclick="RemesasModule.openRemittanceWizard(null, false, '${direction}')">+ NUEVO LOTE</button>
+      </div>
+      <div class="row g-3">
+         ${filteredRem.map(r => `
+            <div class="col-md-6">
+               <div class="compact-card" onclick="RemesasModule.openRemittanceWizard('${r.id}')">
+                  <div class="compact-body">
+                     <div><div class="fw-black text-uppercase">${r.id} | ${r.banco_destino}</div><div class="small text-muted">${r.norma || 'SEPA'} | ${r.count} docs</div></div>
+                     <div class="text-end"><div class="fw-black text-brand fs-5">${parseFloat(r.total).toLocaleString()} €</div><span class="badge-status bg-dark text-white">${r.status}</span></div>
+                  </div>
+               </div>
+            </div>`).join('') || '<div class="p-5 text-center opacity-25 fw-bold w-100">SIN REMESAS ACTIVAS</div>'}
+      </div>`;
+  },
+
+  renderPrestamos(container) {
+    container.innerHTML = `
+      <div class="unified-block block-dark mt-0 mb-4 d-flex justify-content-between align-items-center">
+         <div class="d-flex align-items-center"><i class="bi bi-bank fs-2 text-warning me-3"></i><h6 class="fw-black text-uppercase m-0">Ingeniería de Pasivo</h6></div>
+         <div class="d-flex gap-2">
+            <button class="btn btn-outline-light fw-bold px-3 border-0" onclick="FinanciacionModule.executeReclassification()">RECLASIFICAR 12M</button>
+            <button class="btn btn-warning fw-black px-4 shadow text-dark" onclick="FinanciacionModule.openFinancingModal()">+ NUEVA PÓLIZA</button>
+         </div>
+      </div>
+      <div class="row g-3">
+         ${this.financing.map(f => `
+            <div class="col-md-12">
+               <div class="compact-card" onclick="FinanciacionModule.openFinancingModal('${f.id}')">
+                  <div class="compact-body">
+                     <div><div class="fw-black text-uppercase">${f.entidad} | ${f.poliza}</div><div class="small text-muted">${f.interes}% TIN | Vto: ${new Date(f.fecha_inicio || f.inicio).toLocaleDateString()}</div></div>
+                     <div class="text-end"><div class="h-label-refined mb-0">CAPITAL VIVO</div><div class="fw-black text-brand fs-4">${parseFloat(f.capital_pendiente || f.capital || 0).toLocaleString('es-ES', {minimumFractionDigits: 2})} €</div></div>
+                  </div>
+               </div>
+            </div>`).join('') || '<div class="p-5 text-center opacity-25 fw-bold w-100">SIN OPERACIONES ACTIVAS</div>'}
+      </div>`;
+  },
+
+  renderCirculante(container) {
+     container.innerHTML = `
+      <div class="unified-block block-dark mt-0 mb-4 d-flex justify-content-between align-items-center">
+         <div class="d-flex align-items-center"><i class="bi bi-arrow-repeat fs-2 text-warning me-3"></i><h6 class="fw-black text-uppercase m-0">Líneas de Circulante</h6></div>
+         <button class="btn btn-warning fw-black px-4 shadow text-dark" onclick="TreasuryView.openCreditLineModal()">+ NUEVA LÍNEA</button>
+      </div>
+      <div class="mt-4 animate-slide">
+         ${this.creditLines.map(l => {
+            const aprobado = parseFloat(l.capital_aprobado || l.limite || 0);
+            const dispuesto = parseFloat(l.dispuesto || 0);
+            const disponible = aprobado - dispuesto;
+            const usedPerc = aprobado > 0 ? (dispuesto / aprobado) * 100 : 0;
+            return `
+            <div class="card p-4 border rounded-4 shadow-sm mb-3" onclick="TreasuryView.openCreditLineModal('${l.id}')" style="cursor:pointer">
+               <div class="d-flex justify-content-between align-items-start mb-3">
+                  <div><div class="fw-black text-uppercase">${l.entidad}</div><div class="small text-muted font-monospace">Póliza: ${l.poliza}</div></div>
+                  <div class="text-end"><div class="h-label">NETO DISPONIBLE</div><div class="fw-black text-success fs-4">${disponible.toLocaleString()} €</div></div>
+               </div>
+               <div class="progress" style="height: 10px; border-radius: 5px;"><div class="progress-bar ${usedPerc > 80 ? 'bg-danger' : 'bg-dark'}" style="width: ${usedPerc}%"></div></div>
+            </div>`;
+         }).join('') || '<div class="p-5 text-center opacity-25 fw-black w-100">SIN LÍNEAS DE CRÉDITO</div>'}
+      </div>`;
+  },
+
+  renderConciliacion(container) {
+    const active = this.settings?.active_modules || [];
+    const banks = this.getOperativeBanks();
+    container.innerHTML = `
+      <div class="unified-block block-dark mt-0">
+         <div class="row align-items-center">
+            <div class="col-md-6"><h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Cámara de Compensación</h6>
+               <select class="form-select h-form-control mt-3" onchange="ConciliacionModule.loadBankMovements(this.value)">
+                  <option value="">-- SELECCIONE CUENTA --</option>
+                  ${active.includes('FEAT_CONCILIACION_CASH') ? `<option value="INTERNAL_CAJA">📦 CAJA CENTRAL (570)</option>` : ''}
+                  ${active.includes('FEAT_CONCILIACION') ? banks.map(b => `<option value="${b.id}" ${this.selectedBankAccountId===b.id?'selected':''}>🏦 ${b.nombre}</option>`).join('') : ''}
+                  ${active.includes('FEAT_CONCILIACION_STRIPE') ? `<option value="STRIPE_CLOUD">💳 PASARELA STRIPE</option>` : ''}
+               </select>
+            </div>
+            <div class="col-md-6 d-flex justify-content-end gap-2 align-items-center mt-3">
+               <button class="btn btn-outline-light border-secondary text-white fw-bold px-3 py-2" onclick="ConciliacionModule.executeBulkAutonomousMatch()">VALIDAR AUTOPILOT</button>
+               <button class="btn btn-brand-titanium px-4 fw-black shadow" onclick="TreasuryView.openImportModal()">IMPORTAR CSV</button>
+            </div>
+         </div>
+      </div>
+      <div class="row mt-4 g-4">
+         <div class="col-md-6"><div class="wiz-section-header">EXTRACTO / MOVIMIENTOS</div><div class="card bg-white con-scroll-area"><table class="table table-hover table-erp m-0"><tbody>${this.bankMovements.map(m => `
+                  <tr id="mov-row-${m.id}">
+                    <td class="small font-monospace">${new Date(m.fecha).toLocaleDateString()}</td>
+                    <td class="fw-bold small">${m.concepto}</td>
+                    <td class="text-end fw-black">${parseFloat(m.importe).toLocaleString()}€</td>
+                    <td class="text-end pe-3">
+                      ${!m.matched ? `
+                        <button class="btn btn-link text-brand p-0 me-2" onclick="ConciliacionModule.renderQuickExpenseFormInline('${m.id}')">
+                          <i class="bi bi-tag"></i>
+                        </button>
+                      ` : ''}
+                      <button class="btn btn-link text-dark p-0" onclick="ConciliacionModule.openMatchingModal('${m.id}')">
+                        <i class="bi bi-crosshair"></i>
+                      </button>
+                    </td>
+                  </tr>
+                `).join('') || '<tr><td class="p-5 text-center opacity-25">SIN DATOS</td></tr>'}</tbody></table></div></div>
+         <div class="col-md-6"><div class="wiz-section-header">CARTERA PENDIENTE</div><div class="card bg-white con-scroll-area"><table class="table table-hover table-erp m-0"><tbody>${this.effects.filter(e => e.status === 'PENDIENTE').map(e => `<tr><td>${new Date(e.vencimiento).toLocaleDateString()}</td><td class="fw-bold text-uppercase">${escapeHTML(e.client_name || e.entity_name)}</td><td class="text-end fw-black">${parseFloat(e.importe).toLocaleString()}€</td></tr>`).join('') || '<tr><td class="p-5 text-center opacity-25">LIMPIO</td></tr>'}</tbody></table></div></div>
+      </div>`;
+  },
+
+  renderHistorialMovimientos(container) {
+    const banks = this.getOperativeBanks();
+    container.innerHTML = `
+      <div class="unified-block block-dark mt-0">
+         <div class="row align-items-center mb-4">
+            <div class="col-md-1 text-center"><i class="bi bi-clock-history fs-2 text-brand"></i></div>
+            <div class="col-md-11 ps-4"><h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Extracto Bancario</h6><p class="small text-muted m-0">Seguimiento de entradas y salidas de dinero por periodo.</p></div>
+         </div>
+         <div class="row g-3">
+            <div class="col-md-4">
+               <label class="h-label-refined text-white-50">CUENTA / FUENTE DE FONDOS</label>
+               <select id="l-ledger-acc" class="form-select h-form-control fw-black" onchange="TreasuryView.ledgerFilters.cuenta=this.value; LedgerModule.fetchLedger()">
+                  <option value="570000001" ${this.ledgerFilters.cuenta==='570000001'?'selected':''}>📦 CAJA CENTRAL (570.000.001)</option>
+                  <optgroup label="CUENTAS BANCARIAS">
+                     ${banks.filter(b => !b.is_credit_line).map(b => `<option value="${b.ref_contable}" ${this.ledgerFilters.cuenta===b.ref_contable?'selected':''}>🏦 ${b.nombre} (${b.iban.slice(-4)})</option>`).join('')}
+                  </optgroup>
+               </select>
+            </div>
+            <div class="col-md-3">
+               <label class="h-label-refined text-white-50">FECHA INICIO</label>
+               <input type="date" id="l-ledger-start" class="form-control h-form-control fw-black" value="${this.ledgerFilters.start}" onchange="TreasuryView.ledgerFilters.start=this.value">
+            </div>
+            <div class="col-md-3">
+               <label class="h-label-refined text-white-50">FECHA FIN</label>
+               <input type="date" id="l-ledger-end" class="form-control h-form-control fw-black" value="${this.ledgerFilters.end}" onchange="TreasuryView.ledgerFilters.end=this.value">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+               <button class="btn btn-warning w-100 py-2 fw-black text-dark shadow" onclick="LedgerModule.fetchLedger()">QUERY</button>
+            </div>
+         </div>
+      </div>
+      <div id="ledger-results-area" class="mt-4">
+         <div class="text-center p-5 opacity-25 fw-black">EJECUTE UNA CONSULTA PARA VER LOS MOVIMIENTOS</div>
+      </div>`;
+  },
+
+  renderRiskDashboard(container) {
+    container.innerHTML = `
+      <div class="unified-block block-dark mt-0">
+         <h6 class="fw-black text-uppercase m-0 text-white">Análisis de Riesgo Proactivo</h6>
+         <p class="small text-muted mb-4">Detección de descubiertos y previsiones de liquidez.</p>
+         <div id="risk-chart-area" class="p-5 text-center opacity-50 fw-black">CARGANDO MOTOR ANALÍTICO GEMINI...</div>
+      </div>`;
+    this.fetchRiskData();
+  },
+
+  renderCalendar(container, direction) {
+    const filtered = this.effects
+      .filter(e => (e.direction || 'INBOUND') === direction && e.status === 'PENDIENTE')
+      .sort((a, b) => new Date(a.vencimiento) - new Date(b.vencimiento));
+    
+    container.innerHTML = `
+      <div class="unified-block block-dark mt-0 mb-4">
+         <div class="d-flex align-items-center"><i class="bi bi-calendar3 fs-3 text-brand me-3"></i><h6 class="fw-black text-uppercase m-0">Calendario de ${direction==='INBOUND'?'Cobros':'Pagos'} Previstos</h6></div>
+      </div>
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+         <table class="table table-hover m-0 table-erp">
+            <thead class="bg-light"><tr><th class="ps-4">FECHA</th><th>TITULAR</th><th>REFERENCIA</th><th class="text-end pe-4">IMPORTE</th></tr></thead>
+            <tbody>
+               ${filtered.map(e => `
+                  <tr onclick="CobrosModule.openOperationsSheet('${e.id}')" style="cursor:pointer">
+                     <td class="ps-4"><div class="fw-black text-dark" style="font-size:12px">${new Date(e.vencimiento).toLocaleDateString()}</div><div class="x-small text-muted">${Math.ceil((new Date(e.vencimiento) - new Date()) / (1000*60*60*24))} días</div></td>
+                     <td class="fw-bold text-uppercase">${escapeHTML(e.client_name || e.entity_name || e.beneficiario)}</td>
+                     <td class="font-monospace small text-muted">${e.invoice_id || e.id}</td>
+                     <td class="text-end fw-black pe-4 fs-6">${parseFloat(e.importe).toLocaleString()} €</td>
+                  </tr>`).join('') || '<tr><td colspan="4" class="p-5 text-center opacity-25">SIN VENCIMIENTOS PRÓXIMOS</td></tr>'}
+            </tbody>
+         </table>
+      </div>`;
+  },
+
+  async fetchRiskData() {
+    const res = await HandooApp.api('treasury.get_cash_flow');
+    if(res.ok) {
+      document.getElementById('risk-chart-area').innerHTML = `<table class="table table-dark table-hover table-erp m-0"><thead><tr><th>FECHA</th><th class="text-end">SALDO PROYECTADO</th></tr></thead><tbody>${res.data.map(d => `<tr><td>${d.label}</td><td class="text-end fw-black ${d.balance<0?'text-danger':'text-brand'}">${parseFloat(d.balance).toLocaleString()} €</td></tr>`).join('')}</tbody></table>`;
+    }
+  },
+
+  getOperativeBanks() { 
+     const masters = (this.settings?.masters?.bank_accounts || []); 
+     const lines = (this.creditLines || []).map(l => ({ 
+        id: l.id, nombre: l.entidad + " (LÍNEA)", iban: l.poliza, 
+        pgc_root: '520', ref_contable: l.ref_contable || '520000001', is_credit_line: true 
+     }));
+     return [...masters, ...lines];
+  },
+
+  openInternalTransferModal() {
+    const banks = this.getOperativeBanks();
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">TRASPASO INTERNO DE FONDOS</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <label class="h-label-refined">CUENTA ORIGEN</label>
+               <select id="tr-from" class="form-select h-form-control mb-3 fw-bold">
+                  <option value="INTERNAL_CAJA">📦 CAJA CENTRAL (570)</option>
+                  ${banks.map(b => `<option value="${b.id}">${b.nombre}</option>`).join('')}
+               </select>
+               <label class="h-label-refined">CUENTA DESTINO</label>
+               <select id="tr-to" class="form-select h-form-control mb-3 fw-bold">
+                  <option value="">-- SELECCIONE --</option>
+                  <option value="INTERNAL_CAJA">📦 CAJA CENTRAL (570)</option>
+                  ${banks.map(b => `<option value="${b.id}">${b.nombre}</option>`).join('')}
+               </select>
+               <label class="h-label-refined">IMPORTE (€)</label>
+               <input type="number" id="tr-imp" class="form-control h-form-control fw-black text-brand text-center fs-4 mb-3" value="0.00">
+               <label class="h-label-refined">FECHA</label>
+               <input type="date" id="tr-date" class="form-control h-form-control fw-bold" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button id="btn-exec-transfer" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="TreasuryView.executeInternalTransfer()">EJECUTAR TRASPASO ✅</button>
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  async executeInternalTransfer() {
+    const p = { from_id: document.getElementById('tr-from').value, to_id: document.getElementById('tr-to').value, importe: document.getElementById('tr-imp').value, fecha: document.getElementById('tr-date').value };
+    if(p.from_id === p.to_id) return HandooApp.ui.showToast("Las cuentas deben ser distintas", "error");
+    if(parseFloat(p.importe) <= 0) return HandooApp.ui.showToast("Importe no válido", "error");
+    HandooApp.ui.setLoading('btn-exec-transfer', true);
+    const res = await HandooApp.api('treasury.internal_transfer', p);
+    if(res.ok) { document.querySelector('.h-modal-overlay').remove(); await this.load(); }
+  },
+
+  // --- REGISTRO MANUAL (REPARADO V131) ---
+  openManualEffectModal(dir) { 
+    const entities = dir === 'INBOUND' ? (this.settings?.masters?.clients || []) : (this.settings?.masters?.vendors || []);
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 550px">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">NUEVO ${dir==='INBOUND'?'COBRO':'PAGO'} MANUAL</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <label class="h-label-refined">ENTIDAD TITULAR (BUSCAR POR NOMBRE O CIF)</label>
+               <input type="text" id="m-ent-search" class="form-control h-form-control mb-3 fw-bold text-uppercase" list="manual-entities-list" placeholder="TECLEE PARA BUSCAR..." oninput="TreasuryView.handleManualEntityChange(this.value, '${dir}')">
+               <datalist id="manual-entities-list">
+                  ${entities.map(e => `<option value="${e.nombre_fiscal} (${e.cif})">${e.nombre_fiscal}</option>`).join('')}
+               </datalist>
+               <input type="hidden" id="m-ent-id">
+               
+               <div id="m-sede-container" class="d-none">
+                  <label class="h-label-refined">SEDE / CENTRO DE TRABAJO</label>
+                  <select id="m-sede" class="form-select h-form-control mb-3 fw-bold"></select>
+               </div>
+
+               <label class="h-label-refined">IMPORTE (€)</label>
+               <input type="number" id="m-imp" class="form-control h-form-control fw-black text-brand text-center fs-4 mb-3" value="0.00">
+               <div class="row g-3">
+                  <div class="col-6"><label class="h-label-refined">VENCIMIENTO</label><input type="date" id="m-vto" class="form-control h-form-control fw-bold" value="${new Date().toISOString().split('T')[0]}"></div>
+                  <div class="col-6"><label class="h-label-refined">MÉTODO</label><select id="m-pay" class="form-select h-form-control fw-bold">${(this.settings?.masters?.payment_methods || []).map(pm => `<option value="${pm.nombre}">${pm.nombre}</option>`).join('')}</select></div>
+               </div>
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button id="btn-save-man" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="TreasuryView.executeManualSave('${dir}')">GUARDAR ✅</button>
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  handleManualEntityChange(val, dir) {
+    const entities = dir === 'INBOUND' ? (this.settings?.masters?.clients || []) : (this.settings?.masters?.vendors || []);
+    
+    // Búsqueda flexible: por nombre exacto, por CIF exacto, o por el valor del datalist
+    const match = entities.find(e => 
+      `${e.nombre_fiscal} (${e.cif})` === val || 
+      e.cif === val || 
+      e.nombre_fiscal === val
+    );
+    
+    const idInput = document.getElementById('m-ent-id');
+    const searchInput = document.getElementById('m-ent-search');
+    const sedeContainer = document.getElementById('m-sede-container');
+    const sedeSelect = document.getElementById('m-sede');
+
+    if (match) {
+      idInput.value = match.id;
+      // Si el usuario escribió el CIF o el nombre a mano, normalizamos al formato del datalist para feedback visual
+      if (val !== `${match.nombre_fiscal} (${match.cif})`) {
+        searchInput.value = `${match.nombre_fiscal} (${match.cif})`;
+      }
+      
+      if (match.sedes && Array.isArray(match.sedes) && match.sedes.length > 0) {
+        sedeContainer.classList.remove('d-none');
+        sedeSelect.innerHTML = `<option value="">-- SELECCIONE SEDE (OPCIONAL) --</option>` + 
+          match.sedes.map(s => `<option value="${s.id}">${s.nombre} - ${s.direccion}</option>`).join('');
+      } else {
+        sedeContainer.classList.add('d-none');
+        sedeSelect.innerHTML = '';
+      }
+    } else {
+      idInput.value = '';
+      sedeContainer.classList.add('d-none');
+    }
+  },
+
+  async executeManualSave(dir) {
+    const entId = document.getElementById('m-ent-id').value;
+    const entName = document.getElementById('m-ent-search').value;
+    const sedeId = document.getElementById('m-sede').value;
+    const p = { 
+      client_id: entId, 
+      client_name: entName, 
+      sede_id: sedeId,
+      importe: document.getElementById('m-imp').value, 
+      vencimiento: document.getElementById('m-vto').value, 
+      metodo: document.getElementById('m-pay').value, 
+      direction: dir 
+    };
+    if(!p.client_id) return HandooApp.ui.showToast("Seleccione una entidad válida de la lista", "error");
+    HandooApp.ui.setLoading('btn-save-man', true);
+    const res = await HandooApp.api('treasury.create_manual_effect', p);
+    if(res.ok) { document.querySelector('.h-modal-overlay').remove(); await this.load(); }
+  },
+
+  // --- LÍNEAS DE CRÉDITO (RESTAURADO V130) ---
+  openCreditLineModal(id = null) {
+    const isEdit = !!id;
+    const raw = isEdit ? this.creditLines.find(x => String(x.id) === String(id)) : { entidad: '', limite: 0, dispuesto: 0 };
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 550px">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">${isEdit?'EDITAR':'NUEVA'} LÍNEA DE CRÉDITO</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <label class="h-label-refined">ENTIDAD BANCARIA</label><input type="text" id="cl-ent" class="form-control mb-3" value="${raw.entidad}">
+               <label class="h-label-refined">LÍMITE (€)</label><input type="number" id="cl-lim" class="form-control mb-3 fw-black text-success" value="${raw.limite || 0}">
+               <label class="h-label-refined">DISPUESTO (€)</label><input type="number" id="cl-dis" class="form-control mb-3 fw-black text-danger" value="${raw.dispuesto || 0}">
+               <label class="h-label-refined">REF. PÓLIZA / IBAN</label><input type="text" id="cl-pol" class="form-control mb-3 font-monospace" value="${raw.poliza || ''}">
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button class="btn btn-dark fw-black flex-grow-1 shadow" id="btn-save-cl" onclick="TreasuryView.executeSaveCreditLine('${id||'new'}')">GUARDAR</button>
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  async executeSaveCreditLine(id) {
+    const p = { id: id==='new'?null:id, entidad: document.getElementById('cl-ent').value, limite: document.getElementById('cl-lim').value, dispuesto: document.getElementById('cl-dis').value, poliza: document.getElementById('cl-pol').value || 'GENERATED', pgc_root: '520' };
+    HandooApp.ui.setLoading('btn-save-cl', true);
+    const res = await HandooApp.api('treasury.save_credit_line', p);
+    if(res.ok) { document.querySelector('.h-modal-overlay').remove(); await this.load(); }
+  },
+
+  openImportModal() {
+    const overlay = document.createElement('div'); overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `<div class="h-modal shadow-lg" style="width: 450px"><div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black">IMPORTAR EXTRACTO CSV</h5></div><div class="h-modal-body bg-light"><input type="file" id="bank-csv" class="form-control mb-2" accept=".csv"><p class="small text-muted">Formato: FECHA;CONCEPTO;IMPORTE</p></div><div class="h-modal-footer"><button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button><button class="btn btn-dark fw-black flex-grow-1" id="btn-exec-import" onclick="TreasuryView.executeImport()">CARGAR</button></div></div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeImport() {
+    const file = document.getElementById('bank-csv').files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+       const lines = e.target.result.split('\n').slice(1);
+       const rows = lines.map(l => { const p = l.split(';'); return { fecha: p[0], concepto: p[1], importe: p[2] }; }).filter(r => r.fecha && r.importe);
+       await HandooApp.api('treasury.import_bank_csv', { bank_account_id: this.selectedBankAccountId, rows });
+       document.querySelector('.h-modal-overlay').remove(); await this.load();
+    };
+    reader.readAsText(file);
+  }
+};
+</script>

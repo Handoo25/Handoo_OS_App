@@ -1,0 +1,223 @@
+<style>
+  .trash-batch-actions { background: #0f172a; color: white; border-radius: 12px; padding: 15px 25px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-left: 6px solid var(--danger); animation: slideDown 0.3s ease; }
+  .table-check { width: 45px; text-align: center; }
+  
+  @keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+
+<script>
+window.TrashView = {
+  trash: [],
+  selectedIds: new Set(),
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">SISTEMA DE RECUPERACIÓN</h6><h2 class="fw-black m-0">PAPELERA GLOBAL DEL KERNEL</h2></div>
+         <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-danger fw-black px-4 py-2" onclick="TrashView.emptyTrash()">
+               <i class="bi bi-fire me-2"></i> VACIAR TODO EL KERNEL 🔥
+            </button>
+         </div>
+      </div>
+      <div class="p-5 animate-slide">
+         <div id="trash-batch-area"></div>
+         <div class="card-industrial border-0 overflow-hidden shadow-sm bg-white">
+            <div class="p-4 bg-light border-bottom d-flex align-items-center gap-3">
+               <div class="d-flex align-items-center flex-grow-1 bg-white border rounded-3 px-3">
+                  <i class="bi bi-search text-muted"></i>
+                  <input type="text" id="trash-search" class="form-control border-0 shadow-none h-form-control" style="background:transparent" placeholder="BUSCAR POR NOMBRE, ID O REFERENCIA..." onkeyup="TrashView.applyFilters()">
+               </div>
+               <select id="trash-filter-origin" class="form-select border shadow-sm fw-bold h-form-control" style="width: 250px" onchange="TrashView.applyFilters()">
+                  <option value="ALL">ORIGEN: TODOS</option>
+                  <option value="tenants">👥 SOLO CLIENTES</option>
+                  <option value="DB_INVOICES">📄 SOLO FACTURAS</option>
+                  <option value="MASTERS">⚙️ SOLO MAESTROS / AJUSTES</option>
+                  <option value="SUBSCRIPTIONS">⭐ LICENCIAS</option>
+               </select>
+               <p class="small text-muted m-0 px-3 border-start d-none d-lg-block">Los registros en papelera no afectan a los cálculos de BI.</p>
+            </div>
+            <div id="trash-table-area">
+               <div class="text-center p-5"><div class="spinner-border text-brand"></div></div>
+            </div>
+         </div>
+      </div>`;
+    this.load();
+  },
+
+  load: async function() {
+    this.selectedIds.clear();
+    const res = await HandooApp.api('platform.get_trash');
+    if(res.ok) { 
+      this.trash = res.data || []; 
+      this.applyFilters(); 
+    }
+  },
+
+  applyFilters: function() {
+    const q = document.getElementById('trash-search').value.toLowerCase();
+    const origin = document.getElementById('trash-filter-origin').value;
+
+    const filtered = this.trash.filter(t => {
+      const matchSearch = (t.nombre_fiscal || t.nombre || t.client_name || t.item_display_name || '').toLowerCase().includes(q) || 
+                          (String(t.cif || t.id || t.ref || t.numero || '')).toLowerCase().includes(q);
+      const matchOrigin = origin === 'ALL' || t._origin_sheet === origin;
+      return matchSearch && matchOrigin;
+    });
+
+    this.renderRows(filtered);
+  },
+
+  renderRows: function(data) {
+    const batchArea = document.getElementById('trash-batch-area');
+    if (this.selectedIds.size > 0 && batchArea) {
+       batchArea.innerHTML = `
+        <div class="trash-batch-actions animate-slide">
+           <div><b style="color:var(--brand)">${this.selectedIds.size} REGISTROS SELECCIONADOS</b></div>
+           <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-light fw-bold px-3" onclick="TrashView.selectedIds.clear(); TrashView.renderRows(TrashView.trash)">CANCELAR</button>
+              <button class="btn btn-sm btn-success fw-black px-4" onclick="TrashView.restoreBatch()">RESTAURAR BLOQUE</button>
+              <button class="btn btn-sm btn-danger fw-black px-4 shadow" onclick="TrashView.purgeBatch()">PURGAR BLOQUE 💀</button>
+           </div>
+        </div>`;
+    } else if(batchArea) batchArea.innerHTML = '';
+
+    const container = document.getElementById('trash-table-area');
+    container.innerHTML = `
+      <div class="table-responsive">
+         <table class="table table-hover m-0 align-middle">
+            <thead class="bg-light">
+              <tr>
+                <th class="table-check"><input type="checkbox" onchange="TrashView.toggleAll(this.checked)"></th>
+                <th class="py-3">ORIGEN</th>
+                <th>REGISTRO / NOMBRE</th>
+                <th>REF / ID</th>
+                <th>FECHA BORRADO</th>
+                <th class="text-end pe-4">ACCIÓN</th>
+              </tr>
+            </thead>
+            <tbody>
+               ${data.map(t => {
+                  const originSheet = t._origin_sheet;
+                  let originLabel = 'Ajuste';
+                  let originIcon = 'bi-gear';
+                  let originClass = 'bg-secondary';
+                  
+                  if(t.id && t.id.startsWith('SHIFT-')) {
+                    originLabel = 'TURNO';
+                    originIcon = 'bi-clock';
+                    originClass = 'bg-warning text-dark';
+                  } else if(originSheet === 'tenants') { originLabel = 'Cliente'; originIcon = 'bi-person-badge'; originClass = 'bg-dark'; }
+                  else if(originSheet === 'DB_INVOICES') { originLabel = 'Factura'; originIcon = 'bi-receipt'; originClass = 'bg-info text-dark'; }
+                  else if(originSheet === 'MASTERS') { originLabel = 'Maestro'; originIcon = 'bi-gear-wide-connected'; originClass = 'bg-secondary'; }
+                  else if(originSheet === 'SUBSCRIPTIONS') { originLabel = 'Licencia'; originIcon = 'bi-stars'; originClass = 'bg-warning text-dark'; }
+
+                  let name = t.nombre || t.nombre_fiscal || 'Registro técnico';
+                  if(t.id && t.id.startsWith('SHIFT-')) {
+                    let shiftType = '';
+                    try {
+                        const data = JSON.parse(t.json_data);
+                        shiftType = data.shift_type ? data.shift_type.toUpperCase() : '';
+                    } catch(e) {}
+                    name = shiftType ? `TURNO ${shiftType}` : 'AUDITORÍA DE TURNO';
+                  } else if(originSheet === 'DB_INVOICES') {
+                    name = `${t.numero || t.id || 'BORRADOR'} - ${t.client_name || 'S/C'}`;
+                  } else if(originSheet === 'SUBSCRIPTIONS') {
+                    name = `${t.client_name} (${t.item_display_name})`;
+                  }
+
+                  return `
+                  <tr>
+                     <td class="table-check">
+                        <input type="checkbox" onchange="TrashView.toggleSelect('${t.id}', this.checked)" ${this.selectedIds.has(t.id)?'checked':''}>
+                     </td>
+                     <td>
+                        <span class="badge ${originClass} text-uppercase" style="font-size:9px">
+                           <i class="bi ${originIcon} me-1"></i> ${originLabel}
+                        </span>
+                     </td>
+                     <td class="fw-black text-uppercase" style="font-size:11px">${name}</td>
+                     <td class="font-monospace fw-bold text-muted small">${t.cif || t.id}</td>
+                     <td class="small text-muted">${new Date(t._deleted_at).toLocaleString()}</td>
+                     <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-success fw-black px-3 me-2" style="font-size:10px" onclick="TrashView.restoreBatch(['${t.id}'])">RESTAURAR</button>
+                        <button class="btn btn-link text-danger p-0" onclick="TrashView.purgeBatch(['${t.id}'])"><i class="bi bi-trash3-fill fs-5"></i></button>
+                     </td>
+                  </tr>`;
+               }).join('') || '<tr><td colspan="6" class="text-center p-5 opacity-25 fw-black">PAPELERA VACÍA O SIN COINCIDENCIAS</td></tr>'}
+            </tbody>
+         </table>
+      </div>`;
+  },
+
+  toggleSelect: function(id, checked) {
+    if(checked) this.selectedIds.add(id);
+    else this.selectedIds.delete(id);
+    this.applyFilters();
+  },
+
+  toggleAll: function(checked) {
+    if(checked) {
+       this.trash.forEach(t => this.selectedIds.add(t.id));
+    } else {
+       this.selectedIds.clear();
+    }
+    this.applyFilters();
+  },
+
+  /**
+   * RESTORE BATCH ATÓMICO V188: Envío de IDs en bloque.
+   * Elimina el bucle frontend para una única llamada de alto rendimiento.
+   */
+  restoreBatch: async function(forceIds = null) {
+    const ids = forceIds || Array.from(this.selectedIds);
+    if(ids.length === 0) return;
+    
+    if(await HandooApp.ui.confirm(`¿RESTAURAR ${ids.length} REGISTROS?`, "Se devolverán a sus tablas originales en una única transacción de servidor.")) {
+       HandooApp.ui.showToast("Sincronizando...", "info");
+       const res = await HandooApp.api('admin.restore_item', { ids: ids });
+       if(res.ok) { 
+         HandooApp.ui.showToast(res.msg, "success"); 
+         this.load(); 
+       }
+       else HandooApp.ui.showToast(res.msg, 'error');
+    }
+  },
+
+  /**
+   * PURGE BATCH ATÓMICO V188: Eliminación permanente en bloque.
+   * Procesa la purga en el servidor para evitar congelamiento de interfaz.
+   */
+  purgeBatch: async function(forceIds = null) {
+    const ids = forceIds || Array.from(this.selectedIds);
+    if(ids.length === 0) return;
+
+    if(await HandooApp.ui.confirm(`¿ELIMINACIÓN DEFINITIVA DE ${ids.length} REGISTROS?`, "ESTA ACCIÓN NO SE PUEDE DESHACER Y ES INMEDIATA.")) {
+       HandooApp.ui.showToast("Purgando Kernel...", "info");
+       const res = await HandooApp.api('admin.purge_item', { ids: ids });
+       if(res.ok) { 
+         HandooApp.ui.showToast(res.msg, "success"); 
+         this.load(); 
+       }
+       else HandooApp.ui.showToast(res.msg, 'error');
+    }
+  },
+
+  /**
+   * EMPTY TRASH V188: Vaciado completo del Kernel API.
+   * Una sola llamada atómica para borrar todo el sheet de recuperación.
+   */
+  emptyTrash: async function() {
+    if(await HandooApp.ui.confirm("¿VACIAR PAPELERA GLOBAL?", "Acción irreversible y atómica. Se borrarán todos los tipos de registros de recuperación.")) {
+       HandooApp.ui.showToast("Limpieza profunda en curso...", "info");
+       const res = await HandooApp.api('admin.clear_trash');
+       if(res.ok) { 
+         HandooApp.ui.showToast(res.msg, "success"); 
+         this.load(); 
+       }
+       else HandooApp.ui.showToast(res.msg, "error");
+    }
+  }
+};
+</script>

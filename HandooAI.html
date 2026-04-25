@@ -1,0 +1,61 @@
+<script>
+/**
+ * HandooAI.html - MOTOR NEURAL TITANIUM (Chemin AI)
+ * Centraliza las llamadas a los modelos de IA (Gemini) desde el frontend.
+ */
+window.HandooAI = {
+  /**
+   * Escanea un documento (Factura/Albarán) y retorna datos estructurados.
+   * @param {string} base64 - Imagen en base64.
+   * @param {string} mime - Tipo MIME (image/jpeg, application/pdf, etc).
+   */
+  scanDocument: async function(base64, mime) {
+    console.log("HandooAI: Iniciando escaneo neural de documento...");
+    try {
+      const res = await HandooApp.api('ai.process_document', { 
+        base64: base64, 
+        mime: mime 
+      });
+      
+      if (res.ok) {
+        console.log("HandooAI: Escaneo completado con éxito.", res.data);
+        return res.data;
+      } else {
+        throw new Error(res.msg || "Error desconocido en el motor de visión.");
+      }
+    } catch (err) {
+      console.error("HandooAI: Fallo en scanDocument", err);
+      throw err;
+    }
+  },
+
+  /**
+   * Analiza una foto de inventario para detectar existencias.
+   */
+  analyzeInventory: async function(base64, mime) {
+    try {
+      const res = await HandooApp.api('ai.analyzeInventoryPhoto', { 
+        image: base64, 
+        mime: mime 
+      });
+      return res.ok ? res.data : null;
+    } catch (err) {
+      console.error("HandooAI: Fallo en analyzeInventory", err);
+      return null;
+    }
+  },
+
+  /**
+   * Procesa una orden de voz.
+   */
+  parseVoice: async function(text) {
+    try {
+      const res = await HandooApp.api('ai.parse_voice_order', { text: text });
+      return res.ok ? res.data : null;
+    } catch (err) {
+      console.error("HandooAI: Fallo en parseVoice", err);
+      return null;
+    }
+  }
+};
+</script>

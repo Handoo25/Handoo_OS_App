@@ -1,0 +1,701 @@
+<script>
+/**
+ * FRAMEWORK TITANIUM - MÓDULO DE UTILLAJE (CTA. 214)
+ * Gestión de stock saludable, reposición y control de mermas.
+ */
+window.OperationalToolsView = {
+  tools: [],
+  categories: [],
+  currentLinkedInvoices: [],
+  _cachedExpenses: null,
+  _openingForm: false,
+  _openingCategories: false,
+
+  render: async function() {
+    const container = document.getElementById('main-stage');
+    if(!container) return;
+
+    container.innerHTML = `
+      <div class="h-stage-header sticky-top bg-dark text-white p-4 d-flex justify-content-between align-items-center shadow">
+         <div>
+            <h2 class="fw-black m-0 text-uppercase">Utillaje y Herramientas</h2>
+            <p class="small text-white-50 m-0">Gestión de stock saludable (PAR), reposición y control de roturas.</p>
+         </div>
+         <div class="d-flex gap-2">
+            <button class="btn btn-outline-light fw-black px-4" onclick="OperationalToolsView.openCategoriesManager()">
+               <i class="bi bi-tags-fill me-2"></i>CATEGORÍAS
+            </button>
+            <button class="btn btn-outline-light fw-black px-4" onclick="OperationalToolsView.load()">
+               <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="btn btn-brand-titanium fw-black px-4 shadow" onclick="OperationalToolsView.openToolForm(null, event); event.stopPropagation();">
+               + NUEVO ARTÍCULO
+            </button>
+         </div>
+      </div>
+      
+      <div class="p-4">
+         <div class="row g-4 mb-4" id="tools-stats"></div>
+
+         <div class="unified-block block-dark mt-0">
+            <div class="row align-items-center mb-4">
+               <div class="col-md-1 text-center"><i class="bi bi-tools fs-2 text-brand"></i></div>
+               <div class="col-md-11 ps-4">
+                  <h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Inventario de Explotación (Cta. 214)</h6>
+                  <p class="small text-muted m-0">Control de unidades físicas vinculadas a facturas de gasto y control de mermas.</p>
+               </div>
+            </div>
+            
+            <div class="table-responsive">
+               <table class="table table-dark table-hover align-middle m-0" style="font-size: 11px;">
+                  <thead>
+                     <tr class="text-muted text-uppercase fw-black" style="font-size: 9px; letter-spacing: 1px;">
+                        <th>Artículo</th>
+                        <th>Categoría</th>
+                        <th class="text-center">Stock Saludable (PAR)</th>
+                        <th class="text-center">Stock Actual</th>
+                        <th>Estado Stock</th>
+                        <th class="text-end pe-4">Acciones</th>
+                     </tr>
+                  </thead>
+                  <tbody id="tools-list">
+                     <tr><td colspan="6" class="text-center p-5 opacity-50">SINCRONIZANDO INVENTARIO...</td></tr>
+                  </tbody>
+               </table>
+            </div>
+         </div>
+      </div>`;
+    
+    await this.load();
+  },
+
+  load: async function() {
+    const res = await HandooApp.api('admin.get_operational_tools');
+    const catsRes = await HandooApp.api('patrimony.list_tool_categories');
+    
+    if(res.ok) this.tools = res.data || [];
+    if(catsRes.ok) this.categories = catsRes.data || [];
+    
+    this._cachedExpenses = null;
+    this.renderList();
+    this.renderStats();
+    this.renderCategoriesTable();
+  },
+
+  renderStats: function() {
+    const totalItems = this.tools.length;
+    const belowPar = this.tools.filter(t => parseInt(t.stock_actual || 0) < parseInt(t.stock_saludable || 0)).length;
+    const totalValue = this.tools.reduce((s, t) => s + (parseFloat(t.coste_unitario || 0) * parseInt(t.stock_actual || 0)), 0);
+
+    const statsContainer = document.getElementById('tools-stats');
+    if(!statsContainer) return;
+
+    statsContainer.innerHTML = `
+      <div class="col-md-4">
+         <div class="card-industrial p-4 text-center">
+            <h6 class="fw-black text-muted text-uppercase small mb-1">Artículos en Inventario</h6>
+            <h3 class="fw-black m-0">${totalItems}</h3>
+         </div>
+      </div>
+      <div class="col-md-4">
+         <div class="card-industrial p-4 text-center">
+            <h6 class="fw-black text-muted text-uppercase small mb-1">Alertas de Reposición</h6>
+            <h3 class="fw-black m-0 ${belowPar > 0 ? 'text-danger' : ''}">${belowPar}</h3>
+         </div>
+      </div>
+      <div class="col-md-4">
+         <div class="card-industrial p-4 text-center border-brand">
+            <h6 class="fw-black text-brand text-uppercase small mb-1">Valoración Inventario</h6>
+            <h3 class="fw-black m-0 text-brand">${totalValue.toLocaleString()} €</h3>
+         </div>
+      </div>
+    `;
+  },
+
+  renderList: function() {
+    const tbody = document.getElementById('tools-list');
+    if(!tbody) return;
+
+    if(this.tools.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center p-5 opacity-25 fw-bold">SIN ARTÍCULOS REGISTRADOS</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = this.tools.map(t => {
+      const cat = this.categories.find(c => c.id === t.category_id);
+      const par = parseInt(t.stock_saludable || 0);
+      const actual = parseInt(t.stock_actual || 0);
+      
+      let statusBadge = '<span class="badge bg-success text-uppercase" style="font-size:8px">SALUDABLE</span>';
+      if (actual === 0) statusBadge = '<span class="badge bg-danger text-uppercase" style="font-size:8px">SIN STOCK</span>';
+      else if (actual < par) statusBadge = '<span class="badge bg-warning text-dark text-uppercase" style="font-size:8px">REPOSICIÓN</span>';
+
+      return `
+      <tr>
+         <td>
+            <div class="fw-black text-uppercase">${escapeHTML(t.nombre)}</div>
+            <div class="small text-muted">${t.id}</div>
+         </td>
+         <td><span class="badge bg-secondary text-uppercase" style="font-size:8px">${escapeHTML(cat ? cat.name : 'GENERAL')}</span></td>
+         <td class="text-center fw-bold">${par}</td>
+         <td class="text-center fw-black fs-6 ${actual < par ? 'text-danger' : 'text-brand'}">${actual}</td>
+         <td>${statusBadge}</td>
+         <td class="text-end pe-4">
+            <button class="btn btn-sm btn-link text-warning p-0 me-2" onclick="OperationalToolsView.openMermaModal('${t.id}', event)" title="Registrar Merma/Rotura">
+               <i class="bi bi-dash-circle fs-5"></i>
+            </button>
+            <button class="btn btn-sm btn-link text-white p-0 me-2" onclick="OperationalToolsView.openToolForm('${t.id}', event); event.stopPropagation();">
+               <i class="bi bi-pencil-square fs-5"></i>
+            </button>
+            <button class="btn btn-sm btn-link text-danger p-0" onclick="OperationalToolsView.deleteTool('${t.id}', event); event.stopPropagation();">
+               <i class="bi bi-trash3 fs-5"></i>
+            </button>
+         </td>
+      </tr>`;
+    }).join('');
+  },
+
+  openToolForm: async function(id = null, event = null) {
+    if(event) event.stopPropagation();
+    if (this._openingForm) return;
+    if (document.querySelector('.h-modal-overlay')) return;
+    this._openingForm = true;
+
+    try {
+      const tool = id ? this.tools.find(t => t.id === id) : {
+        id: 'new', nombre: '', category_id: '', stock_actual: 0, stock_saludable: 0, coste_unitario: 0, facturas_vinculadas: []
+      };
+
+      this.currentLinkedInvoices = tool.facturas_vinculadas || [];
+
+      const overlay = document.createElement('div');
+      overlay.className = 'h-modal-overlay';
+      
+      const catOptions = this.categories.map(c => `
+          <option value="${c.id}" ${tool.category_id === c.id ? 'selected' : ''}>${c.name}</option>
+      `).join('');
+
+      overlay.innerHTML = `
+        <div class="h-modal h-modal-md animate-slide" style="max-height: 90vh; display: flex; flex-direction: column;">
+          <div class="h-modal-header bg-dark text-white">
+            <h6 class="m-0 fw-black text-uppercase">${id ? 'Editar' : 'Nuevo'} Artículo de Utillaje</h6>
+            <button class="btn btn-link text-white p-0" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <div class="h-modal-body p-4 bg-light overflow-auto">
+            <form id="tool-form">
+              <div class="row g-3">
+                <div class="col-md-12">
+                  <label class="small fw-black text-muted text-uppercase">Nombre del Artículo</label>
+                  <input type="text" name="nombre" class="form-control form-control-sm fw-bold text-uppercase" value="${tool.nombre}" required>
+                </div>
+                <div class="col-md-12">
+                  <label class="small fw-black text-muted text-uppercase">Categoría</label>
+                  <select name="category_id" class="form-select form-select-sm">
+                    <option value="">General</option>
+                    ${catOptions}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="small fw-black text-muted text-uppercase">Stock Actual</label>
+                  <div class="input-group input-group-sm">
+                    <input type="number" id="p-stock-actual" name="stock_actual" class="form-control fw-bold text-brand ${id && id !== 'new' ? 'bg-light' : ''}" value="${tool.stock_actual}" ${id && id !== 'new' ? 'readonly' : ''} required>
+                    ${id && id !== 'new' ? `<button type="button" class="btn btn-outline-danger fw-bold" onclick="OperationalToolsView.openMermaModal('${tool.id}')" title="Registrar rotura o merma"><i class="bi bi-dash-circle"></i></button>` : ''}
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="small fw-black text-muted text-uppercase">Stock Saludable (PAR)</label>
+                  <input type="number" name="stock_saludable" class="form-control form-control-sm fw-bold" value="${tool.stock_saludable}" required>
+                </div>
+                <div class="col-md-12">
+                  <label class="small fw-black text-muted text-uppercase">Coste Medio (FIFO)</label>
+                  <div class="input-group input-group-sm">
+                    <input type="number" id="p-coste-medio" name="coste_unitario" class="form-control fw-bold bg-light" value="${tool.coste_unitario}" step="0.01" readonly>
+                    <span class="input-group-text">€</span>
+                  </div>
+                  <div class="mt-1" style="font-size: 9px; color: var(--brand);">* Calculado automáticamente según facturas vinculadas (FIFO).</div>
+                </div>
+
+                <div class="col-md-12 mt-4">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="small fw-black text-muted text-uppercase m-0">Facturas / Compras Vinculadas</label>
+                    <button type="button" class="btn btn-sm btn-dark fw-bold shadow-sm" onclick="OperationalToolsView.toggleInlinePicker()">
+                       <i class="bi bi-search me-1"></i> BUSCAR FACTURA
+                    </button>
+                  </div>
+
+                  <div id="inline-invoice-picker" class="border rounded-3 p-3 bg-light mb-3 shadow-inner" style="display: none; border-left: 4px solid var(--brand) !important;">
+                     <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="m-0 fw-black small text-uppercase"><i class="bi bi-funnel me-1"></i> Seleccionar Factura</h6>
+                        <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="document.getElementById('inline-invoice-picker').style.display='none'">
+                           <i class="bi bi-x-circle-fill fs-5"></i>
+                        </button>
+                     </div>
+                     <input type="text" id="inline-inv-search" class="form-control form-control-sm fw-bold mb-2 shadow-sm" placeholder="🔍 Buscar factura..." onkeyup="OperationalToolsView.renderInlinePickerList(this.value)">
+                     <div class="overflow-auto border border-secondary-subtle rounded bg-white shadow-sm" style="max-height: 200px;">
+                        <table class="table table-hover align-middle m-0 small">
+                           <tbody id="inline-picker-list">
+                              <tr><td class="text-center p-4 opacity-50">Cargando facturas...</td></tr>
+                           </tbody>
+                        </table>
+                     </div>
+                  </div>
+
+                  <div id="linked-invoices-container" class="border rounded p-2 bg-white"></div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="h-modal-footer">
+            <button class="btn btn-light fw-bold px-4" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-dark fw-black px-4 shadow" onclick="OperationalToolsView.saveTool('${tool.id}')">GUARDAR ARTÍCULO</button>
+          </div>
+        </div>`;
+      
+      document.body.appendChild(overlay);
+      this.renderLinkedInvoices();
+    } finally {
+      this._openingForm = false;
+    }
+  },
+
+  saveTool: async function(id) {
+    const form = document.getElementById('tool-form');
+    if(!form) return;
+    
+    const btn = event?.target?.closest('button') || document.querySelector('.h-modal-footer .btn-dark');
+    const originalText = btn ? btn.innerHTML : '';
+    if(btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>GUARDANDO...';
+    }
+
+    const formData = new FormData(form);
+    const payload = {
+      id: id,
+      nombre: formData.get('nombre'),
+      category_id: formData.get('category_id'),
+      stock_actual: parseInt(formData.get('stock_actual') || 0),
+      stock_saludable: parseInt(formData.get('stock_saludable') || 0),
+      coste_unitario: parseFloat(formData.get('coste_unitario') || 0),
+      facturas_vinculadas: this.currentLinkedInvoices
+    };
+
+    const res = await HandooApp.api('admin.save_operational_tool', payload);
+
+    if(res.ok) {
+      const modal = document.querySelector('.h-modal-overlay');
+      if(modal) modal.remove();
+      await this.load();
+    } else {
+      if(btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+      HandooApp.ui.showToast(res.msg, "error");
+    }
+  },
+
+  deleteTool: async function(id, event = null) {
+    if(await HandooApp.ui.confirm("¿Eliminar este artículo del inventario?", "Esta acción no se puede deshacer.")) {
+      const btn = event?.target?.closest('button');
+      const originalContent = btn ? btn.innerHTML : '';
+      if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>ELIMINANDO...';
+      }
+
+      const res = await HandooApp.api('admin.delete_operational_tool', { id });
+      if(res.ok) {
+        await this.load();
+      } else {
+        if(btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalContent;
+        }
+        HandooApp.ui.showToast(res.msg, "error");
+      }
+    }
+  },
+
+  openCategoriesManager: async function() {
+    if (this._openingCategories) return;
+    if (document.querySelector('.h-modal-overlay')) return;
+    this._openingCategories = true;
+    
+    try {
+      // Aseguramos que las categorías estén cargadas
+      if (this.categories.length === 0) {
+        await this.load();
+      }
+
+      const overlay = document.createElement('div');
+      overlay.className = 'h-modal-overlay';
+      
+      overlay.innerHTML = `
+        <div class="h-modal h-modal-md animate-slide">
+          <div class="h-modal-header bg-dark text-white">
+            <h6 class="m-0 fw-black text-uppercase">Categorías de Utillaje</h6>
+            <button class="btn btn-link text-white p-0" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <div class="h-modal-body p-4 bg-light">
+            <div class="table-responsive mb-4">
+              <table class="table table-sm align-middle" style="font-size: 11px;">
+                <thead><tr class="text-muted text-uppercase fw-black"><th>Nombre Categoría</th><th class="text-end">Acciones</th></tr></thead>
+                <tbody id="categories-table-body">
+                  <tr><td colspan="2" class="text-center p-3 opacity-50">Cargando categorías...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <hr>
+            <h6 class="fw-black text-uppercase small mb-3" id="cat-form-title">Añadir Nueva Categoría</h6>
+            <form id="cat-form">
+              <input type="hidden" name="id" value="new">
+              <div class="row g-2">
+                <div class="col-md-9"><input type="text" name="name" class="form-control form-control-sm fw-bold text-uppercase" placeholder="Nombre de la Categoría" required></div>
+                <div class="col-md-3"><button type="button" class="btn btn-dark btn-sm w-100 fw-black" onclick="OperationalToolsView.saveCategory()">OK</button></div>
+              </div>
+            </form>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      this.renderCategoriesTable();
+    } finally {
+      this._openingCategories = false;
+    }
+  },
+
+  renderCategoriesTable: function() {
+    const tbody = document.getElementById('categories-table-body');
+    if(!tbody) return;
+
+    if(this.categories.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" class="text-center p-3 opacity-50">Sin categorías definidas</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = this.categories.map(c => `
+      <tr>
+        <td class="fw-bold text-uppercase">${escapeHTML(c.name)}</td>
+        <td class="text-end pe-3">
+          <button class="btn btn-sm btn-link text-dark p-0 me-2" onclick="OperationalToolsView.editCategory('${c.id}', event); event.stopPropagation();"><i class="bi bi-pencil-square fs-5"></i></button>
+          <button class="btn btn-sm btn-link text-danger p-0" onclick="OperationalToolsView.deleteCategory('${c.id}', event); event.stopPropagation();"><i class="bi bi-trash3 fs-5"></i></button>
+        </td>
+      </tr>`).join('');
+  },
+
+  saveCategory: async function(event = null) {
+    const form = document.getElementById('cat-form');
+    if(!form) return;
+
+    const btn = event?.target?.closest('button') || form.querySelector('button');
+    const originalText = btn ? btn.innerHTML : '';
+    if(btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>GUARDANDO...';
+    }
+
+    const formData = new FormData(form);
+    const payload = {
+      id: formData.get('id'),
+      name: formData.get('name')
+    };
+    
+    const res = await HandooApp.api('patrimony.save_tool_category', payload);
+    if(res.ok) {
+      await this.load();
+      form.reset();
+      form.id.value = "new";
+      document.getElementById('cat-form-title').innerText = "Añadir Nueva Categoría";
+      HandooApp.ui.showToast("Categoría guardada", "success");
+    } else {
+      HandooApp.ui.showToast(res.msg, "error");
+    }
+    
+    if(btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  },
+
+  editCategory: function(id, event = null) {
+    if(event) event.stopPropagation();
+    const cat = this.categories.find(c => c.id === id);
+    if(cat) {
+      const form = document.getElementById('cat-form');
+      if(!form) return;
+      form.id.value = cat.id;
+      form.name.value = cat.name;
+      document.getElementById('cat-form-title').innerText = "Editar Categoría: " + cat.name;
+    }
+  },
+
+  deleteCategory: async function(id, event = null) {
+    if(await HandooApp.ui.confirm("¿Eliminar esta categoría?", "Los artículos vinculados pasarán a la categoría General.")) {
+      const btn = event?.target?.closest('button');
+      const originalContent = btn ? btn.innerHTML : '';
+      if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>ELIMINANDO...';
+      }
+
+      const res = await HandooApp.api('patrimony.delete_tool_category', { id });
+      if(res.ok) {
+        await this.load();
+        HandooApp.ui.showToast("Categoría eliminada", "success");
+      } else {
+        if(btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalContent;
+        }
+        HandooApp.ui.showToast(res.msg, "error");
+      }
+    }
+  },
+
+  /**
+   * Métodos de vinculación de facturas (Inspirado en FixedAssets)
+   */
+  toggleInlinePicker: async function() {
+    const picker = document.getElementById('inline-invoice-picker');
+    if(!picker) return;
+
+    if (picker.style.display === 'block') { 
+        picker.style.display = 'none'; 
+        return; 
+    }
+    
+    picker.style.display = 'block';
+    
+    if (!this._cachedExpenses) {
+        const res = await HandooApp.api('expense.list');
+        if (res.ok) {
+            this._cachedExpenses = res.data || [];
+        } else { 
+            const listContainer = document.getElementById('inline-picker-list');
+            if(listContainer) {
+                listContainer.innerHTML = '<tr><td class="text-danger text-center p-4">Error al cargar facturas</td></tr>'; 
+            }
+            return; 
+        }
+    }
+    this.renderInlinePickerList();
+  },
+
+  renderInlinePickerList: function(q = '') {
+    const tbody = document.getElementById('inline-picker-list');
+    if(!tbody) return;
+
+    q = q.toLowerCase();
+    
+    const filtered = (this._cachedExpenses || []).filter(e => 
+        (e.beneficiario || '').toLowerCase().includes(q) || 
+        (e.concepto || '').toLowerCase().includes(q) || 
+        String(e.total || '').includes(q)
+    ).slice(0, 50);
+
+    if (filtered.length === 0) { 
+        tbody.innerHTML = '<tr><td class="text-center p-4 opacity-50 fw-bold">No se encontraron facturas</td></tr>'; 
+        return; 
+    }
+
+    tbody.innerHTML = filtered.map(e => {
+      const pdfUrl = e.attachment_url || e.file_url || '';
+      return `
+      <tr>
+        <td class="ps-3 text-muted" width="90">${e.fecha}</td>
+        <td class="fw-bold text-uppercase text-dark">
+           <div class="d-flex align-items-center gap-2">
+              ${pdfUrl ? `<i class="bi bi-file-earmark-pdf-fill text-danger fs-5 cursor-pointer" onclick="window.open('${pdfUrl}', '_blank')" title="Ver PDF"></i>` : '<i class="bi bi-file-earmark text-muted fs-5"></i>'}
+              <span>${escapeHTML(e.beneficiario || e.concepto || 'S/N')}</span>
+           </div>
+        </td>
+        <td class="fw-black text-end text-brand" width="110">${parseFloat(e.total || 0).toLocaleString()} €</td>
+        <td class="text-end pe-3" width="220">
+           <div class="input-group input-group-sm">
+              <span class="input-group-text fw-bold" style="font-size:9px">UDS</span>
+              <input type="number" class="form-control fw-bold text-center" value="1" min="1" id="qty-inv-${e.id}" style="width:45px">
+              <span class="input-group-text fw-bold" style="font-size:9px">P.UNI</span>
+              <input type="number" class="form-control fw-bold text-center" value="0" min="0" step="0.01" id="price-inv-${e.id}" style="width:60px">
+              <button type="button" class="btn btn-dark fw-black" onclick="OperationalToolsView.selectInvoice('${e.id}', '${escapeHTML(e.beneficiario || '').replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${e.fecha}', ${e.total || 0}, '${pdfUrl}')">OK</button>
+           </div>
+        </td>
+      </tr>`;
+    }).join('');
+  },
+
+  selectInvoice: function(id, proveedor, fecha, total, url) {
+    const qtyInput = document.getElementById(`qty-inv-${id}`);
+    const priceInput = document.getElementById(`price-inv-${id}`);
+    
+    const qty = parseInt(qtyInput ? qtyInput.value : 1) || 0;
+    const price = parseFloat(priceInput ? priceInput.value : 0) || 0;
+    
+    if (qty <= 0) {
+       HandooApp.ui.showToast("Indique las unidades", "warning");
+       return;
+    }
+
+    this.currentLinkedInvoices.push({ 
+       id, proveedor, fecha, total, url, qty, 
+       price, 
+       remaining_qty: qty // Para lógica FIFO
+    });
+    
+    this.renderLinkedInvoices();
+    this.recalculateFIFO();
+    
+    const picker = document.getElementById('inline-invoice-picker');
+    if(picker) picker.style.display = 'none';
+  },
+
+  recalculateFIFO: function() {
+    const form = document.getElementById('tool-form');
+    if(!form) return;
+
+    // El stock actual es la suma de las unidades restantes en las facturas
+    const totalStock = this.currentLinkedInvoices.reduce((s, inv) => s + (inv.remaining_qty || 0), 0);
+    const totalValue = this.currentLinkedInvoices.reduce((s, inv) => s + ((inv.remaining_qty || 0) * (inv.price || 0)), 0);
+    
+    const avgPrice = totalStock > 0 ? (totalValue / totalStock) : 0;
+
+    form.stock_actual.value = totalStock;
+    const priceInput = document.getElementById('p-coste-medio');
+    if(priceInput) priceInput.value = avgPrice.toFixed(2);
+  },
+
+  renderLinkedInvoices: function() {
+    const container = document.getElementById('linked-invoices-container');
+    if (!container) return;
+    
+    if (this.currentLinkedInvoices.length === 0) {
+      container.innerHTML = '<div class="small text-muted text-center p-3 fw-bold opacity-50">Sin facturas vinculadas</div>';
+      return;
+    }
+    
+    container.innerHTML = this.currentLinkedInvoices.map((inv, idx) => `
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2 px-2">
+           <div>
+              <div class="fw-black text-uppercase" style="font-size: 11px;">${escapeHTML(inv.proveedor || 'Factura')}</div>
+              <div class="text-muted fw-bold" style="font-size: 10px;">
+                 ${inv.fecha} | <b>${inv.remaining_qty} / ${inv.qty}</b> Uds | ${parseFloat(inv.price || 0).toLocaleString()} €/ud
+              </div>
+           </div>
+           <div class="d-flex gap-2 align-items-center">
+              ${inv.url ? `<button type="button" class="btn btn-sm btn-outline-dark p-1" onclick="window.open('${inv.url}', '_blank')"><i class="bi bi-file-earmark-pdf text-danger"></i></button>` : ''}
+              <button type="button" class="btn btn-sm btn-outline-danger p-1" onclick="OperationalToolsView.removeLinkedInvoice(${idx})">
+                 <i class="bi bi-trash"></i>
+              </button>
+           </div>
+        </div>`).join('');
+  },
+
+  removeLinkedInvoice: function(idx) {
+     this.currentLinkedInvoices.splice(idx, 1);
+     this.renderLinkedInvoices();
+     this.recalculateFIFO();
+  },
+
+  /**
+   * Gestión de Mermas y Bajas
+   */
+  openMermaModal: function(id) {
+    const tool = this.tools.find(t => t.id === id);
+    if(!tool) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.style.zIndex = "11000";
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 400px">
+         <div class="h-modal-header bg-danger text-white"><h5 class="m-0 fw-black text-uppercase">REGISTRAR MERMA / BAJA</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="p-3">
+               <p class="small text-muted mb-3">Indique las unidades que desea retirar del stock de <b>${tool.nombre}</b>.</p>
+               <label class="h-label-refined">UNIDADES A RETIRAR</label>
+               <input type="number" id="merma-qty" class="form-control h-form-control fw-black text-danger text-center fs-4 mb-3" value="1" min="1" max="${tool.stock_actual}">
+               
+               <label class="h-label-refined">MOTIVO</label>
+               <select id="merma-reason" class="form-select h-form-control fw-bold">
+                  <option value="Rotura">ROTURA / DAÑO</option>
+                  <option value="Uso">USO / CONSUMO</option>
+                  <option value="Extravío">EXTRAVÍO</option>
+                  <option value="Caducidad">CADUCIDAD</option>
+               </select>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button id="btn-exec-merma" class="btn btn-danger fw-black flex-grow-1 shadow" onclick="OperationalToolsView.executeMerma('${tool.id}')">CONFIRMAR BAJA</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeMerma: async function(id) {
+    let qtyToRemove = parseInt(document.getElementById('merma-qty').value || 0);
+    const reason = document.getElementById('merma-reason').value;
+    if(qtyToRemove <= 0) return;
+
+    const tool = this.tools.find(t => t.id === id);
+    if(!tool) return;
+
+    // Lógica FIFO: Quitar de las facturas más antiguas primero
+    // Las facturas en currentLinkedInvoices ya deberían estar ordenadas por fecha (o por orden de inserción)
+    // Vamos a clonarlas para procesar
+    const invoices = JSON.parse(JSON.stringify(tool.facturas_vinculadas || []));
+    let removedCount = 0;
+
+    for (let inv of invoices) {
+       if (qtyToRemove <= 0) break;
+       const canTake = Math.min(qtyToRemove, inv.remaining_qty || 0);
+       inv.remaining_qty = (inv.remaining_qty || 0) - canTake;
+       qtyToRemove -= canTake;
+       removedCount += canTake;
+    }
+
+    if (removedCount === 0 && tool.stock_actual > 0) {
+       // Si no hay facturas pero hay stock (legacy), simplemente restamos del stock
+       // Pero el usuario quiere FIFO, así que lo ideal es que todo stock venga de facturas.
+    }
+
+    HandooApp.ui.setLoading('btn-exec-merma', true, "PROCESANDO...");
+    
+    const newStock = Math.max(0, tool.stock_actual - removedCount);
+    
+    // Recalculamos el coste medio tras la merma (FIFO)
+    const totalValue = invoices.reduce((s, inv) => s + ((inv.remaining_qty || 0) * (inv.price || 0)), 0);
+    const newAvgPrice = newStock > 0 ? (totalValue / newStock) : 0;
+
+    const payload = { 
+       ...tool, 
+       stock_actual: newStock, 
+       coste_unitario: newAvgPrice,
+       facturas_vinculadas: invoices,
+       obs: (tool.obs || '') + `\n[MERMA] -${removedCount} por ${reason} (${new Date().toLocaleDateString()})` 
+    };
+
+    const res = await HandooApp.api('admin.save_operational_tool', payload);
+    if(res.ok) {
+       document.querySelector('.h-modal-overlay[style*="z-index: 11000"]').remove();
+       HandooApp.ui.showToast("Merma registrada correctamente (FIFO)", "success");
+       
+       // Si el formulario de edición está abierto, actualizamos sus valores
+       const stockInput = document.getElementById('p-stock-actual');
+       const priceInput = document.getElementById('p-coste-medio');
+       if(stockInput) stockInput.value = newStock;
+       if(priceInput) priceInput.value = newAvgPrice.toFixed(2);
+       
+       // Actualizamos la lista de facturas vinculadas en memoria si el form está abierto
+       if (this.currentLinkedInvoices && id === tool.id) {
+          this.currentLinkedInvoices = invoices;
+          this.renderLinkedInvoices();
+       }
+
+       await this.load();
+    } else {
+       HandooApp.ui.setLoading('btn-exec-merma', false);
+       HandooApp.ui.showToast(res.msg, "error");
+    }
+  }
+};
+</script>

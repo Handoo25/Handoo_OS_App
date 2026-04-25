@@ -1,0 +1,344 @@
+<style>
+  .ai-card { border-left: 4px solid var(--warning); transition: 0.3s; }
+  .transit-card { border-left: 4px solid #3b82f6; transition: 0.3s; }
+  .nav-pills-custom .nav-link { 
+    color: #64748b; font-weight: 800; font-size: 12px; border-radius: 12px; 
+    padding: 12px 25px; transition: 0.3s; border: 1px solid transparent;
+  }
+  .nav-pills-custom .nav-link.active { 
+    background: #0f172a; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+  }
+  .pulse-dot { width: 8px; height: 8px; background-color: var(--warning); border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); } }
+  .diff-alert { background: #fef2f2; color: #dc2626; font-weight: 800; font-size: 10px; padding: 2px 8px; border-radius: 4px; }
+</style>
+
+<script>
+const escapeSafe = (str) => {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+};
+
+window.SmartOrdersView = {
+    catalogData: [],
+    vendorsData: [],
+    suggestedOrders: [], // Borradores IA
+    pendingOrders: [],   // Pedidos en Tránsito
+    activeSubTab: 'DRAFTS', 
+
+    render: function() {
+        const stage = document.getElementById('main-stage');
+        
+        stage.innerHTML = `
+          <div class="animate__animated animate__fadeIn">
+            <div class="block-dark p-4 shadow-sm mb-4" style="background: #0f172a; border-radius: 0 0 24px 24px;">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-warning small text-uppercase fw-bold d-flex align-items-center gap-2 mb-1" style="letter-spacing: 0.1em;">
+                     <span class="pulse-dot"></span> CHEMIN AI // SUPPLY CHAIN
+                  </div>
+                  <h2 class="fw-black m-0 text-uppercase text-white">Centro de Compras</h2>
+                </div>
+                
+                <div class="nav nav-pills nav-pills-custom bg-white bg-opacity-10 p-1 rounded-3">
+                    <button class="nav-link ${this.activeSubTab === 'DRAFTS' ? 'active' : ''}" onclick="SmartOrdersView.setSubTab('DRAFTS')">
+                        <i class="bi bi-robot me-1"></i> BORRADORES IA
+                    </button>
+                    <button class="nav-link ${this.activeSubTab === 'TRANSIT' ? 'active' : ''}" onclick="SmartOrdersView.setSubTab('TRANSIT')">
+                        <i class="bi bi-truck me-1"></i> EN TRÁNSITO
+                    </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="container-fluid px-4" id="smart-orders-content"></div>
+          </div>
+
+          <div class="modal fade" id="modal-receipt-order" tabindex="-1" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+              <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header p-4 border-0 bg-primary text-white">
+                  <div>
+                     <h6 class="text-uppercase fw-bold mb-1" style="font-size: 11px; opacity: 0.8;">Checklist de Recepción</h6>
+                     <h4 class="fw-black m-0 text-uppercase" id="receipt-vendor-name">PROVEEDOR</h4>
+                  </div>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 bg-light">
+                  <div class="alert alert-info border-0 rounded-0 m-0 small fw-bold">
+                    <i class="bi bi-info-circle-fill me-2"></i> Verifique las cantidades. Al confirmar, el stock se sumará automáticamente.
+                  </div>
+                  <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
+                     <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-white sticky-top shadow-sm">
+                           <tr class="small text-muted fw-black text-uppercase" style="font-size: 10px;">
+                              <th class="ps-4 py-3">Artículo</th>
+                              <th class="text-center">Pedido</th>
+                              <th class="text-center" style="width: 150px;">Real Recibido</th>
+                              <th class="text-end pe-4">Estado</th>
+                           </tr>
+                        </thead>
+                        <tbody id="receipt-order-items" class="bg-white"></tbody>
+                     </table>
+                  </div>
+                </div>
+                <div class="modal-footer p-4 border-0 bg-light">
+                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border" data-bs-dismiss="modal">CANCELAR</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-5 fw-black shadow" onclick="SmartOrdersView.confirmFullReceipt()">CONFIRMAR ENTRADA ALMACÉN</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal fade" id="modal-order-detail" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content rounded-4 border-0 shadow-lg"><div class="modal-header p-4 border-0 bg-dark text-white d-flex justify-content-between align-items-center"><div><h6 class="modal-title fw-black text-uppercase text-warning mb-1" style="font-size: 11px;"><i class="bi bi-box-seam me-2"></i>Borrador de Pedido</h6><h4 class="fw-black m-0 text-uppercase" id="modal-vendor-name">PROVEEDOR</h4></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 bg-light"><div class="table-responsive" style="max-height: 400px; overflow-y: auto;"><table class="table table-hover align-middle mb-0"><thead class="bg-white sticky-top shadow-sm"><tr class="small text-muted fw-black text-uppercase" style="font-size: 10px;"><th class="ps-4 py-3">Artículo</th><th class="text-center">Stock Actual</th><th class="text-center">Sugerencia IA</th><th class="text-center">A Pedir</th><th class="text-end pe-4">Acción</th></tr></thead><tbody id="modal-order-items" class="bg-white"></tbody></table></div><div class="p-3 bg-white border-top text-center"><button class="btn btn-outline-dark btn-sm fw-bold rounded-pill px-4" onclick="SmartOrdersView.addManualItemToOrder()"><i class="bi bi-plus-circle me-1"></i> AÑADIR ARTÍCULO EXTRA</button></div></div><div class="modal-footer p-4 border-0 bg-light d-flex justify-content-between align-items-center"><div class="text-muted small fw-bold">Coste Estimado: <span class="fs-4 fw-black text-dark ms-2" id="modal-order-total">0.00 €</span></div><div class="d-flex gap-2"><button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border" data-bs-dismiss="modal">CERRAR</button><button type="button" class="btn btn-brand-titanium rounded-pill px-4 fw-black shadow" onclick="SmartOrdersView.approveOrder()">APROBAR Y GUARDAR</button></div></div></div></div></div>
+        `;
+        
+        this.setSubTab(this.activeSubTab);
+    },
+
+    setSubTab: function(tab) {
+        this.activeSubTab = tab;
+        this.render(); // Redibujar botones activos
+        this.loadData();
+    },
+
+    loadData: async function() {
+        const content = document.getElementById('smart-orders-content');
+        content.innerHTML = '<div class="text-center p-5"><div class="spinner-grow text-warning"></div></div>';
+
+        // Descargamos todo (Catálogo, Proveedores y Pedidos Pendientes)
+        const [resCat, resVen, resPend] = await Promise.all([
+            HandooApp.api('inventory.get_catalog'),
+            HandooApp.api('vendor.list'),
+            HandooApp.api('expense.get_pending_orders')
+        ]);
+
+        this.catalogData = resCat.ok ? resCat.data.products : [];
+        this.vendorsData = resVen.ok ? (Array.isArray(resVen.data) ? resVen.data : Object.values(resVen.data)) : [];
+        this.pendingOrders = resPend.ok ? resPend.data : [];
+        window.HandooCatalogGlobal = this.catalogData;
+
+        if (this.activeSubTab === 'DRAFTS') {
+            this.runCheminAIAlgorithm();
+        } else {
+            this.renderInTransitGrid();
+        }
+    },
+
+    // --- LÓGICA DE TRÁNSITO (RECIBIDOS) ---
+    renderInTransitGrid: function() {
+        const content = document.getElementById('smart-orders-content');
+        
+        if (this.pendingOrders.length === 0) {
+            content.innerHTML = `
+                <div class="text-center p-5 border border-dashed rounded-4 bg-white">
+                    <i class="bi bi-truck-flatbed text-muted opacity-25" style="font-size: 4rem;"></i>
+                    <h5 class="fw-black mt-3 text-uppercase text-muted">No hay pedidos en camino</h5>
+                    <p class="text-muted fw-bold">Cuando apruebe un borrador de la IA, aparecerá aquí.</p>
+                </div>`;
+            return;
+        }
+
+        const cards = this.pendingOrders.map((order, idx) => {
+            const vendor = this.vendorsData.find(v => String(v.id) === String(order.vendor_id)) || { nombre_fiscal: 'PROVEEDOR DESCONOCIDO' };
+            return `
+            <div class="col-md-6 col-xl-4 animate__animated animate__fadeIn">
+                <div class="bg-white p-4 rounded-4 shadow-sm border transit-card h-100 d-flex flex-column">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="badge bg-primary bg-opacity-10 text-primary fw-bold" style="font-size: 9px;">PENDIENTE DE RECIBIR</span>
+                        <div class="small text-muted fw-bold">${order.fecha.split(',')[0]}</div>
+                    </div>
+                    <h5 class="fw-black text-uppercase text-dark mb-3">${vendor.nombre_fiscal}</h5>
+                    <div class="p-3 bg-light rounded-3 mb-4 flex-grow-1 small fw-bold text-muted">
+                        <i class="bi bi-hash me-1"></i> ID: ${order.id}<br>
+                        <i class="bi bi-list-check me-1"></i> ${order.items.length} artículos en camino
+                    </div>
+                    <button class="btn btn-primary w-100 rounded-pill fw-black shadow-sm" onclick="SmartOrdersView.openReceiptModal('${order.id}')">
+                        <i class="bi bi-box-seam me-2"></i> REGISTRAR ENTRADA
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+
+        content.innerHTML = `<div class="row g-4">${cards}</div>`;
+    },
+
+    openReceiptModal: function(orderId) {
+        const order = this.pendingOrders.find(o => o.id === orderId);
+        if(!order) return;
+        this.currentReceiptOrder = JSON.parse(JSON.stringify(order));
+
+        const vendor = this.vendorsData.find(v => String(v.id) === String(order.vendor_id)) || { nombre_fiscal: 'PROVEEDOR' };
+        document.getElementById('receipt-vendor-name').innerText = vendor.nombre_fiscal;
+
+        const tbody = document.getElementById('receipt-order-items');
+        tbody.innerHTML = this.currentReceiptOrder.items.map((item, idx) => `
+            <tr>
+                <td class="ps-4 py-3">
+                    <div class="fw-black text-dark text-uppercase" style="font-size: 12px;">${escapeSafe(item.name)}</div>
+                    <div class="x-small text-muted fw-bold">Ref: ${escapeSafe(item.vendor_ref) || 'S/N'}</div>
+                </td>
+                <td class="text-center fw-black text-muted">
+                    ${item.final_qty} <span style="font-size: 9px; opacity: 0.7;">${escapeSafe(item.format || 'UD')}</span>
+                </td>
+                <td class="text-center">
+                    <div class="input-group input-group-sm w-75 mx-auto shadow-sm">
+                        <input type="number" class="form-control text-center fw-black border-primary" 
+                               value="${item.final_qty}" 
+                               onchange="SmartOrdersView.updateReceiptQty(${idx}, this.value)">
+                        <span class="input-group-text bg-light fw-bold" style="font-size: 9px;">${escapeSafe(item.format || 'UD')}</span>
+                    </div>
+                </td>
+                <td class="text-end pe-4" id="status-cell-${idx}">
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success">OK</span>
+                </td>
+            </tr>
+        `).join('');
+
+        new bootstrap.Modal(document.getElementById('modal-receipt-order')).show();
+    },
+
+    updateReceiptQty: function(idx, val) {
+        const item = this.currentReceiptOrder.items[idx];
+        const received = parseFloat(val) || 0;
+        item.received_qty = received;
+
+        const statusCell = document.getElementById(`status-cell-${idx}`);
+        if (received < item.final_qty) {
+            statusCell.innerHTML = `<span class="diff-alert">FALTAN ${item.final_qty - received}</span>`;
+        } else if (received > item.final_qty) {
+            statusCell.innerHTML = `<span class="badge bg-warning text-dark border">EXTRA</span>`;
+        } else {
+            statusCell.innerHTML = `<span class="badge bg-success bg-opacity-10 text-success border border-success">OK</span>`;
+        }
+    },
+
+    confirmFullReceipt: async function() {
+        const btn = document.querySelector('#modal-receipt-order .btn-primary');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i> PROCESANDO ENTRADA...';
+
+        // Preparar datos para el servidor
+        const data = {
+            order_id: this.currentReceiptOrder.id,
+            items: this.currentReceiptOrder.items.map(i => ({
+                id: i.product_id,
+                qty: i.received_qty !== undefined ? i.received_qty : i.final_qty,
+                name: i.name
+            }))
+        };
+
+        // LLAMADA AL BACKEND: Para sumar el stock real
+        const res = await HandooApp.api('expense.confirm_receipt', data);
+
+        if (res && res.ok) {
+            console.log("DEBUG: Receipt Confirmation Details:", res.data.details);
+            HandooApp.ui.showToast(`Stock actualizado (${res.data.count} items). Pedido archivado.`, "success");
+            bootstrap.Modal.getInstance(document.getElementById('modal-receipt-order')).hide();
+            this.loadData();
+        } else {
+            HandooApp.ui.showToast(res.msg || "Error al procesar la entrada", "error");
+            btn.disabled = false;
+            btn.innerHTML = 'CONFIRMAR ENTRADA ALMACÉN';
+        }
+    },
+
+    // --- LÓGICA DE BORRADORES (SE MANTIENE Y MEJORA) ---
+    runCheminAIAlgorithm: function() {
+        const ordersMap = {};
+        this.catalogData.forEach(prod => {
+            const stockActual = parseFloat(prod.stock_actual || 0);
+            const stockSeguridad = parseFloat(prod.safety_stock || 0);
+            if (stockSeguridad > 0 && stockActual <= stockSeguridad) {
+                let qtyToOrder = (stockSeguridad * 2) - stockActual;
+                if(qtyToOrder < 1) qtyToOrder = 1;
+                let vendorId = (prod.aliases && prod.aliases.length > 0) ? prod.aliases[0].vendor_id : 'UNKNOWN';
+                if (!ordersMap[vendorId]) ordersMap[vendorId] = { vendor_id: vendorId, items: [] };
+                ordersMap[vendorId].items.push({
+                    product_id: prod.id, name: prod.nombre, stock_actual: stockActual, safety_stock: stockSeguridad,
+                    suggested_qty: Math.ceil(qtyToOrder), final_qty: Math.ceil(qtyToOrder),
+                    vendor_ref: (prod.aliases && prod.aliases.length > 0) ? prod.aliases[0].vendor_ref : 'S/R',
+                    format: (prod.aliases && prod.aliases.length > 0) ? prod.aliases[0].vendor_format : 'UD',
+                    unit_cost: parseFloat(prod.last_purchase_price || prod.last_cost || 0)
+                });
+            }
+        });
+        this.suggestedOrders = Object.values(ordersMap);
+        this.renderOrdersGrid();
+    },
+
+    renderOrdersGrid: function() {
+        const grid = document.getElementById('smart-orders-content');
+        if (this.suggestedOrders.length === 0) {
+            grid.innerHTML = `<div class="text-center p-5 mt-4 border border-dashed rounded-4 bg-white"><i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i><h5 class="fw-black mt-3 text-uppercase">Niveles Óptimos</h5><p class="text-muted fw-bold">Todas las neveras están llenas.</p></div>`;
+            return;
+        }
+        const cards = this.suggestedOrders.map((order, index) => {
+            const vendor = this.vendorsData.find(v => String(v.id) === String(order.vendor_id)) || { nombre_fiscal: 'PROVEEDOR SIN ASIGNAR' };
+            let total = 0; order.items.forEach(i => total += (i.final_qty * i.unit_cost));
+            return `<div class="col-md-6 col-xl-4"><div class="bg-white p-4 rounded-4 shadow-sm border ai-card h-100 d-flex flex-column"><div class="d-flex justify-content-between mb-3"><div><span class="badge bg-warning text-dark mb-2" style="font-size: 9px;">BORRADOR IA</span><h5 class="fw-black text-uppercase text-dark m-0">${vendor.nombre_fiscal}</h5></div></div><div class="p-3 bg-light rounded-3 mb-4 flex-grow-1">${order.items.slice(0,3).map(i => `<div class="small fw-bold text-muted"><i class="bi bi-arrow-right me-1"></i>${i.final_qty}x ${i.name}</div>`).join('')}${order.items.length > 3 ? '<div class="small fw-black text-brand">+ más...</div>' : ''}</div><div class="d-flex justify-content-between align-items-center pt-3 border-top"><div><div class="small text-muted fw-bold" style="font-size: 10px;">TOTAL</div><div class="fw-black fs-5 text-dark">${total.toFixed(2)} €</div></div><button class="btn btn-dark rounded-pill fw-black px-4 shadow-sm" onclick="SmartOrdersView.openOrderDetail(${index})">REVISAR</button></div></div></div>`;
+        }).join('');
+        grid.innerHTML = `<div class="row g-4">${cards}</div>`;
+    },
+
+    openOrderDetail: function(idx) { 
+        this.currentEditingOrderIndex = idx; 
+        const order = this.suggestedOrders[idx];
+        const vendor = this.vendorsData.find(v => String(v.id) === String(order.vendor_id)) || { nombre_fiscal: 'SIN ASIGNAR' };
+        document.getElementById('modal-vendor-name').innerText = vendor.nombre_fiscal;
+        this.renderOrderLines();
+        new bootstrap.Modal(document.getElementById('modal-order-detail')).show();
+    },
+
+    renderOrderLines: function() {
+        const order = this.suggestedOrders[this.currentEditingOrderIndex];
+        const tbody = document.getElementById('modal-order-items');
+        let total = 0;
+        tbody.innerHTML = order.items.map((item, idx) => {
+            total += (item.final_qty * item.unit_cost);
+            return `<tr><td class="ps-4 py-3"><div class="fw-black text-dark text-uppercase" style="font-size: 12px;">${item.name}</div></td><td class="text-center fw-black">${item.stock_actual}</td><td class="text-center"><span class="badge bg-warning bg-opacity-10 text-dark">${item.suggested_qty}</span></td><td class="text-center" style="width: 120px;"><input type="number" class="form-control form-control-sm text-center fw-black border-dark" value="${item.final_qty}" onchange="SmartOrdersView.updateLineQty(${idx}, this.value)"></td><td class="text-end pe-4"><button class="btn btn-link text-danger p-0" onclick="SmartOrdersView.removeLine(${idx})"><i class="bi bi-x-circle-fill fs-5"></i></button></td></tr>`;
+        }).join('');
+        document.getElementById('modal-order-total').innerText = total.toFixed(2) + ' €';
+    },
+
+    updateLineQty: function(idx, val) { this.suggestedOrders[this.currentEditingOrderIndex].items[idx].final_qty = parseFloat(val) || 0; this.renderOrderLines(); },
+    removeLine: function(idx) { this.suggestedOrders[this.currentEditingOrderIndex].items.splice(idx, 1); this.renderOrderLines(); },
+
+    approveOrder: async function() {
+        const order = this.suggestedOrders[this.currentEditingOrderIndex];
+        const finalItems = order.items.filter(i => i.final_qty > 0);
+        if (finalItems.length === 0) return HandooApp.ui.showToast("Pedido vacío", "error");
+        
+        const payload = { id: 'ORD_' + Date.now(), fecha: new Date().toLocaleString('es-ES'), vendor_id: order.vendor_id, estado: 'TRANSIT', items: finalItems };
+        const res = await HandooApp.api('expense.save_draft_order', payload);
+        
+        if(res.ok) {
+            HandooApp.ui.showToast("Pedido enviado a 'En Tránsito'", "success");
+            bootstrap.Modal.getInstance(document.getElementById('modal-order-detail')).hide();
+            this.setSubTab('TRANSIT');
+        }
+    },
+
+    addManualItemToOrder: function() {
+        const optionsHtml = this.catalogData.filter(p => ['RAW', 'SUPPLY', 'MATERIA_PRIMA'].includes(p.type)).map(p => `<button class="list-group-item list-group-item-action fw-bold py-3" onclick="SmartOrdersView.injectManualItem('${p.id}', '${p.nombre.replace(/'/g, "\\'")}')">+ ${p.nombre}</button>`).join('');
+        const modalHtml = `<div class="modal fade" id="modal-manual-item" tabindex="-1" style="z-index: 1060;"><div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4 border-0 shadow-lg"><div class="modal-header bg-dark text-white"><h6 class="fw-black text-uppercase m-0">Añadir Artículo</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0"><div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">${optionsHtml}</div></div></div></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        new bootstrap.Modal(document.getElementById('modal-manual-item')).show();
+    },
+
+    injectManualItem: function(id, name) {
+        const prod = this.catalogData.find(p => p.id === id);
+        this.suggestedOrders[this.currentEditingOrderIndex].items.push({
+            product_id: id, name: name, stock_actual: prod.stock_actual, safety_stock: prod.safety_stock, suggested_qty: 0, final_qty: 1, 
+            vendor_ref: 'S/R', format: 'UD', unit_cost: parseFloat(prod.last_cost || 0)
+        });
+        bootstrap.Modal.getInstance(document.getElementById('modal-manual-item')).hide();
+        this.renderOrderLines();
+    }
+};
+</script>

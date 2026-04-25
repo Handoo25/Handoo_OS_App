@@ -1,0 +1,529 @@
+<style>
+  .alert-action-titanium { 
+    background: #fffbeb; border: 2px solid #f59e0b; color: #92400e; padding: 20px 30px; 
+    border-radius: 20px; margin-bottom: 25px; display: flex; align-items: center; 
+    gap: 20px; animation: slideDown 0.4s ease; transition: 0.3s; cursor: pointer;
+  }
+  .alert-action-titanium:hover { transform: scale(1.01); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-color: #d97706; }
+  
+  .cf-chart-container { height: 250px; display: flex; align-items: flex-end; gap: 4px; padding-top: 40px; width: 100%; overflow: hidden; }
+  .cf-bar-wrapper { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; cursor: pointer; min-width: 0; }
+  .cf-bar { width: 100%; background: #e2e8f0; border-radius: 4px 4px 0 0; transition: 0.3s; min-height: 2px; }
+  .cf-bar:hover { background: var(--brand); }
+  .cf-label { font-size: 8px; font-weight: 800; color: #94a3b8; margin-top: 8px; transform: rotate(-45deg); white-space: nowrap; }
+  .cf-tooltip { position: absolute; bottom: 100%; background: #0f172a; color: white; padding: 5px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; pointer-events: none; opacity: 0; transition: 0.2s; z-index: 10; white-space: nowrap; }
+  .cf-bar-wrapper:hover .cf-tooltip { opacity: 1; transform: translateY(-5px); }
+
+  .prev-list-scroll { max-height: 500px; overflow-y: auto; border: 1px solid var(--border); border-radius: 16px; background: white; }
+  .prev-item { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+  .prev-item:hover { background: #f8fafc; }
+  .prev-day { font-weight: 900; font-size: 11px; color: #64748b; text-transform: uppercase; width: 80px; }
+  .prev-balance { font-weight: 900; font-size: 13px; text-align: right; }
+
+  .health-card { background: #0f172a; color: white; border-radius: 24px; padding: 35px; border-left: 8px solid var(--brand); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+  .health-card.is-danger { border-left-color: #ef4444 !important; }
+  .help-icon { cursor: help; color: var(--brand); font-size: 14px; margin-left: 5px; opacity: 0.8; }
+  .help-icon:hover { opacity: 1; }
+
+  /* ESTILOS BURN RATE TITANIUM V190 */
+  .burn-rate-ticker { background: #1e293b; border-radius: 20px; padding: 20px 25px; display: flex; align-items: center; gap: 15px; margin-top: 15px; border: 1px solid #334155; }
+  .ticker-value { font-family: 'JetBrains Mono', monospace; font-weight: 900; font-size: 22px; color: var(--brand); min-width: 140px; text-align: right; }
+  .ticker-label { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ESTILOS INSIGHTS PROACTIVOS */
+  .ai-proactive-alert {
+    background: #0f172a;
+    border: 2px solid var(--brand);
+    border-radius: 24px;
+    padding: 25px;
+    margin-bottom: 25px;
+    color: white;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  .ai-proactive-alert::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(45deg, transparent, rgba(245, 158, 11, 0.05));
+    pointer-events: none;
+  }
+  .ai-badge-risk { background: #ef4444; color: white; padding: 2px 8px; border-radius: 6px; font-size: 9px; font-weight: 900; text-transform: uppercase; }
+  .ai-badge-stable { background: #22c55e; color: white; padding: 2px 8px; border-radius: 6px; font-size: 9px; font-weight: 900; text-transform: uppercase; }
+
+  .ai-action-btn { 
+    background: var(--brand) !important; 
+    color: #0f172a !important; 
+    font-weight: 900; 
+    text-transform: uppercase; 
+    font-size: 10px; 
+    padding: 10px 20px; 
+    border-radius: 12px; 
+    border: none; 
+    box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4);
+    transition: 0.3s;
+  }
+  .ai-action-btn:hover { transform: scale(1.05) translateY(-2px); }
+
+  /* ESTILOS WIDGET STOCK PREDICTIVO */
+  .stock-predictive-row { padding: 15px 0; border-bottom: 1px solid #f1f5f9; }
+  .stock-predictive-row:last-child { border: none; }
+  .progress-industrial { height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0; }
+  
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  .pulse-warning { background: #f59e0b; color: white; padding: 10px; border-radius: 8px; animation: pulse 1.5s infinite; cursor: pointer; font-weight: 900; font-size: 12px; text-align: center; }
+</style>
+
+<script>
+window.DashboardView = {
+  currentLiveProfit: 0,
+  burnPerSecond: 0,
+  burnInterval: null,
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    const [resStats, resSet] = await Promise.all([HandooApp.api('admin.get_stats'), HandooApp.api('admin.get_settings')]);
+    
+    const d = resStats.ok ? resStats.data : { revenue: '0,00 €', bi: { tax_piggy: '0,00 €', tax_piggy_raw: 0, pending_7d_payments_raw: 0 } };
+    const activeModules = d.active_modules || [];
+    const balances = resSet.ok ? resSet.data.balances : {};
+    
+    // Cálculo de Dinero Real (Semáforo V102.0)
+    let totalBank = 0;
+    Object.keys(balances).forEach(acc => { if(acc.startsWith('570') || acc.startsWith('572')) totalBank += parseFloat(balances[acc] || 0); });
+    
+    const provisionIVA = d.bi.tax_piggy_raw || 0;
+    const payments7d = d.bi.pending_7d_payments_raw || 0;
+    const realAvailable = totalBank - (provisionIVA > 0 ? provisionIVA : 0) - payments7d;
+    
+    this.currentLiveProfit = realAvailable;
+    const fixedCostsMonthly = d.fixed_costs_avg || 0;
+    this.burnPerSecond = fixedCostsMonthly / 2592000; // Segundos en un mes (30d)
+
+    const isHealthy = realAvailable >= 0;
+    const hasLive = activeModules.includes('FEAT_DASHBOARD_LIVE');
+    const hasProjection = activeModules.includes('FEAT_DASHBOARD_PROJECTION');
+    const hasInsights = activeModules.includes('FEAT_DASHBOARD_INSIGHTS');
+    const hasStock = activeModules.includes('FEAT_DASHBOARD_STOCK');
+    const hasFIFO = activeModules.includes('FEAT_INVENTORY_FIFO');
+
+    const resAlerts = await HandooApp.api('admin.get_pending_alerts');
+    const alerts = resAlerts.ok ? resAlerts.data : { missing_cash_closing: false, pending_quarantine_count: 0, logistic_alerts: [] };
+    
+    let alertHtml = '';
+    
+    if (alerts.logistic_alerts && alerts.logistic_alerts.length > 0) {
+      alerts.logistic_alerts.forEach(la => {
+        alertHtml += `
+          <div class="alert-action-titanium shadow-sm mb-4 animate-slide" style="background:#fff7ed; border-color:#f97316; color:#9a3412;" onclick="HandooApp.navTo('Vendors')">
+             <i class="bi bi-clock-history fs-2"></i>
+             <div>
+                <h6 class="fw-black m-0 text-uppercase" style="font-size:13px">VENTANA DE COMPRA CRÍTICA: ${escapeHTML(la.vendor_name)}</h6>
+                <p class="m-0 small fw-bold opacity-75">El pedido debe cerrarse antes de las ${la.deadline}. Quedan ${la.minutes_left} minutos.</p>
+             </div>
+             <i class="bi bi-chevron-right ms-auto fs-4"></i>
+          </div>
+        `;
+      });
+    }
+
+    if (d.overdue_remittances_count > 0) {
+      alertHtml += `
+      <div class="alert-action-titanium shadow-sm mb-4 animate-slide" onclick="DashboardView.goToOverdueRemittances()">
+         <i class="bi bi-exclamation-triangle-fill fs-2"></i>
+         <div>
+            <h6 class="fw-black m-0 text-uppercase" style="font-size:13px">Liquidación de Lotes Pendiente</h6>
+            <p class="m-0 small fw-bold opacity-75">Se han detectado cobros vencidos. Los fondos ya están disponibles para el cuadre final.</p>
+         </div>
+         <i class="bi bi-chevron-right ms-auto fs-4"></i>
+      </div>
+      `;
+    }
+
+    if (alerts.missing_cash_closing) {
+        alertHtml += `
+          <div class="alert-action-titanium shadow-sm mb-4 animate-slide" style="background:#fef2f2; border-color:#ef4444; color:#991b1b;" onclick="HandooApp.navTo('Treasury'); setTimeout(() => { if(window.TripleCajaModule) TripleCajaModule.openClosureModal(0) }, 500)">
+             <i class="bi bi-cash-stack fs-2"></i>
+             <div>
+                <h6 class="fw-black m-0 text-uppercase" style="font-size:13px">CIERRE DE CAJA PENDIENTE</h6>
+                <p class="m-0 small fw-bold opacity-75">El saldo real no es preciso hasta cuadrar el efectivo.</p>
+             </div>
+          </div>
+        `;
+    }
+    
+    // Inventory Health Widget
+    let inventoryHealthHtml = '';
+    if (hasFIFO) {
+        const h = d.inventory_health || { total_value: '0,00 €', low_stock_items: 0, expiring_soon_items: 0 };
+        inventoryHealthHtml = `
+            <div class="p-4 rounded-4 shadow-sm bg-white mb-4 animate-slide" style="border-left: 8px solid var(--brand);">
+                <h6 class="h-label mb-3">SALUD DE INVENTARIO</h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-currency-euro fs-4 text-brand"></i>
+                            <div>
+                                <div class="small text-muted fw-bold" style="font-size:9px">VALOR ALMACÉN</div>
+                                <div class="fw-black">${h.total_value}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-triangle-fill fs-4 ${h.low_stock_items > 0 ? 'text-danger' : 'text-muted'}"></i>
+                            <div>
+                                <div class="small text-muted fw-bold" style="font-size:9px">BAJO MÍNIMOS</div>
+                                <div class="fw-black ${h.low_stock_items > 0 ? 'text-danger' : ''}">${h.low_stock_items}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-calendar-x-fill fs-4 ${h.expiring_soon_items > 0 ? 'text-warning' : 'text-muted'}"></i>
+                            <div>
+                                <div class="small text-muted fw-bold" style="font-size:9px">ALERTAS CADUCIDAD</div>
+                                <div class="fw-black ${h.expiring_soon_items > 0 ? 'text-warning' : ''}">${h.expiring_soon_items}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-dark flex-grow-1 fw-black text-uppercase" style="font-size:10px" onclick="HandooApp.navTo('Inventory')">
+                        <i class="bi bi-box-seam me-2"></i> VER CATÁLOGO
+                    </button>
+                    <button class="btn btn-outline-dark flex-grow-1 fw-black text-uppercase" style="font-size:10px" onclick="HandooApp.navTo('InventoryScan')">
+                        <i class="bi bi-camera me-2"></i> Escaneo Mise en Place
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    stage.innerHTML = `
+      <div class="p-5 animate-slide">
+         <div id="realtime-alerts-area"></div>
+         ${alertHtml}
+         
+         <!-- AREA DE INSIGHTS PROACTIVOS CFO -->
+         <div id="ai-proactive-insights-area"></div>
+
+         <div class="mb-5 d-flex justify-content-between align-items-end">
+            <div>
+               <h6 class="h-label">RESUMEN DE SALUD EMPRESARIAL</h6>
+               <h2 class="fw-black text-uppercase">Panel de Decisión Sincronizado</h2>
+            </div>
+            <div class="text-end">
+               <span class="badge bg-dark text-white fw-bold py-2 px-3" style="font-size:10px">ESTRUCTURAL REAL: ${fixedCostsMonthly.toLocaleString()}€/MES</span>
+            </div>
+         </div>
+         ${inventoryHealthHtml}
+
+         <!-- WIDGET SEMÁFORO DE DINERO REAL (V190: Live Burn Rate) -->
+         <div class="health-card ${!isHealthy ? 'is-danger' : ''} mb-5 animate-slide">
+            <div class="row align-items-center">
+               <div class="col-md-7">
+                  <h6 class="text-white-50 fw-black text-uppercase small">
+                    DINERO DISPONIBLE SIN RIESGOS 
+                    <i class="bi bi-question-circle help-icon" title="Dinero neto real descontando deudas e impuestos."></i>
+                  </h6>
+                  <h1 class="fw-black m-0 ${isHealthy ? 'text-brand' : 'text-danger'}" style="font-size: 52px;" id="live-profit-val">
+                    ${realAvailable.toLocaleString('es-ES', {minimumFractionDigits:2})} €
+                  </h1>
+                  
+                  ${hasLive ? `
+                  <div class="burn-rate-ticker animate-slide">
+                     <div>
+                        <div class="ticker-label">Burn Rate (Goteo Real)</div>
+                        <div class="small text-white-50">Consumo de caja estructural por segundo</div>
+                     </div>
+                     <div class="ticker-value" id="burn-ticker-val">-${this.burnPerSecond.toFixed(4)}€</div>
+                     <div class="ticker-label">/ SEG</div>
+                  </div>
+                  ` : `
+                  <div class="mt-3 p-3 rounded-4 border border-white border-opacity-10 bg-white bg-opacity-5 d-flex align-items-center gap-3">
+                     <i class="bi bi-lock-fill text-brand fs-4"></i>
+                     <div>
+                        <div class="fw-black text-uppercase text-brand" style="font-size:9px">MODO LIVE DESACTIVADO</div>
+                        <p class="m-0 small text-white-50" style="font-size:10px">Activa el beneficio en tiempo real para ver el goteo de caja por segundo.</p>
+                     </div>
+                  </div>
+                  `}
+               </div>
+               <div class="col-md-5 text-end border-start border-white border-opacity-10">
+                  <div class="p-3">
+                     <i class="bi ${isHealthy ? 'bi-shield-check' : 'bi-exclamation-triangle'} fs-1 ${isHealthy ? 'text-brand' : 'text-danger'}"></i>
+                     <div class="mt-2">
+                        <h6 class="text-white-50 fw-black text-uppercase small mb-2">
+                          IVA COBRADO (HUCHA)
+                        </h6>
+                        <h2 class="fw-black m-0 ${provisionIVA >= 0 ? 'text-danger' : 'text-success'}">${d.bi.tax_piggy}</h2>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+         
+         <div class="row g-4 mb-5">
+            <div class="col-md-4">
+               <div class="card-industrial p-4 h-100">
+                  <span class="h-label">Ventas totales</span>
+                  <h3 class="fw-black m-0">${d.revenue}</h3>
+               </div>
+            </div>
+            <div class="col-md-4">
+               <div class="card-industrial p-4 border-start border-4 border-success h-100">
+                  <span class="h-label">Beneficio Acumulado Mes</span>
+                  <h3 class="fw-black m-0 text-success">${(parseFloat(d.revenue_raw || 0) - parseFloat(d.expenses_raw || 0)).toLocaleString()} €</h3>
+               </div>
+            </div>
+            <div class="col-md-4">
+               <div class="card-industrial p-4 bg-light h-100">
+                  <span class="h-label">Efectivo en mano (Caja)</span>
+                  <h3 class="fw-black m-0">${(parseFloat(balances['570000001'] || 0)).toLocaleString()} €</h3>
+               </div>
+            </div>
+         </div>
+
+         <div class="row g-4">
+            <div class="col-md-8">
+               <div class="card-industrial p-5" style="height: 400px; overflow: hidden;">
+                  <h6 class="h-label mb-4">
+                    Dinero en 30 días (Proyectado)
+                  </h6>
+                  ${hasProjection ? `
+                    <div id="cash-flow-chart-area" class="h-100 w-100"></div>
+                  ` : `
+                    <div class="h-100 d-flex flex-column align-items-center justify-content-center text-center p-5">
+                       <i class="bi bi-graph-up text-muted opacity-25" style="font-size: 80px;"></i>
+                       <h6 class="fw-black text-uppercase mt-3 mb-1">Previsión de Tesorería Bloqueada</h6>
+                       <p class="small text-muted">Activa el módulo de Proyección para anticipar tus necesidades de caja.</p>
+                       <button class="btn btn-dark btn-sm fw-black px-4 py-2 mt-2" onclick="HandooApp.navTo('LicenseControl')">MEJORAR PLAN</button>
+                    </div>
+                  `}
+               </div>
+            </div>
+            <div class="col-md-4">
+               <div class="card-industrial p-5 h-100" id="stock-predictive-area">
+                  ${hasStock ? `
+                    <div class="text-center p-3 opacity-50 small fw-bold">CARGANDO MOTOR LOGÍSTICO...</div>
+                  ` : `
+                    <div class="h-100 d-flex flex-column align-items-center justify-content-center text-center">
+                       <i class="bi bi-box-seam text-muted opacity-25 fs-1"></i>
+                       <h6 class="fw-black text-uppercase mt-3 mb-1" style="font-size:10px">Oráculo de Stock</h6>
+                       <p class="small text-muted" style="font-size:9px">Predicción de rotura de inventario disponible en planes superiores.</p>
+                    </div>
+                  `}
+               </div>
+            </div>
+         </div>
+      </div>`;
+    
+    if(hasProjection) this.renderCashFlow();
+    if(hasInsights) this.triggerProactiveInsights();
+    if(hasStock) this.renderPredictiveStock();
+    if(hasLive) this.initLiveTicker();
+    
+    // Motor de Logística Predictiva Real-time (V2026)
+    this.initPredictiveLogistics();
+  },
+
+  predictiveUnsub: null,
+  initPredictiveLogistics: function() {
+    if (this.predictiveUnsub) this.predictiveUnsub();
+    
+    const area = document.getElementById('realtime-alerts-area');
+    if (!area || !window.db) return;
+
+    this.predictiveUnsub = window.db.collection('vendors').onSnapshot((snapshot) => {
+      const now = new Date();
+      const currentDay = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'][now.getDay()];
+      let alertsHtml = '';
+
+      snapshot.forEach(doc => {
+        const v = doc.data();
+        if (v.dia_limite_pedido && v.hora_limite_pedido) {
+          const isToday = (v.dia_limite_pedido === 'DIARIO' || v.dia_limite_pedido === currentDay);
+          if (isToday) {
+            const [h, m] = v.hora_limite_pedido.split(':').map(Number);
+            const deadline = new Date();
+            deadline.setHours(h, m, 0, 0);
+            
+            const diffMs = deadline.getTime() - now.getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins > 0 && diffMins <= 120) { // Ventana de 2 horas
+              alertsHtml += `
+                <div class="alert-action-titanium shadow-sm mb-4 animate-slide" style="background:#fff7ed; border-color:#f97316; color:#9a3412; border-left: 10px solid #f97316;" onclick="HandooApp.navTo('Vendors')">
+                   <i class="bi bi-clock-history fs-2 text-brand"></i>
+                   <div>
+                      <h6 class="fw-black m-0 text-uppercase" style="font-size:13px">ALERTA REAL-TIME: VENTANA CRÍTICA ${escapeHTML(v.nombre_fiscal)}</h6>
+                      <p class="m-0 small fw-bold opacity-75">El pedido debe cerrarse antes de las ${v.hora_limite_pedido}. Quedan ${diffMins} minutos.</p>
+                   </div>
+                   <div class="ms-auto text-end">
+                      <span class="badge bg-brand text-dark fw-black">CIERRE INMINENTE</span>
+                   </div>
+                </div>
+              `;
+            }
+          }
+        }
+      });
+      area.innerHTML = alertsHtml;
+    }, (error) => {
+      console.error("Firestore Predictive Error:", error);
+    });
+  },
+
+  openScanner: function() {
+    HandooScanner.open();
+  },
+
+  initLiveTicker: function() {
+    if(this.burnInterval) clearInterval(this.burnInterval);
+    const el = document.getElementById('live-profit-val');
+    if(!el) return;
+
+    this.burnInterval = setInterval(() => {
+      this.currentLiveProfit -= this.burnPerSecond;
+      el.innerText = this.currentLiveProfit.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " €";
+    }, 1000);
+  },
+
+  renderPredictiveStock: async function() {
+    const area = document.getElementById('stock-predictive-area');
+    if (!area) return;
+
+    const res = await HandooApp.api('inventory.get_predictive_alerts');
+    if (res.ok && res.data.length > 0) {
+       const alerts = res.data;
+       area.innerHTML = `
+        <h6 class="h-label mb-4">REPOSICIÓN CRÍTICA (ORÁCULO)</h6>
+        <div style="max-height: 280px; overflow-y: auto; padding-right: 10px;">
+           ${alerts.map(a => {
+              const perc = Math.min(100, Math.max(5, (a.days_left / (a.lead_time * 2)) * 100));
+              const colorClass = a.is_critical ? 'bg-danger' : (perc < 50 ? 'bg-warning' : 'bg-success');
+              return `
+                <div class="stock-predictive-row">
+                   <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="fw-black text-uppercase" style="font-size:10px">${escapeHTML(a.name)}</span>
+                      <span class="badge ${colorClass} text-white" style="font-size:8px">${a.days_left} DÍAS</span>
+                   </div>
+                   <div class="progress-industrial">
+                      <div class="progress-bar ${colorClass} ${a.is_critical ? 'progress-bar-animated progress-bar-striped' : ''}" style="width: ${perc}%"></div>
+                   </div>
+                   <div class="d-flex justify-content-between mt-1" style="font-size:8px">
+                      <span class="text-muted fw-bold">Stock: ${Math.round(a.stock)} uds</span>
+                      <span class="${a.is_critical ? 'text-danger fw-black' : 'text-muted fw-bold'}">Entrega: ${a.lead_time}d</span>
+                   </div>
+                </div>`;
+           }).join('')}
+        </div>
+        <div class="mt-4 pt-3 border-top">
+           <button class="btn btn-dark w-100 py-2 fw-black text-uppercase" style="font-size:9px" onclick="HandooApp.navTo('Vendors')">ABRIR MÓDULO DE COMPRAS</button>
+        </div>`;
+    } else {
+       area.innerHTML = `
+        <h6 class="h-label mb-4">REPOSICIÓN CRÍTICA (ORÁCULO)</h6>
+        <div class="p-5 text-center opacity-25">
+           <i class="bi bi-shield-check fs-1"></i>
+           <p class="small fw-black mt-2">STOCK GARANTIZADO</p>
+        </div>`;
+    }
+  },
+
+  renderCashFlow: async function() {
+    const res = await HandooApp.api('treasury.get_cash_flow');
+    const container = document.getElementById('cash-flow-chart-area');
+    if(!container || !res.ok) return;
+
+    const data = res.data;
+    const maxVal = Math.max(...data.map(d => Math.abs(d.balance))) || 1;
+    
+    container.innerHTML = `
+      <div class="cf-chart-container animate-slide">
+         ${data.map(d => {
+            const h = Math.max(2, (Math.abs(d.balance) / maxVal) * 80);
+            const color = d.balance < 0 ? '#ef4444' : (d.balance < 1000 ? '#f59e0b' : '#22c55e');
+            return `<div class="cf-bar-wrapper"><div class="cf-tooltip">${parseFloat(d.balance).toLocaleString()} €</div><div class="cf-bar" style="height: ${h}%; background-color: ${color}"></div><div class="cf-label">${d.label}</div></div>`;
+         }).join('')}
+      </div>`;
+  },
+
+  triggerProactiveInsights: async function() {
+    const area = document.getElementById('ai-proactive-insights-area');
+    if(!area) return;
+
+    // Background call to the AI Engine
+    const res = await HandooApp.api('ai.get_proactive_insights');
+    if(res.ok && res.data) {
+      const insight = res.data;
+      const isRisk = insight.risk_level !== 'STABLE';
+      
+      // Función auxiliar para codificar en Base64 de forma segura con Unicode
+      const safeBtoa = (str) => {
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+          return String.fromCharCode('0x' + p1);
+        }));
+      };
+      
+      area.innerHTML = `
+        <div class="ai-proactive-alert animate-slide">
+           <div class="text-center">
+              <div class="bg-brand p-2 rounded-circle mb-2"><i class="bi bi-robot text-dark fs-3"></i></div>
+              <span class="${isRisk ? 'ai-badge-risk' : 'ai-badge-stable'}">${insight.risk_level}</span>
+           </div>
+           <div class="flex-grow-1">
+              <h6 class="fw-black text-uppercase m-0" style="color:var(--brand); font-size:12px;">Alertas Proactivas: CFO Autónomo</h6>
+              <p class="m-0 fw-bold fs-5">${insight.primary_alert}</p>
+              <div class="mt-2">
+                 ${insight.recommendations.map(r => `<div class="small fw-bold opacity-75"><i class="bi bi-arrow-right-short text-brand"></i> ${r}</div>`).join('')}
+              </div>
+           </div>
+           <div class="ms-auto text-end" style="min-width: 200px;">
+              ${insight.action ? `
+                 <button class="ai-action-btn w-100" onclick="DashboardView.executeAIAction('${safeBtoa(JSON.stringify(insight.action))}')">
+                    <i class="bi bi-play-circle-fill me-2"></i> ${insight.action.label}
+                 </button>
+              ` : `
+                 <button class="btn btn-sm btn-outline-light border-secondary text-white fw-black" style="font-size:9px" onclick="HandooApp.ui.toggleAIChat(true)">ANALIZAR CON CHAT</button>
+              `}
+              ${insight.critical_date ? `<div class="mt-2 small fw-black text-danger">RIESGO: ${new Date(insight.critical_date).toLocaleDateString()}</div>` : ''}
+           </div>
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * EJECUCIÓN DE ACCIÓN PROACTIVA IA
+   */
+  executeAIAction: function(encodedAction) {
+    try {
+      const action = JSON.parse(atob(encodedAction));
+      if (action.type === 'INTERNAL_TRANSFER') {
+         HandooApp.navTo('Treasury');
+         // Prefill del modal en Tesorería
+         setTimeout(() => {
+            if (window.TreasuryView) window.TreasuryView.openInternalTransferModal(action.payload);
+         }, 500);
+      } else if (action.type === 'PREPARE_REMITTANCE') {
+         HandooApp.navTo('Treasury');
+         setTimeout(() => {
+            if (window.TreasuryView) window.TreasuryView.setSubTab('efectos');
+         }, 500);
+      }
+    } catch(e) { HandooApp.ui.showToast("Error al procesar acción autónoma", "error"); }
+  },
+
+  goToOverdueRemittances: function() {
+     HandooApp.navTo('Treasury');
+     // Al hacer click, llevamos directamente al filtro de VENCIDOS en remesas para liquidación rápida.
+     setTimeout(() => { if(window.TreasuryView) window.TreasuryView.setSubTab('remesas', 'DUE'); }, 500);
+  }
+};
+</script>

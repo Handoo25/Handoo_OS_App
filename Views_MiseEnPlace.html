@@ -1,0 +1,210 @@
+<style>
+  .task-card { transition: all 0.2s; border-left: 4px solid #0f172a; }
+  .task-done { opacity: 0.6; border-left-color: #10b981 !important; background-color: #f8fafc; }
+  .task-done .text-strike { text-decoration: line-through; }
+  .ai-badge { background: linear-gradient(45deg, #f97316, #ea580c); color: white; }
+</style>
+
+<div id="view-miseenplace" class="animate__animated animate__fadeIn">
+  
+  <div class="p-4 text-white shadow-sm" style="background:#0f172a">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <div class="small opacity-50 text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 2px;">Cocina y Producción</div>
+        <h4 class="fw-black text-uppercase mb-0" style="letter-spacing: 1px;">Hoja de Ruta Diaria</h4>
+      </div>
+      <div class="text-end">
+        <div class="fw-bold" id="prep-date" style="font-size: 14px;">Cargando...</div>
+        <div class="badge ai-badge mt-1 shadow-sm"><i class="bi bi-robot me-1"></i> Predicciones Chemin AI activas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid mt-3 px-4">
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="p-3 bg-white rounded-4 shadow-sm border d-flex align-items-center gap-3">
+          <div class="fs-1 text-brand"><i class="bi bi-cloud-rain-fill text-info"></i></div>
+          <div>
+            <div class="small fw-bold text-muted text-uppercase" style="font-size: 10px;">Previsión Clima</div>
+            <div class="fw-black text-dark">Lluvia Moderada</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 bg-white rounded-4 shadow-sm border d-flex align-items-center gap-3">
+          <div class="fs-1 text-success"><i class="bi bi-calendar-event-fill"></i></div>
+          <div>
+            <div class="small fw-bold text-muted text-uppercase" style="font-size: 10px;">Eventos Locales</div>
+            <div class="fw-black text-dark">Día Laborable Normal</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 bg-white rounded-4 shadow-sm border d-flex align-items-center gap-3">
+          <div class="fs-1 text-warning"><i class="bi bi-graph-down-arrow"></i></div>
+          <div>
+            <div class="small fw-bold text-muted text-uppercase" style="font-size: 10px;">Ajuste de Carga</div>
+            <div class="fw-black text-dark">-15% Demanda (por clima)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4 bg-white rounded-4 shadow-sm border">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-black text-uppercase mb-0" style="font-size: 12px"><i class="bi bi-list-check me-2"></i>Tareas de Preparación (Prioridad)</h6>
+        <button class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold shadow-sm" onclick="MiseEnPlaceView.printSheet()">
+          <i class="bi bi-printer me-1"></i> Imprimir Hoja
+        </button>
+      </div>
+
+      <div class="table-responsive" id="print-area">
+        <table class="table align-middle mb-0">
+          <thead class="small text-muted bg-light">
+            <tr style="border-bottom: 2px solid #e2e8f0; font-size: 10px;" class="text-uppercase">
+              <th style="width: 30%;">Producto a Preparar</th>
+              <th class="text-center" style="width: 15%;"><i class="bi bi-robot text-brand"></i> Previsión AI</th>
+              <th class="text-center" style="width: 15%;"><i class="bi bi-box-seam"></i> Arrastre (Ayer)</th>
+              <th class="text-center bg-dark text-white rounded-top" style="width: 20%;">🎯 OBJETIVO HOY</th>
+              <th class="text-end" style="width: 20%;">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="prep-task-list">
+            <tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-brand"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+console.log("🟢 [DEBUG] Views_MiseEnPlace.html: Script INICIANDO...");
+
+var MiseEnPlaceView = {
+  tasks: [],
+
+  render: async function() {
+    const s = document.getElementById('main-stage');
+    const v = document.getElementById('view-miseenplace');
+    if (v && s) s.innerHTML = v.outerHTML;
+
+    // Formatear la fecha de hoy
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('prep-date').innerText = new Date().toLocaleDateString('es-ES', options).toUpperCase();
+
+    await this.loadTasks();
+  },
+
+  loadTasks: async function() {
+    const b = document.getElementById('prep-task-list');
+    b.innerHTML = '<tr><td colspan="5" class="text-center p-5"><div class="spinner-border text-brand"></div></td></tr>';
+
+    // Llamamos al servidor para pedir los datos reales
+    const res = await HandooApp.api('production.get_daily_prep', {});
+    
+    if (res && res.ok) {
+        this.tasks = res.data;
+        this.renderTaskList();
+    } else {
+        b.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-danger">Error al cargar tareas.</td></tr>`;
+    }
+  },
+
+  renderTaskList: function() {
+    const b = document.getElementById('prep-task-list');
+    if(!b) return;
+
+    if(this.tasks.length === 0) {
+        b.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-muted fw-bold">No hay tareas de preparación hoy.</td></tr>';
+        return;
+    }
+
+    b.innerHTML = this.tasks.map((t, index) => {
+        // La matemática predictiva
+        let cantidadFinal = t.prevision_ai - t.arrastre_ayer;
+        if (cantidadFinal < 0) cantidadFinal = 0; // Por si el arrastre supera a la previsión
+        
+        const isDone = t.done;
+        const rowClass = isDone ? 'task-done' : 'task-card';
+        const textClass = isDone ? 'text-strike text-muted' : 'text-dark';
+
+        return `
+        <tr class="${rowClass}">
+          <td class="ps-3 py-3">
+              <div class="fw-black ${textClass}" style="font-size:13px;">${t.nombre}</div>
+          </td>
+          <td class="text-center"><span class="fw-bold text-muted">${t.prevision_ai}</span></td>
+          <td class="text-center"><span class="badge bg-warning text-dark border">- ${t.arrastre_ayer}</span></td>
+          <td class="text-center bg-light border-start border-end">
+              <span class="fw-black fs-5 ${isDone ? 'text-success' : 'text-danger'}">${cantidadFinal}</span> 
+              <span class="small text-muted">${t.unidad}</span>
+          </td>
+          <td class="text-end pe-3">
+              ${isDone ? 
+                `<span class="badge bg-success py-2 px-3"><i class="bi bi-check-lg me-1"></i> COMPLETADO</span>` : 
+                `<button class="btn btn-dark btn-sm fw-black shadow-sm px-3 rounded-pill" onclick="MiseEnPlaceView.completeTask('${index}', '${t.nombre}', ${cantidadFinal}, '${t.unidad}')">
+                   PRODUCIR
+                 </button>`
+              }
+          </td>
+        </tr>
+        `;
+    }).join('');
+  },
+
+  completeTask: function(index, nombre, cantidad, unidad) {
+    // 1. Marcamos la tarea como completada visualmente
+    this.tasks[index].done = true;
+    this.renderTaskList();
+
+    // 2. MAGIA: Abrimos directamente el modal de Producción que ya existe
+    // Rellenando automáticamente los datos para que el cocinero solo tenga que pulsar "Guardar"
+    setTimeout(() => {
+        if(window.ProductionView) {
+            // Renderizamos la vista de producción de fondo para tener los modales listos
+            HandooApp.navTo('Production'); 
+            
+            setTimeout(() => {
+                // Forzamos abrir el modal de nueva producción
+                ProductionView.openProduceModal();
+                
+                // Rellenamos el buscador y las cantidades con lo que pide la hoja de tareas
+                document.getElementById('prod-search').value = nombre;
+                document.getElementById('prod-cantidad').value = cantidad;
+                
+                // Filtramos la lista para que le salga el producto exacto
+                ProductionView.filterFormulas();
+                
+                HandooApp.ui.showToast("Ruta transferida a Producción. Registra el lote.", "info");
+            }, 500);
+        } else {
+            HandooApp.ui.showToast("Módulo de producción no conectado.", "warning");
+        }
+    }, 300);
+  },
+
+  printSheet: function() {
+    const printArea = document.getElementById('print-area');
+    if (!printArea) return;
+    
+    const printContent = printArea.innerHTML;
+    const originalContent = document.body.innerHTML;
+    
+    // Vista rápida de impresión
+    document.body.innerHTML = `
+      <div style="padding: 20px; font-family: sans-serif;">
+        <h2 style="text-transform: uppercase;">Mise En Place - ${document.getElementById('prep-date')?.innerText || ''}</h2>
+        <hr>
+        ${printContent}
+      </div>
+    `;
+    window.print();
+    document.body.innerHTML = originalContent;
+    location.reload(); // Recargar para restaurar eventos JS tras imprimir
+  }
+};
+
+window.MiseEnPlaceView = MiseEnPlaceView;
+</script>

@@ -1,0 +1,369 @@
+<style>
+  #scanner-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; border-radius: 24px; overflow: hidden; background: #000; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+  #camera-preview { width: 100%; height: 500px; display: block; object-fit: cover; }
+  /* Efecto espejo para cámara frontal */
+  .mirror-mode { transform: scaleX(-1); }
+  
+  .scanner-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 0 50px rgba(0,0,0,0.5); pointer-events: none; }
+  .scanner-line { position: absolute; width: 100%; height: 2px; background: var(--brand); box-shadow: 0 0 10px var(--brand); top: 50%; animation: scan-move 2s infinite alternate ease-in-out; }
+  @keyframes scan-move { 0% { top: 10%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+  
+  .controls-bar { position: absolute; bottom: 20px; left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 10; }
+  .btn-shutter { width: 70px; height: 70px; border-radius: 50%; background: var(--brand); border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: grid; place-items: center; cursor: pointer; transition: 0.2s; }
+  .btn-shutter:active { transform: scale(0.9); background: #eab308; }
+  
+  .btn-flip-cam { width: 50px; height: 50px; border-radius: 50%; background: rgba(15,23,42,0.7); border: 2px solid rgba(255,255,255,0.5); color: white; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(5px); }
+
+  .detection-list { text-align: left; margin-top: 20px; }
+  .detection-item { padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: white; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+  #reader { width: 100%; height: 500px; background: #000; border-radius: 16px; overflow: hidden; }
+</style>
+
+<script>
+window.ScannerView = {
+  video: null,
+  stream: null,
+  mode: 'IA', // 'IA' o 'BARCODE'
+  facingMode: 'user', // Empezamos con 'user' (frontal) para evitar fallos en PC
+  detectedItems: [],
+  html5QrCode: null,
+  hasMultipleCameras: false, // Variable para saber si hay más de una cámara
+  
+  render: function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center shadow sticky-top">
+         <div>
+            <h6 class="h-label text-brand m-0">CHEMIN OMNI-VISION</h6>
+            <h2 class="fw-black m-0 text-uppercase" style="font-size:18px">Escáner Neural</h2>
+         </div>
+         <div class="d-flex gap-3 align-items-center">
+            <div class="btn-group shadow-sm bg-white rounded-2 p-1" role="group">
+               <button class="btn btn-dark fw-black px-4" onclick="ScannerView.setMode('IA')" id="btn-mode-ia">OJO IA</button>
+               <button class="btn btn-light text-muted fw-black px-4" onclick="ScannerView.setMode('BARCODE')" id="btn-mode-code">BARRAS</button>
+            </div>
+            <button class="btn btn-outline-danger fw-black px-3" onclick="HandooApp.navTo('Dashboard')" title="Cerrar Escáner">
+               <i class="bi bi-x-lg fs-5"></i>
+            </button>
+         </div>
+      </div>
+      
+      <div class="p-5 text-center animate-slide" style="max-width: 800px; margin: 0 auto;">
+         
+         <div id="ia-selector-box" class="mb-4 bg-light p-3 rounded-4 shadow-sm border">
+            <label class="fw-black small text-dark text-uppercase mb-3 d-block letter-spacing-1">¿Qué estás enfocando?</label>
+            <div class="d-flex justify-content-center gap-3">
+               <div class="form-check form-check-inline m-0">
+                  <input class="form-check-input" type="radio" name="fotoType" id="typeInv" value="INVENTORY" checked style="transform: scale(1.5); margin-top: 5px;">
+                  <label class="form-check-label fw-bold ms-2 text-dark" for="typeInv"><i class="bi bi-box-seam me-1 text-brand"></i> ESTANTERÍA / INVENTARIO</label>
+               </div>
+               <div class="form-check form-check-inline m-0">
+                  <input class="form-check-input" type="radio" name="fotoType" id="typeDoc" value="DOCUMENT" style="transform: scale(1.5); margin-top: 5px;">
+                  <label class="form-check-label fw-bold ms-2 text-dark" for="typeDoc"><i class="bi bi-receipt me-1 text-brand"></i> FACTURA / DOCUMENTO</label>
+               </div>
+            </div>
+         </div>
+
+         <div id="ia-mode" class="scanner-container mb-4">
+            <video id="camera-preview" autoplay playsinline></video>
+            <div class="scanner-overlay" id="scanner-overlay" style="display:none;">
+               <div class="scanner-line"></div>
+            </div>
+            <div class="controls-bar">
+               <div class="btn-flip-cam" onclick="ScannerView.flipCamera()" title="Cambiar Cámara"><i class="bi bi-arrow-repeat fs-4"></i></div>
+               <div class="btn-shutter" onclick="ScannerView.capture()" title="Tomar Foto"><i class="bi bi-camera-fill fs-2 text-dark"></i></div>
+            </div>
+            <canvas id="hidden-canvas" style="display:none;"></canvas>
+         </div>
+         
+         <div id="reader" style="display: none;" class="shadow-lg"></div>
+         
+         <div id="scanner-loading" class="p-4" style="display: none;">
+            <div class="spinner-border text-brand" role="status"></div>
+            <p class="fw-bold mt-2">Chemin AI analizando imagen...</p>
+         </div>
+
+         <div id="detection-results" class="detection-list"></div>
+      </div>`;
+    
+    this.video = document.getElementById('camera-preview');
+    this.checkCameras(); // Comprobamos cuántas cámaras hay
+    this.initCamera();
+  },
+
+  // Nueva función para comprobar cámaras disponibles
+  checkCameras: async function() {
+      try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(device => device.kind === 'videoinput');
+          this.hasMultipleCameras = videoDevices.length > 1;
+      } catch(e) {
+          console.log("No se pudo enumerar dispositivos:", e);
+      }
+  },
+
+  initCamera: async function() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
+    
+    if (!this.video) return;
+
+    if (this.facingMode === 'user') {
+        this.video.classList.add('mirror-mode');
+    } else {
+        this.video.classList.remove('mirror-mode');
+    }
+
+    try {
+      // Intentamos abrir la cámara con la preferencia actual
+      this.stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: this.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } 
+      });
+      this.video.srcObject = this.stream;
+    } catch (err) {
+      console.warn("Fallo al abrir cámara:", err);
+      // Fallback: Si falla (muy típico en PC si pides la trasera y no hay), pedimos cualquier cámara
+      try {
+          this.stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          this.video.srcObject = this.stream;
+          this.facingMode = 'user'; // Asumimos que es la única que hay
+          this.video.classList.add('mirror-mode');
+      } catch (errFallback) {
+          console.error("Error crítico de cámara:", errFallback);
+          HandooApp.ui.showToast("Error al acceder a la cámara. Revisa permisos.", "error");
+      }
+    }
+  },
+
+  flipCamera: function() {
+    // Si no hay más de una cámara, solo alternamos el efecto espejo (útil para PC)
+    if (!this.hasMultipleCameras) {
+        if (this.video.classList.contains('mirror-mode')) {
+             this.video.classList.remove('mirror-mode');
+             this.facingMode = 'environment'; // Para el renderizado del canvas luego
+             HandooApp.ui.showToast("Modo espejo desactivado", "info");
+        } else {
+             this.video.classList.add('mirror-mode');
+             this.facingMode = 'user';
+             HandooApp.ui.showToast("Modo espejo activado", "info");
+        }
+        return; // No reiniciamos el stream si solo hay una cámara
+    }
+
+    // Si hay varias cámaras (móvil/tablet), cambiamos de verdad
+    this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+    this.initCamera();
+  },
+
+  setMode: function(mode) {
+    this.mode = mode;
+    const btnIA = document.getElementById('btn-mode-ia');
+    const btnCode = document.getElementById('btn-mode-code');
+    
+    document.getElementById('ia-mode').style.display = mode === 'IA' ? 'block' : 'none';
+    document.getElementById('ia-selector-box').style.display = mode === 'IA' ? 'block' : 'none';
+    document.getElementById('reader').style.display = mode === 'BARCODE' ? 'block' : 'none';
+    
+    if (mode === 'IA') {
+       btnIA.className = 'btn btn-dark fw-black px-4';
+       btnCode.className = 'btn btn-light text-muted fw-black px-4';
+       this.stopBarcodeScanner();
+       this.initCamera();
+    } else {
+       btnCode.className = 'btn btn-dark fw-black px-4';
+       btnIA.className = 'btn btn-light text-muted fw-black px-4';
+       if (this.stream) { this.stream.getTracks().forEach(track => track.stop()); }
+       this.startBarcodeScanner();
+    }
+  },
+
+  startBarcodeScanner: function() {
+    if (this.html5QrCode) this.stopBarcodeScanner();
+    this.html5QrCode = new Html5Qrcode("reader");
+    this.html5QrCode.start(
+      { facingMode: this.facingMode }, 
+      { fps: 10, qrbox: 250 },
+      (decodedText) => { this.onScanSuccess(decodedText); },
+      (errorMessage) => { /* ignore logs */ }
+    ).catch(err => {
+      console.error("Error al iniciar escáner de barras:", err);
+    });
+  },
+
+  stopBarcodeScanner: function() {
+    if (this.html5QrCode) {
+      this.html5QrCode.stop().then(() => {
+        this.html5QrCode = null;
+      }).catch(err => console.error("Error al detener escáner:", err));
+    }
+  },
+
+  onScanSuccess: async function(decodedText) {
+    HandooApp.ui.showToast("Código detectado: " + decodedText, "info");
+    const res = await HandooApp.api('ai.resolveBarcode', { barcode: decodedText });
+    if (res.ok) {
+      this.detectedItems.push(res.data);
+      this.renderResults(this.detectedItems);
+    }
+  },
+
+  capture: async function() {
+    const canvas = document.getElementById('hidden-canvas');
+    if (!this.video || !canvas) return;
+
+    // Aseguramos leer correctamente el radio button
+    const typeInputs = document.getElementsByName('fotoType');
+    let photoType = 'INVENTORY'; // Valor por defecto seguro
+    for (let i = 0; i < typeInputs.length; i++) {
+        if (typeInputs[i].checked) {
+            photoType = typeInputs[i].value;
+            break;
+        }
+    }
+
+    canvas.width = this.video.videoWidth;
+    canvas.height = this.video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    
+    if (this.facingMode === 'user') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+    }
+    ctx.drawImage(this.video, 0, 0, canvas.width, canvas.height);
+    
+    const base64 = canvas.toDataURL('image/jpeg', 0.8);
+    
+    document.getElementById('scanner-loading').style.display = 'block';
+    
+    if (photoType === 'INVENTORY') {
+        // Envolvemos la llamada en un try-catch para ver errores locales si falla
+        try {
+            const res = await HandooApp.api('ai.analyzeInventoryPhoto', { image: base64 });
+            document.getElementById('scanner-loading').style.display = 'none';
+            
+            if (res && res.ok && res.data && res.data.items) {
+              this.detectedItems = res.data.items;
+              this.renderResults(this.detectedItems);
+            } else {
+              HandooApp.ui.showToast(res?.msg || "No se detectaron productos o falló el análisis", "error");
+            }
+        } catch(e) {
+            document.getElementById('scanner-loading').style.display = 'none';
+            HandooApp.ui.showToast("Error de conexión: " + e.message, "error");
+        }
+    } else {
+        // Modo Documento: Procesamiento general con IA
+        try {
+            const resText = await window.HandooAI.scanVisionGeneral(base64, "Extrae el texto y resume el documento de forma clara.");
+            document.getElementById('scanner-loading').style.display = 'none';
+            const container = document.getElementById('detection-results');
+            container.innerHTML = `
+               <div class="bg-light p-4 rounded-4 shadow-sm border mt-4 text-start">
+                  <h6 class="fw-black text-brand text-uppercase"><i class="bi bi-file-text me-2"></i> Análisis de Documento</h6>
+                  <div style="white-space: pre-wrap; font-size:13px; color:#334155">${resText || 'Sin respuesta válida de la IA'}</div>
+               </div>`;
+        } catch(e) {
+            document.getElementById('scanner-loading').style.display = 'none';
+            HandooApp.ui.showToast("Error en Ojo Neural: " + e.message, "error");
+        }
+    }
+  },
+
+  renderResults: function(items) {
+    const container = document.getElementById('detection-results');
+    container.innerHTML = `<h6 class="fw-black text-uppercase small mb-3 mt-4 text-start">Resultados del Escaneo (${items.length})</h6>`;
+    
+    items.forEach((item, index) => {
+      const isNotCataloged = item.producto_id === 'NOT_CATALOGED';
+      const isRotationError = item.rotation_error;
+      const baseUnitInfo = item.base_unit_info ? `<div class="text-muted" style="font-size:10px">${item.base_unit_info}</div>` : '';
+      
+      container.innerHTML += `
+        <div class="detection-item ${isNotCataloged ? 'border-warning border-2' : ''}">
+          <div>
+            <div class="fw-black" style="font-size:13px">
+              ${item.nombre} 
+              ${isNotCataloged ? '<span class="badge bg-warning text-dark ms-2">No Catalogado</span>' : ''}
+              ${isRotationError ? '<span class="badge bg-danger ms-2">Error Rotación</span>' : ''}
+            </div>
+            ${!isNotCataloged ? baseUnitInfo : ''}
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <span class="fs-5"><b>${item.cantidad}</b> <span class="small text-muted">${item.unidad}</span></span>
+            <button class="btn btn-light text-danger p-2 rounded-circle" onclick="ScannerView.removeItem(${index})">
+              <i class="bi bi-trash-fill"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    
+    if (items.length > 0) {
+        container.innerHTML += `
+          <div class="mt-4 row g-2">
+            <div class="col-md-6">
+                <button class="btn btn-outline-dark w-100 fw-bold py-2 shadow-sm" onclick="ScannerView.generateOrder()">GENERAR PEDIDO</button>
+            </div>
+            <div class="col-md-6">
+                <button class="btn btn-brand-titanium w-100 fw-black py-2 shadow-sm" onclick="ScannerView.save()">CONFIRMAR STOCK</button>
+            </div>
+          </div>
+        `;
+    }
+  },
+
+  removeItem: function(index) {
+    this.detectedItems.splice(index, 1);
+    this.renderResults(this.detectedItems);
+  },
+
+  generateOrder: async function() {
+    const res = await HandooApp.api('ai.generateAutoOrder', { items: this.detectedItems });
+    if (res && res.ok) {
+      HandooApp.ui.showToast(res.data.draft || "Pedido generado");
+    } else {
+      HandooApp.ui.showToast(res?.msg || "Error al generar pedido", "error");
+    }
+  },
+
+  save: async function() {
+    const items = this.detectedItems.map(item => ({
+        producto_id: item.producto_id,
+        cantidad: item.cantidad,
+        tipo: 'SUMA',
+        unidad: item.unidad
+    }));
+
+    const res = await HandooApp.api('ai.saveInventoryFromScanner', { items: items });
+    
+    if (res && res.ok) {
+      HandooApp.ui.showToast("Inventario actualizado con éxito", "success");
+      this.detectedItems = []; // Limpiar tras guardar
+      this.renderResults(this.detectedItems);
+      if (res.data && res.data.warnings && res.data.warnings.length > 0) {
+        res.data.warnings.forEach(w => HandooApp.ui.showToast(w, "warning"));
+      }
+    } else {
+      HandooApp.ui.showToast(res?.msg || "Error al guardar inventario", "error");
+    }
+  },
+
+  // Es crucial apagar la cámara cuando salimos de la vista
+  destroy: function() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
+    this.stopBarcodeScanner();
+  }
+};
+
+// Hook para apagar la cámara al cambiar de pantalla
+const originalNavTo = window.HandooApp.navTo;
+window.HandooApp.navTo = async function(id, params) {
+   if (window.ScannerView && window.ScannerView.stream) {
+       window.ScannerView.destroy();
+   }
+   return originalNavTo.call(this, id, params);
+};
+</script>

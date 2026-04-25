@@ -1,0 +1,407 @@
+<style>
+  .bridge-shell { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .bridge-sidebar { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 25px; }
+  .bridge-nav-btn { 
+    display: flex; align-items: center; gap: 15px; padding: 20px 30px; border: none; background: none; 
+    width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; 
+    border-bottom: 1px solid #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;
+  }
+  .bridge-nav-btn:hover { background: #f1f5f9; color: var(--dark); }
+  .bridge-nav-btn.active { background: white; color: var(--dark); border-right: 6px solid var(--brand); }
+  .bridge-nav-btn i { font-size: 1.4rem; color: #94a3b8; transition: 0.3s; width: 24px; text-align: center; }
+  .bridge-nav-btn.active i { color: var(--brand); }
+  .bridge-content { flex-grow: 1; padding: 40px; overflow-y: auto; background: white; }
+
+  /* BLOQUE UNIFICADO TITANIUM */
+  .unified-block { padding: 24px; border-radius: 16px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 16px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .block-dark .text-muted { color: #94a3b8 !important; }
+  .block-dark .form-control, .block-dark .form-select { background: #1e293b; border-color: #334155; color: #fff; font-size: 11px; }
+</style>
+
+<script>
+window.DataBridgeView = {
+  activeTab: 'quarantine',
+  quarantine: [],
+  pgc: [],
+  vendors: [],
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">SISTEMA DE INTERCONEXIÓN</h6><h2 class="fw-black m-0 text-uppercase">Data Bridge Hub</h2></div>
+      </div>
+      <div class="p-5 animate-slide">
+         <div class="bridge-shell">
+            <div class="bridge-sidebar" id="bridge-sidebar-nav"></div>
+            <div class="bridge-content" id="bridge-main-content"></div>
+         </div>
+      </div>`;
+    this.renderSidebar();
+    this.load();
+  },
+
+  renderSidebar: function() {
+    const nav = document.getElementById('bridge-sidebar-nav');
+    const items = [
+      {id:'quarantine', icon:'bi-bezier2', label:'Mapeo Contable'},
+      {id:'agora', icon:'bi-lightning-charge', label:'Ágora TPV Connect'},
+      {id:'tariffs', icon:'bi-tags-fill', label:'Importador de Tarifas'},
+      {id:'odoo', icon:'bi-box-arrow-in-down', label:'Migración Odoo'},
+      {id:'gestoria', icon:'bi-file-earmark-zip', label:'Pack Export Gestoría'}
+    ];
+    nav.innerHTML = items.map(m => `
+      <button class="bridge-nav-btn ${this.activeTab===m.id?'active':''}" onclick="DataBridgeView.setTab('${m.id}')">
+        <i class="bi ${m.icon}"></i> ${m.label}
+      </button>`).join('');
+  },
+
+  setTab: function(tab) { this.activeTab = tab; this.renderSidebar(); this.renderActiveContent(); },
+
+  load: async function() {
+    const [resQ, resS, resV] = await Promise.all([
+      HandooApp.api('bridge.get_quarantine'),
+      HandooApp.api('admin.get_settings'),
+      HandooApp.api('vendor.list')
+    ]);
+    
+    if(resQ.ok) this.quarantine = resQ.data || [];
+    if(resV.ok) this.vendors = resV.data || [];
+    
+    // BLINDAJE PGC: Inyectamos las cuentas maestras por defecto para que nunca falten
+    let pgcSet = new Set(['600 (Compras)', '621 (Arrendamientos)', '622 (Reparaciones)', '628 (Suministros)', '629 (Otros Servicios)', '700 (Ventas)', '400 (Proveedores)', '410 (Acreedores)']);
+    
+    if(resS.ok) {
+       const bals = resS.data.balances || {};
+       // Leemos la BD y filtramos cualquier error o 'undefined' que se haya colado en el pasado
+       Object.keys(bals).forEach(acc => {
+          if(acc && acc !== 'undefined' && acc !== 'null' && acc.trim() !== '') {
+             pgcSet.add(acc);
+          }
+       });
+    }
+    
+    // Convertimos el Set en el array final para el desplegable
+    this.pgc = Array.from(pgcSet).sort().map(acc => ({ id: acc.split(' ')[0], label: acc }));
+    
+    this.renderActiveContent();
+  },
+
+  renderActiveContent: function() {
+    const container = document.getElementById('bridge-main-content');
+    if (this.activeTab === 'quarantine') this.renderQuarantine(container);
+    if (this.activeTab === 'agora') this.renderAgora(container);
+    if (this.activeTab === 'odoo') this.renderOdoo(container);
+    if (this.activeTab === 'gestoria') this.renderGestoria(container);
+    if (this.activeTab === 'tariffs') this.renderTariffs(container);
+  },
+
+  renderQuarantine: function(container) {
+    container.innerHTML = `
+      <div class="animate-slide">
+         <div class="unified-block block-dark mt-0 mb-4 border-warning shadow-lg">
+            <div class="row align-items-center">
+               <div class="col-md-1 text-center"><i class="bi bi-bezier2 fs-1 text-warning"></i></div>
+               <div class="col-md-11 ps-4">
+                  <h6 class="fw-black text-uppercase m-0" style="font-size:14px; color:#fff !important;">Resolución de Conflictos Contables</h6>
+                  <p class="small text-muted m-0">Asigne cuentas contables de sistemas externos (ej. Odoo) al Plan General Contable (PGC) de Handoo.</p>
+               </div>
+            </div>
+         </div>
+
+         <div class="d-flex justify-content-between align-items-center mb-3 mt-5">
+            <h6 class="fw-black text-uppercase m-0">Cuentas Contables Externas Pendientes</h6>
+            <span class="badge bg-danger">${this.quarantine.length} PENDIENTES</span>
+         </div>
+         
+         <div class="card-industrial border-0 overflow-hidden shadow-sm mb-5">
+            <table class="table table-hover m-0 align-middle">
+               <thead class="bg-light"><tr><th class="ps-4">CUENTA EXTERNA</th><th>DESCRIPCIÓN</th><th class="text-center">MAPEAR A HANDOO PGC</th><th class="text-end pe-4">ACCIÓN</th></tr></thead>
+               <tbody>
+                  ${this.quarantine.map(q => `
+                     <tr>
+                        <td class="ps-4 font-monospace fw-bold">${q.external_id}</td>
+                        <td class="small">${q.external_name}</td>
+                        <td class="text-center">
+                           <select class="form-select form-select-sm fw-bold" id="map-${q.external_id}">
+                              <option value="">-- SELECCIONE CUENTA --</option>
+                              ${this.pgc.map(p => `<option value="${p.id}">${p.label}</option>`).join('')}
+                           </select>
+                        </td>
+                        <td class="text-end pe-4"><button class="btn btn-sm btn-dark px-3 fw-bold" onclick="DataBridgeView.resolveMap('${q.external_id}')">VALIDAR</button></td>
+                     </tr>`).join('') || '<tr><td colspan="4" class="p-5 text-center opacity-25 fw-bold">SIN CUENTAS EN CONFLICTO</td></tr>'}
+               </tbody>
+            </table>
+         </div>
+      </div>`;
+  },
+
+  renderTariffs: function(container) {
+    container.innerHTML = `
+      <div class="animate-slide">
+         <div class="unified-block block-dark mt-0">
+            <div class="row align-items-center mb-4">
+               <div class="col-md-1 text-center"><i class="bi bi-tags-fill fs-2 text-brand"></i></div>
+               <div class="col-md-11 ps-4">
+                  <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Auditoría Preventiva: Importar Tarifas</h6>
+                  <p class="small text-muted m-0">Incorpore listas de precios oficiales para detectar discrepancias en tiempo real.</p>
+               </div>
+            </div>
+            <div class="row g-3">
+               <div class="col-md-12">
+                  <label class="h-label-refined text-white-50">PROVEEDOR ORIGEN</label>
+                  <select id="t-vendor-id" class="form-select bg-dark border-secondary text-white h-form-control fw-black">
+                     <option value="">-- SELECCIONE PROVEEDOR --</option>
+                     ${this.vendors.map(v => `<option value="${v.id}">${v.nombre_fiscal}</option>`).join('')}
+                  </select>
+               </div>
+               <div class="col-md-12 mt-4">
+                  <label class="h-label-refined text-white-50">ARCHIVO CSV DE TARIFAS</label>
+                  <input type="file" id="t-csv" class="form-control bg-dark border-secondary text-white" accept=".csv" onchange="DataBridgeView.handleTariffFile(this)">
+               </div>
+            </div>
+            <div class="mt-4 pt-3 border-top border-secondary text-end">
+               <button id="btn-import-tariff" class="btn btn-warning px-5 py-2 fw-black text-dark shadow" onclick="DataBridgeView.executeTariffImport()">SINCRONIZAR TARIFARIO ✅</button>
+            </div>
+         </div>
+         <div class="mt-4 p-4 rounded-4 bg-light border row align-items-center">
+            <div class="col-md-1 text-center"><i class="bi bi-info-circle fs-3 text-brand"></i></div>
+            <div class="col-md-11 small fw-bold text-muted">
+               Formato CSV: [MasterID; Referencia_Prov; Precio; Formato; Factor]. <br>
+               El MasterID es el identificador de Handoo del producto. Esta importación sobreescribe los precios pactados anteriores.
+            </div>
+         </div>
+      </div>`;
+  },
+
+  handleTariffFile: function(input) {
+     if (input.files && input.files[0]) {
+        HandooApp.ui.showToast("Archivo preparado: " + input.files[0].name);
+     }
+  },
+
+  executeTariffImport: async function() {
+    const vendorId = document.getElementById('t-vendor-id').value;
+    const fileInp = document.getElementById('t-csv');
+    if (!vendorId) return HandooApp.ui.showToast("Seleccione un proveedor", "error");
+    if (!fileInp.files[0]) return HandooApp.ui.showToast("Seleccione un archivo CSV", "error");
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+       const lines = e.target.result.split('\n');
+       const rows = lines.map(l => l.split(';')).filter(r => r.length >= 3);
+       
+       HandooApp.ui.setLoading('btn-import-tariff', true, "CARGANDO TARIFAS...");
+       const res = await HandooApp.api('bridge.import_vendor_tariff', { vendor_id: vendorId, rows });
+       HandooApp.ui.setLoading('btn-import-tariff', false);
+       
+       if(res.ok) {
+          HandooApp.ui.showToast(res.msg, "success");
+          fileInp.value = '';
+       } else {
+          HandooApp.ui.showToast(res.msg, "error");
+       }
+    };
+    reader.readAsText(fileInp.files[0]);
+  },
+
+  renderAgora: function(container) {
+    container.innerHTML = `
+      <div class="animate-slide">
+         <div class="unified-block block-dark mt-0">
+            <div class="row align-items-center">
+               <div class="col-md-1 text-center"><i class="bi bi-cloud-check fs-2 text-brand"></i></div>
+               <div class="col-md-11 ps-4">
+                  <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Conector Real-Time MyAgora</h6>
+                  <p class="small text-muted m-0">Sincronización automática de tickets de venta y cierres de caja.</p>
+               </div>
+            </div>
+            <div class="mt-4 row g-3">
+               <div class="col-md-8"><label class="h-label-refined text-white-50">WEBHOOK ENDPOINT URL (PARA AGORA)</label><input type="text" class="form-control" readonly value="${window.location.href.split('?')[0]}"></div>
+               <div class="col-md-4 d-flex align-items-end"><button class="btn btn-warning w-100 fw-black text-dark py-2">PROBAR CONEXIÓN</button></div>
+            </div>
+         </div>
+
+         <div class="unified-block block-light">
+            <div class="row align-items-center">
+               <div class="col-md-1 text-center"><i class="bi bi-box-seam fs-2 text-brand"></i></div>
+               <div class="col-md-11 ps-4">
+                  <h6 class="fw-black text-uppercase m-0" style="font-size:12px;">Sincronización de Catálogo Ágora</h6>
+                  <p class="small text-muted m-0">Incorpore sus productos del TPV al Maestro de Handoo.</p>
+               </div>
+            </div>
+            <div class="mt-4"><button class="btn btn-dark fw-black px-4 py-2" onclick="DataBridgeView.syncAgoraProducts()">INICIAR IMPORTACIÓN DE PRODUCTOS</button></div>
+         </div>
+      </div>`;
+  },
+
+  renderOdoo: function(container) {
+    container.innerHTML = `
+      <div class="animate-slide">
+         <div class="unified-block block-light mt-0">
+            <div class="row align-items-center">
+               <div class="col-md-1 text-center"><i class="bi bi-filetype-csv fs-2 text-brand"></i></div>
+               <div class="col-md-11 ps-4">
+                  <h6 class="fw-black text-uppercase m-0" style="font-size:12px;">Importación desde Odoo ERP</h6>
+                  <p class="small text-muted m-0">Suba el CSV de facturas históricas para inyección masiva en el Kernel.</p>
+               </div>
+            </div>
+            <div class="mt-4"><input type="file" id="odoo-csv" class="form-control" accept=".csv" onchange="DataBridgeView.handleOdooCSV(this)"></div>
+         </div>
+      </div>`;
+  },
+
+  renderGestoria: function(container) {
+    container.innerHTML = `
+      <div class="animate-slide">
+         <!-- SELECCIÓN DE RANGO GLOBAL -->
+         <div class="p-4 rounded-4 shadow-sm mt-0 block-dark row align-items-center mb-4">
+            <div class="col-md-1 text-center"><i class="bi bi-calendar-range fs-2 text-brand"></i></div>
+            <div class="col-md-11 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Periodo Fiscal de Auditoría</h6>
+               <div class="row mt-2 g-2">
+                  <div class="col-md-4">
+                     <label class="h-label-refined text-white-50">CRITERIO DE FECHA</label>
+                     <select id="export-date-type" class="form-select bg-dark border-secondary text-white h-form-control fw-black">
+                        <option value="FECHA_FACTURA">FECHA FACTURA (EMISIÓN)</option>
+                        <option value="FECHA_SUBIDA">FECHA SUBIDA (CREACIÓN)</option>
+                     </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="h-label-refined text-white-50">DESDE</label>
+                    <input type="date" id="exp-start" class="form-control bg-dark border-secondary text-white h-date-clear" onkeydown="DataBridgeView.handleDateKey(event)">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="h-label-refined text-white-50">HASTA</label>
+                    <input type="date" id="exp-end" class="form-control bg-dark border-secondary text-white h-date-clear" onkeydown="DataBridgeView.handleDateKey(event)">
+                  </div>
+               </div>
+            </div>
+         </div>
+
+         <!-- BLOQUE COMPRAS (LIGHT) -->
+         <div class="p-4 rounded-4 shadow-sm mt-3 block-light row align-items-center">
+            <div class="col-md-1 text-center"><i class="bi bi-cart-check fs-2 text-brand"></i></div>
+            <div class="col-md-7 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="font-size:12px;">Pack Gestoría: Compras y Gastos</h6>
+               <p class="small text-muted m-0">Compila facturas de proveedores y albaranes de mercancía.</p>
+            </div>
+            <div class="col-md-4 text-end">
+               <div class="form-check form-switch d-inline-block text-start mb-2 me-3">
+                  <input class="form-check-input" type="checkbox" id="pdf-compras" checked>
+                  <label class="form-check-label small fw-bold" for="pdf-compras">Incluir PDFs</label>
+               </div>
+               <button id="btn-export-compra" class="btn btn-dark fw-black shadow-sm px-4" onclick="DataBridgeView.generatePack('COMPRA')">EXPORTAR COMPRAS</button>
+            </div>
+         </div>
+
+         <!-- BLOQUE VENTAS (DARK) -->
+         <div class="p-4 rounded-4 shadow-sm mt-3 block-dark row align-items-center">
+            <div class="col-md-1 text-center"><i class="bi bi-receipt fs-2 text-warning"></i></div>
+            <div class="col-md-7 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Pack Gestoría: Ventas e Ingresos</h6>
+               <p class="small text-muted m-0">Genera el libro de facturación emitida a clientes.</p>
+            </div>
+            <div class="col-md-4 text-end">
+               <div class="form-check form-switch d-inline-block text-start mb-2 me-3">
+                  <input class="form-check-input" type="checkbox" id="pdf-ventas">
+                  <label class="form-check-label small fw-bold text-white-50" for="pdf-ventas">Incluir PDFs</label>
+               </div>
+               <button id="btn-export-venta" class="btn btn-warning fw-black text-dark shadow-sm px-4" onclick="DataBridgeView.generatePack('VENTA')">EXPORTAR VENTAS</button>
+            </div>
+         </div>
+
+         <div class="mt-4 p-3 bg-light border rounded-3 small fw-bold text-muted text-center">
+            <i class="bi bi-info-circle me-2"></i> Los archivos se organizarán automáticamente en subcarpetas separadas dentro de "HANDOO_EXPORTS" en su unidad de Google Drive.
+         </div>
+      </div>`;
+  },
+
+  handleDateKey: function(e) {
+    if(e.key === 'Delete' || e.key === 'Backspace') {
+       e.preventDefault();
+       e.target.value = '';
+    }
+  },
+
+  handleOdooCSV: function(input) {
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+       const lines = e.target.result.split('\n').slice(1);
+       const rows = lines.map(l => {
+          const p = l.split(';');
+          return { tipo: p[0], fecha: p[1], numero: p[2], nombre_entidad: p[3], cif: p[4], total: p[5], cuenta_odoo: p[6], descripcion_odoo: p[7] };
+       }).filter(r => r.cif);
+       HandooApp.ui.showToast("Analizando integridad de cuentas...", "info");
+       const res = await HandooApp.api('bridge.import_odoo_csv', { rows });
+       if(res.ok) { this.load(); }
+    };
+    reader.readAsText(file);
+  },
+
+  resolveMap: async function(extId) {
+    const handooId = document.getElementById('map-'+extId).value;
+    if(!handooId) return HandooApp.ui.showToast("Seleccione cuenta destino", "error");
+    const res = await HandooApp.api('bridge.resolve_mapping', { external_id: extId, handoo_id: handooId });
+    if(res.ok) { HandooApp.ui.showToast("Cerebro actualizado. Datos migrados."); this.load(); }
+  },
+
+  generatePack: async function(type) {
+    const start = document.getElementById('exp-start').value;
+    const end = document.getElementById('exp-end').value;
+    const dateType = document.getElementById('export-date-type')?.value || 'FECHA_FACTURA';
+    
+    if(!start || !end) return HandooApp.ui.showToast("Defina el rango de fechas global", "error");
+
+    const includePDFs = type === 'COMPRA' ? document.getElementById('pdf-compras').checked : document.getElementById('pdf-ventas').checked;
+    const btnId = type === 'COMPRA' ? 'btn-export-compra' : 'btn-export-venta';
+
+    HandooApp.ui.setLoading(btnId, true, "GENERANDO PACK...");
+    try {
+      const res = await HandooApp.api('bridge.export_gestoria', { start, end, type, includePDFs, date_type: dateType });
+      HandooApp.ui.setLoading(btnId, false);
+      if(res.ok) {
+         HandooApp.ui.showToast(res.msg);
+         window.open(res.data.url, '_blank');
+      } else {
+         HandooApp.ui.showToast(res.msg, "error");
+      }
+    } catch(err) {
+      HandooApp.ui.setLoading(btnId, false);
+      HandooApp.ui.showToast("Fallo crítico en exportación", "error");
+    }
+  },
+
+  syncAgoraProducts: function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = async (re) => {
+        const lines = re.target.result.split(/\r?\n/).filter(l => l.trim().length > 0);
+        const products = lines.map(l => {
+          const p = l.split(';'); 
+          return { name: p[0]?.trim(), price: p[1]?.trim(), reference: p[2]?.trim() };
+        }).filter(p => p.name && p.name.toLowerCase() !== 'nombre' && p.name.toLowerCase() !== 'name');
+        
+        HandooApp.ui.showToast("Sincronizando catálogo Ágora...", "info");
+        const res = await HandooApp.api('bridge.import_agora_products', { products });
+        if(res.ok) {
+          HandooApp.ui.showToast(res.msg, "success");
+          DataBridgeView.load();
+        } else {
+          HandooApp.ui.showToast(res.msg, "error");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+};
+</script>

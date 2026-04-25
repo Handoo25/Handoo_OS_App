@@ -1,0 +1,937 @@
+<script>
+(function() {
+  /**
+   * FRAMEWORK TITANIUM - MÓDULO DE PATRIMONIO (INMOVILIZADO)
+   * Gestión integral de activos fijos con blindaje contable de bajas y ventas.
+   */
+  const FixedAssetsView = {
+    assets: [],
+    rules: [],
+    tickerInterval: null,
+    currentLinkedInvoices: [],
+    _cachedExpenses: null,
+    _openingForm: false,
+    _openingRules: false,
+    
+    /**
+     * Renderizado principal del módulo.
+     */
+    render: async function() {
+      console.log("FixedAssetsView: Rendering...");
+      if(this.tickerInterval) {
+          clearInterval(this.tickerInterval);
+      }
+      
+      const container = document.getElementById('main-stage');
+      if(!container) return;
+
+      container.innerHTML = `
+        <div class="h-stage-header sticky-top bg-dark text-white p-4 d-flex justify-content-between align-items-center shadow">
+           <div>
+              <h2 class="fw-black m-0 text-uppercase">Gestión de Inmovilizado</h2>
+              <p class="small text-white-50 m-0">Control de activos fijos, amortizaciones y valor neto contable.</p>
+           </div>
+           <div class="d-flex gap-2">
+              <button class="btn btn-outline-light fw-black px-4" onclick="FixedAssetsView.openRulesManager(event)">
+                 <i class="bi bi-gear-fill me-2"></i>REGLAS
+              </button>
+              <button class="btn btn-outline-light fw-black px-4" onclick="FixedAssetsView.load()">
+                 <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <button class="btn btn-brand-titanium fw-black px-4 shadow" onclick="FixedAssetsView.openAssetForm(null, event); event.stopPropagation();">
+                 + NUEVO ACTIVO
+              </button>
+           </div>
+        </div>
+        
+        <div class="p-4">
+           <div class="row g-4 mb-4" id="fixed-assets-stats">
+              </div>
+
+           <div class="unified-block block-dark mt-0">
+              <div class="row align-items-center mb-4">
+                 <div class="col-md-1 text-center"><i class="bi bi-building-gear fs-2 text-brand"></i></div>
+                 <div class="col-md-11 ps-4">
+                    <h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Patrimonio Empresarial</h6>
+                    <p class="small text-muted m-0">Motor de cálculo de amortizaciones técnicas y financieras en tiempo real.</p>
+                 </div>
+              </div>
+              
+              <div class="table-responsive">
+                 <table class="table table-dark table-hover align-middle m-0" style="font-size: 11px;">
+                    <thead>
+                       <tr class="text-muted text-uppercase fw-black" style="font-size: 9px; letter-spacing: 1px;">
+                          <th>Activo y Estado</th>
+                          <th>Fecha Compra</th>
+                          <th>Coste Adq.</th>
+                          <th>Amort. Acum.</th>
+                          <th>Valor Neto</th>
+                          <th>Vida Útil</th>
+                          <th class="text-end pe-4">Acciones</th>
+                       </tr>
+                    </thead>
+                    <tbody id="fixed-assets-list">
+                       <tr><td colspan="7" class="text-center p-5 opacity-50">CARGANDO KERNEL DE PATRIMONIO...</td></tr>
+                    </tbody>
+                 </table>
+              </div>
+           </div>
+        </div>`;
+      
+      await this.load();
+      this.startTicker();
+    },
+
+    /**
+     * Actualiza el ticker de valoración en tiempo real (milisegundos).
+     */
+    startTicker: function() {
+      this.tickerInterval = setInterval(() => {
+        this.updateLiveValuation();
+      }, 1000);
+    },
+
+    /**
+     * Motor de cálculo neural real-time.
+     */
+    updateLiveValuation: function() {
+      let totalCost = 0;
+      let totalAmortLive = 0;
+      
+      this.assets.forEach(a => {
+        if(a.estado === 'VENDIDO' || a.estado === 'BAJA') return;
+        
+        totalCost += parseFloat(a.coste_adquisicion || 0);
+
+        if(!a.fecha_compra) return;
+        const start = new Date(a.fecha_compra).getTime();
+        const now = new Date().getTime();
+        const diffMs = now - start;
+        if(diffMs <= 0) return;
+
+        let lifeMonths = parseInt(a.vida_util_meses || 0);
+        let annualRate = (100 / (lifeMonths / 12)) / 100;
+        
+        if(a.rule_id) {
+          const rule = this.rules.find(r => r.id === a.rule_id);
+          if(rule) {
+            if(a.amortization_mode === 'ACCELERATED') {
+                annualRate = (rule.max_percentage || (rule.percentage * 2)) / 100;
+            } else if(a.amortization_mode === 'MINIMUM') {
+                annualRate = (100 / (rule.min_years || (rule.years * 2))) / 100;
+            } else {
+                annualRate = (rule.percentage || (100 / rule.years)) / 100;
+            }
+          }
+        }
+
+        const amortizableBase = parseFloat(a.coste_adquisicion) - parseFloat(a.valor_residual || 0);
+        const msInYear = 365.25 * 24 * 60 * 60 * 1000;
+        const msRate = annualRate / msInYear;
+        const accumulated = Math.min(amortizableBase, diffMs * msRate * amortizableBase);
+        totalAmortLive += accumulated;
+      });
+
+      const liveNet = totalCost - totalAmortLive;
+      const el = document.getElementById('live-valuation-ticker');
+      if(el) {
+          el.innerHTML = liveNet.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' €';
+      }
+    },
+
+    /**
+     * Carga inicial de datos (Activos y Reglas).
+     */
+    load: async function() {
+      console.log("FixedAssetsView: Loading data...");
+      try {
+        const [res, rulesRes] = await Promise.all([
+          HandooApp.api('admin.get_fixed_assets'),
+          HandooApp.api('admin.get_amortization_rules')
+        ]);
+        
+        this.assets = (res.ok && Array.isArray(res.data)) ? res.data : [];
+        this.rules = (rulesRes.ok && Array.isArray(rulesRes.data)) ? rulesRes.data : [];
+        
+        console.log("FixedAssetsView: Data loaded", { assets: this.assets.length, rules: this.rules.length });
+        
+        this._cachedExpenses = null;
+        this.renderList();
+        this.renderStats();
+      } catch (err) {
+        console.error("FixedAssetsView: Error loading data", err);
+        HandooApp.ui.showToast("Error al sincronizar con el Kernel", "error");
+      }
+    },
+
+    /**
+     * Genera las tarjetas de KPIs superiores.
+     */
+    renderStats: function() {
+      const activeAssets = this.assets.filter(a => a.estado !== 'VENDIDO' && a.estado !== 'BAJA');
+      const totalCost = activeAssets.reduce((s, a) => s + parseFloat(a.coste_adquisicion || 0), 0);
+      const totalAmort = activeAssets.reduce((s, a) => s + parseFloat(a.amortizacion_acumulada || 0), 0);
+
+      const statsContainer = document.getElementById('fixed-assets-stats');
+      if(!statsContainer) return;
+
+      statsContainer.innerHTML = `
+        <div class="col-md-4">
+           <div class="card-industrial p-4 text-center">
+              <h6 class="fw-black text-muted text-uppercase small mb-1">Inversión Activa Total</h6>
+              <h3 class="fw-black m-0">${totalCost.toLocaleString()} €</h3>
+           </div>
+        </div>
+        <div class="col-md-4">
+           <div class="card-industrial p-4 text-center">
+              <h6 class="fw-black text-muted text-uppercase small mb-1">Amort. Acumulada</h6>
+              <h3 class="fw-black m-0 text-danger">${totalAmort.toLocaleString()} €</h3>
+           </div>
+        </div>
+        <div class="col-md-4">
+           <div class="card-industrial p-4 text-center border-brand">
+              <h6 class="fw-black text-brand text-uppercase small mb-1"><i class="bi bi-cpu-fill me-1"></i> Valor Real-Time (Neural)</h6>
+              <h3 class="fw-black m-0 text-brand" id="live-valuation-ticker">0.0000 €</h3>
+           </div>
+        </div>
+      `;
+    },
+
+    /**
+     * Renderiza el listado principal de activos.
+     */
+    renderList: function() {
+      const tbody = document.getElementById('fixed-assets-list');
+      if(!tbody) return;
+
+      if(this.assets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center p-5 opacity-25 fw-bold">SIN ACTIVOS REGISTRADOS</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = this.assets.map(a => {
+        const isSold = a.estado === 'VENDIDO';
+        const isBroken = a.estado === 'BAJA';
+        const badgeClass = isSold ? 'bg-warning text-dark' : (isBroken ? 'bg-danger' : 'bg-success');
+        const rowOpacity = isSold || isBroken ? 'opacity-50' : '';
+        
+        return `
+        <tr class="${rowOpacity}">
+           <td>
+              <div class="fw-black text-uppercase">${escapeHTML(a.nombre)}</div>
+              <div class="small text-muted">
+                 ${a.id} 
+                 | <span class="badge ${badgeClass} text-uppercase" style="font-size:8px">${a.estado || 'OPERATIVO'}</span>
+                 ${a.amortization_mode ? `| <span class="text-brand" style="font-size:9px">${a.amortization_mode}</span>` : ''}
+              </div>
+           </td>
+           <td>${a.fecha_compra}</td>
+           <td class="fw-bold">${parseFloat(a.coste_adquisicion).toLocaleString()} €</td>
+           <td class="text-danger">-${parseFloat(a.amortizacion_acumulada || 0).toLocaleString()} €</td>
+           <td class="fw-black text-brand">${parseFloat(a.valor_neto || 0).toLocaleString()} €</td>
+           <td>${a.vida_util_meses} Meses</td>
+           <td class="text-end pe-4">
+              <button class="btn btn-sm btn-link text-white p-0 me-2" onclick="FixedAssetsView.openAssetForm('${a.id}', event); event.stopPropagation();">
+                 <i class="bi bi-pencil-square fs-5"></i>
+              </button>
+              <button class="btn btn-sm btn-link text-danger p-0" onclick="FixedAssetsView.deleteAsset('${a.id}', event); event.stopPropagation();">
+                 <i class="bi bi-trash3 fs-5"></i>
+              </button>
+           </td>
+        </tr>`;
+      }).join('');
+    },
+
+    /**
+     * Abre el modal de formulario de activo.
+     */
+    openAssetForm: async function(id = null, event = null) {
+      console.log("FixedAssetsView: openAssetForm called", id);
+      if (this._openingForm) return;
+      this._openingForm = true;
+
+      const btn = event?.target?.closest('button');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if(btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>ABRIENDO...';
+      }
+
+      try {
+        // Aseguramos que las reglas estén cargadas
+        if(!this.rules || this.rules.length === 0) {
+           const rulesRes = await HandooApp.api('admin.get_amortization_rules');
+           if(rulesRes.ok) this.rules = rulesRes.data;
+        }
+
+        const asset = id ? this.assets.find(a => String(a.id) === String(id)) : {
+          id: 'new',
+          nombre: '',
+          fecha_compra: new Date().toISOString().split('T')[0],
+          coste_adquisicion: 0,
+          valor_residual: 0,
+          vida_util_meses: 48,
+          amortization_mode: 'STANDARD',
+          rule_id: '',
+          estado: 'OPERATIVO',
+          precio_venta: 0,
+          facturas_vinculadas: []
+        };
+
+        if (!asset) {
+          console.error("FixedAssetsView: Asset not found", id);
+          HandooApp.ui.showToast("Activo no encontrado", "error");
+          return;
+        }
+
+        if (!asset.facturas_vinculadas) asset.facturas_vinculadas = [];
+        if (!asset.facturas_vinculadas.length && asset.factura_id) {
+           asset.facturas_vinculadas = [{ 
+               id: asset.factura_id, 
+               proveedor: 'Factura Inicial', 
+               fecha: asset.fecha_compra, 
+               total: asset.coste_adquisicion, 
+               url: asset.factura_url 
+           }];
+        }
+        
+        this.currentLinkedInvoices = [...asset.facturas_vinculadas];
+
+        const overlay = document.createElement('div');
+        overlay.className = 'h-modal-overlay';
+        
+        const ruleOptions = (this.rules || []).map(r => `
+            <option value="${r.id}" ${asset.rule_id === r.id ? 'selected' : ''}>${r.name}</option>
+        `).join('');
+
+        overlay.innerHTML = `
+          <div class="h-modal h-modal-lg animate-slide" style="max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="h-modal-header bg-dark text-white">
+              <h6 class="m-0 fw-black text-uppercase">${id ? 'Editar' : 'Nuevo'} Activo Fijo</h6>
+              <button class="btn btn-link text-white p-0" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="h-modal-body p-4 bg-light overflow-auto">
+              <form id="asset-form" data-id="${asset.id}" data-neto="${asset.valor_neto || 0}">
+                
+                <div class="unified-block block-light mt-0 mb-3 border border-secondary shadow-sm" style="border-radius: 8px; padding: 15px;">
+                  <div class="row g-3">
+                     <div class="col-md-4">
+                       <label class="small fw-black text-muted text-uppercase">Estado del Activo</label>
+                       <select name="estado" class="form-select form-select-sm fw-bold" onchange="FixedAssetsView.toggleSaleFields(this.value)">
+                         <option value="OPERATIVO" ${asset.estado === 'OPERATIVO' ? 'selected' : ''}>🟢 Operativo (Amortizando)</option>
+                         <option value="VENDIDO" ${asset.estado === 'VENDIDO' ? 'selected' : ''}>🟡 Vendido (Baja Cta. 21X)</option>
+                         <option value="BAJA" ${asset.estado === 'BAJA' ? 'selected' : ''}>🔴 Baja / Rotura (Siniestro)</option>
+                       </select>
+                     </div>
+                     
+                     <div class="col-md-4" id="box-precio-venta" style="display: ${asset.estado === 'VENDIDO' ? 'block' : 'none'};">
+                       <label class="small fw-black text-brand text-uppercase">Precio de Venta (Base Imponible)</label>
+                       <div class="input-group input-group-sm">
+                          <input type="number" name="precio_venta" class="form-control fw-bold border-brand" value="${asset.precio_venta || 0}" step="0.01" oninput="FixedAssetsView.calculateSaleResult()">
+                          <span class="input-group-text bg-brand text-white border-brand">€</span>
+                       </div>
+                     </div>
+                     
+                     <div class="col-md-4" id="box-resultado-venta" style="display: ${(asset.estado === 'VENDIDO' || asset.estado === 'BAJA') ? 'block' : 'none'};">
+                       <label class="small fw-black text-muted text-uppercase">Resultado Contable (Beneficio/Pérdida)</label>
+                       <input type="text" id="resultado_venta_text" class="form-control form-control-sm fw-black bg-white border-dashed" readonly value="0.00 €">
+                       <div id="resultado_label_detail" class="small mt-1 fw-bold" style="font-size: 9px;"></div>
+                     </div>
+                  </div>
+                </div>
+
+                <!-- Bloque de Uso Operativo -->
+                <div class="p-4 rounded-4 mb-4" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <i class="bi bi-door-closed text-brand fs-4"></i>
+                        <h6 class="m-0 fw-black text-uppercase">Uso Operativo</h6>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="enable-inventory-zone" onchange="FixedAssetsView.toggleStorageType(this.checked)">
+                        <label class="form-check-label fw-bold" for="enable-inventory-zone">¿Habilitar como Zona de Inventario?</label>
+                    </div>
+                    <div id="storage-type-container" class="d-none">
+                        <label class="small fw-bold text-uppercase text-muted">Tipo de Almacenamiento</label>
+                        <select class="form-select mt-1" id="storage-type">
+                            <option value="NEVERA">Nevera</option>
+                            <option value="CONGELADOR">Congelador</option>
+                            <option value="SECO">Seco</option>
+                            <option value="BODEGA">Bodega de Vinos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                  <div class="col-md-8">
+                    <label class="small fw-black text-muted text-uppercase">Nombre del Activo</label>
+                    <input type="text" name="nombre" class="form-control form-control-sm fw-bold text-uppercase" value="${asset.nombre}" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="small fw-black text-muted text-uppercase">Categoría / Regla Fiscal</label>
+                    <select name="rule_id" class="form-select form-select-sm" onchange="FixedAssetsView.applyRule(this.value)">
+                      <option value="">Manual / Personalizada</option>
+                      ${ruleOptions}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="small fw-black text-muted text-uppercase">Fecha Compra</label>
+                    <input type="date" name="fecha_compra" class="form-control form-control-sm" value="${asset.fecha_compra}" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="small fw-black text-muted text-uppercase">Coste Adquisición (Base Cta. 21X)</label>
+                    <input type="number" name="coste_adquisicion" class="form-control form-control-sm fw-bold" value="${asset.coste_adquisicion}" step="0.01" oninput="FixedAssetsView.recalculateResidual()" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="small fw-black text-muted text-uppercase">Valor Residual (Auto)</label>
+                    <input type="number" name="valor_residual" class="form-control form-control-sm bg-light text-muted fw-bold" value="${asset.valor_residual}" step="0.01" readonly tabindex="-1">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="small fw-black text-muted text-uppercase">Vida Útil (Meses)</label>
+                    <input type="number" name="vida_util_meses" class="form-control form-control-sm" value="${asset.vida_util_meses}" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="small fw-black text-muted text-uppercase">Modo de Amortización</label>
+                    <select name="amortization_mode" class="form-select form-select-sm">
+                      <option value="STANDARD" ${asset.amortization_mode === 'STANDARD' ? 'selected' : ''}>Lineal Estándar</option>
+                      <option value="ACCELERATED" ${asset.amortization_mode === 'ACCELERATED' ? 'selected' : ''}>Acelerada (Doble)</option>
+                      <option value="MINIMUM" ${asset.amortization_mode === 'MINIMUM' ? 'selected' : ''}>A Mínimos (Vida Máx)</option>
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-12 mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="small fw-black text-muted text-uppercase m-0">Facturas / Mejoras Vinculadas</label>
+                      <button type="button" id="btn-vincular-factura" class="btn btn-sm btn-dark fw-bold shadow-sm" onclick="FixedAssetsView.toggleInlinePicker()">
+                         <i class="bi bi-search me-1"></i> BUSCAR FACTURA
+                      </button>
+                    </div>
+
+                    <div id="inline-invoice-picker" class="border rounded-3 p-3 bg-light mb-3 shadow-inner" style="display: none; border-left: 4px solid var(--brand) !important;">
+                       <div class="d-flex justify-content-between align-items-center mb-2">
+                          <h6 class="m-0 fw-black small text-uppercase"><i class="bi bi-funnel me-1"></i> Seleccionar Factura de Gasto</h6>
+                          <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="document.getElementById('inline-invoice-picker').style.display='none'">
+                             <i class="bi bi-x-circle-fill fs-5"></i>
+                          </button>
+                       </div>
+                       <input type="text" id="inline-inv-search" class="form-control form-control-sm fw-bold mb-2 shadow-sm" placeholder="🔍 Escribe para buscar por proveedor, concepto o importe..." onkeyup="FixedAssetsView.renderInlinePickerList(this.value)">
+                       <div class="overflow-auto border border-secondary-subtle rounded bg-white shadow-sm" style="max-height: 220px;">
+                          <table class="table table-hover align-middle m-0 small">
+                             <tbody id="inline-picker-list">
+                                <tr><td class="text-center p-4 opacity-50"><span class="spinner-border spinner-border-sm me-2"></span> Cargando facturas...</td></tr>
+                             </tbody>
+                          </table>
+                       </div>
+                    </div>
+
+                    <div id="linked-invoices-container" class="border rounded p-2 bg-white"></div>
+                    <div class="mt-1 small text-muted text-end" style="font-size: 9px;">* Al vincular una factura, se sumará automáticamente al Coste de Adquisición.</div>
+                  </div>
+
+                </div>
+              </form>
+            </div>
+            <div class="h-modal-footer">
+              <button class="btn btn-light fw-bold px-4" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+              <button class="btn btn-dark fw-black px-4 shadow" onclick="FixedAssetsView.saveAsset('${asset.id}', event)">SINCRONIZAR ACTIVO</button>
+            </div>
+          </div>`;
+        
+        document.body.appendChild(overlay);
+        console.log("FixedAssetsView: Modal appended to body");
+
+        this.renderLinkedInvoices(overlay);
+        if (asset.estado !== 'OPERATIVO') {
+            this.calculateSaleResult(overlay);
+        }
+      } catch (err) {
+        console.error("FixedAssetsView: Error opening asset form", err);
+        HandooApp.ui.showToast("Error al abrir formulario: " + err.message, "error");
+      } finally {
+        this._openingForm = false;
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+      }
+    },
+
+    toggleStorageType: function(enabled) {
+        document.getElementById('storage-type-container').classList.toggle('d-none', !enabled);
+    },
+
+    /**
+     * Renderiza la lista de facturas con lógica de PDF.
+     */
+    renderLinkedInvoices: function(scope = document) {
+      const container = scope.querySelector('#linked-invoices-container');
+      if (!container) return;
+      
+      if (this.currentLinkedInvoices.length === 0) {
+        container.innerHTML = '<div class="small text-muted text-center p-3 fw-bold opacity-50">Sin facturas ni mejoras vinculadas</div>';
+        return;
+      }
+      
+      container.innerHTML = this.currentLinkedInvoices.map((inv, idx) => {
+          let pdfButton = '';
+          if(inv.url) {
+              pdfButton = `
+              <button type="button" class="btn btn-sm btn-outline-dark fw-bold border p-1 d-flex align-items-center gap-1" onclick="window.open('${inv.url}', '_blank')">
+                 <i class="bi bi-file-earmark-pdf-fill text-danger fs-5"></i> 
+                 <span style="font-size:9px">VER PDF</span>
+              </button>`;
+          } else {
+              pdfButton = `<span class="badge bg-light text-muted border" style="font-size:8px">SIN PDF</span>`;
+          }
+
+          return `
+          <div class="d-flex justify-content-between align-items-center border-bottom py-2 px-2">
+             <div>
+                <div class="fw-black text-uppercase">${escapeHTML(inv.proveedor || 'Factura')}</div>
+                <div class="text-muted fw-bold" style="font-size: 10px;">${inv.fecha} | ${parseFloat(inv.total).toLocaleString()} €</div>
+             </div>
+             <div class="d-flex gap-2 align-items-center">
+                ${pdfButton}
+                <button type="button" class="btn btn-sm btn-outline-danger p-1 ms-2" onclick="FixedAssetsView.removeLinkedInvoice(${idx})">
+                   <i class="bi bi-trash fs-5"></i>
+                </button>
+             </div>
+          </div>`;
+      }).join('');
+    },
+
+    /**
+     * Gestiona la visibilidad de campos de venta.
+     */
+    toggleSaleFields: function(estado) {
+      const boxPrecio = document.getElementById('box-precio-venta');
+      const boxResultado = document.getElementById('box-resultado-venta');
+      
+      if(boxPrecio) boxPrecio.style.display = estado === 'VENDIDO' ? 'block' : 'none';
+      if(boxResultado) boxResultado.style.display = (estado === 'VENDIDO' || estado === 'BAJA') ? 'block' : 'none';
+      
+      this.calculateSaleResult();
+    },
+
+    /**
+     * BLINDAJE CONTABLE: Cálculo automático del beneficio o pérdida.
+     */
+    calculateSaleResult: function(scope = document) {
+      const form = scope.querySelector('#asset-form');
+      if(!form) return;
+      
+      const estado = form.estado.value;
+      const resInput = scope.querySelector('#resultado_venta_text');
+      const labelDetail = scope.querySelector('#resultado_label_detail');
+      
+      // Si es BAJA, la venta es 0 automáticamente.
+      const salePrice = estado === 'BAJA' ? 0 : parseFloat(form.precio_venta.value || 0);
+      
+      // El valor neto contable es lo que aún no se ha amortizado
+      const cost = parseFloat(form.coste_adquisicion.value || 0);
+      const residual = parseFloat(form.valor_residual.value || 0);
+      
+      // Si el activo ya existe, usamos su valor neto real. Si es nuevo, usamos el coste.
+      const netValue = parseFloat(form.dataset.neto || cost);
+      
+      const result = salePrice - netValue;
+      
+      if(resInput) {
+         resInput.value = result.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' €';
+         if(result > 0) {
+             resInput.style.color = '#16a34a'; // Beneficio
+             if(labelDetail) labelDetail.innerHTML = '<i class="bi bi-graph-up-arrow"></i> BENEFICIO EXTRAORDINARIO (Cta. 771)';
+             if(labelDetail) labelDetail.style.color = '#16a34a';
+         } else if (result < 0) {
+             resInput.style.color = '#dc2626'; // Pérdida
+             if(labelDetail) labelDetail.innerHTML = '<i class="bi bi-graph-down-arrow"></i> PÉRDIDA PROCEDENTE DEL INMOVILIZADO (Cta. 671)';
+             if(labelDetail) labelDetail.style.color = '#dc2626';
+         } else {
+             resInput.style.color = '#475569';
+             if(labelDetail) labelDetail.innerText = 'SIN IMPACTO EN RESULTADOS';
+             if(labelDetail) labelDetail.style.color = '#475569';
+         }
+      }
+    },
+
+    applyRule: function(ruleId) {
+      const rule = this.rules.find(r => r.id === ruleId);
+      if(rule) {
+        const form = document.getElementById('asset-form');
+        if(form && form.vida_util_meses) {
+            form.vida_util_meses.value = rule.years * 12;
+        }
+        this.recalculateResidual();
+      }
+    },
+
+    recalculateResidual: function() {
+      const form = document.getElementById('asset-form');
+      if(!form) return;
+
+      const ruleId = form.rule_id.value;
+      const cost = parseFloat(form.coste_adquisicion.value || 0);
+      const rule = this.rules.find(r => r.id === ruleId);
+      
+      if(rule && rule.residual_percent) {
+        form.valor_residual.value = (cost * (rule.residual_percent / 100)).toFixed(2);
+      } else {
+        form.valor_residual.value = "0.00";
+      }
+    },
+
+    toggleInlinePicker: async function() {
+      const picker = document.getElementById('inline-invoice-picker');
+      if(!picker) return;
+
+      if (picker.style.display === 'block') { 
+          picker.style.display = 'none'; 
+          return; 
+      }
+      
+      picker.style.display = 'block';
+      
+      if (!this._cachedExpenses) {
+          const res = await HandooApp.api('expense.list');
+          if (res.ok) {
+              this._cachedExpenses = res.data || [];
+          } else { 
+              const listContainer = document.getElementById('inline-picker-list');
+              if(listContainer) {
+                  listContainer.innerHTML = '<tr><td class="text-danger text-center p-4">Error al cargar facturas</td></tr>'; 
+              }
+              return; 
+          }
+      }
+      this.renderInlinePickerList();
+    },
+
+    renderInlinePickerList: function(q = '') {
+      const tbody = document.getElementById('inline-picker-list');
+      if(!tbody) return;
+
+      q = q.toLowerCase();
+      
+      const filtered = (this._cachedExpenses || []).filter(e => 
+          (e.beneficiario || '').toLowerCase().includes(q) || 
+          (e.concepto || '').toLowerCase().includes(q) || 
+          String(e.total || '').includes(q)
+      ).slice(0, 50);
+
+      if (filtered.length === 0) { 
+          tbody.innerHTML = '<tr><td class="text-center p-4 opacity-50 fw-bold">No se encontraron facturas coincidentes</td></tr>'; 
+          return; 
+      }
+
+      tbody.innerHTML = filtered.map(e => `
+        <tr>
+          <td class="ps-3 text-muted" width="90">${e.fecha}</td>
+          <td class="fw-bold text-uppercase text-dark">${escapeHTML(e.beneficiario || e.concepto || 'S/N')}</td>
+          <td class="fw-black text-end text-brand" width="110">${parseFloat(e.total || 0).toLocaleString()} €</td>
+          <td class="text-end pe-3" width="100">
+             <button type="button" class="btn btn-sm btn-dark fw-black w-100" onclick="FixedAssetsView.selectInvoice('${e.id}', '${escapeHTML(e.beneficiario || '').replace(/'/g, "\\'")}', '${e.fecha}', ${e.total || 0}, '${e.attachment_url || e.file_url || ''}')">VINCULAR</button>
+          </td>
+        </tr>`).join('');
+    },
+
+    selectInvoice: function(id, proveedor, fecha, total, url) {
+      this.currentLinkedInvoices.push({ id, proveedor, fecha, total, url });
+      this.renderLinkedInvoices();
+      
+      const form = document.getElementById('asset-form');
+      if(form) {
+         form.coste_adquisicion.value = (parseFloat(form.coste_adquisicion.value || 0) + parseFloat(total)).toFixed(2);
+         this.recalculateResidual(); 
+      }
+      
+      const picker = document.getElementById('inline-invoice-picker');
+      if(picker) picker.style.display = 'none';
+    },
+
+    removeLinkedInvoice: function(idx) {
+       const removed = this.currentLinkedInvoices.splice(idx, 1)[0];
+       this.renderLinkedInvoices();
+       
+       const form = document.getElementById('asset-form');
+       if(form && removed) {
+          form.coste_adquisicion.value = Math.max(0, parseFloat(form.coste_adquisicion.value || 0) - parseFloat(removed.total || 0)).toFixed(2);
+          this.recalculateResidual();
+       }
+    },
+
+    saveAsset: async function(id, event = null) {
+      const form = document.getElementById('asset-form');
+      if(!form) return;
+
+      const btn = event?.target?.closest('button') || document.querySelector('.h-modal-footer .btn-dark');
+      const originalText = btn ? btn.innerHTML : '';
+      if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>GUARDANDO...';
+      }
+
+      const formData = new FormData(form);
+      
+      const payload = {
+        id: id,
+        nombre: formData.get('nombre'),
+        fecha_compra: formData.get('fecha_compra'),
+        coste_adquisicion: parseFloat(formData.get('coste_adquisicion') || 0),
+        valor_residual: parseFloat(formData.get('valor_residual') || 0),
+        vida_util_meses: parseInt(formData.get('vida_util_meses') || 0),
+        amortization_mode: formData.get('amortization_mode'),
+        rule_id: formData.get('rule_id'),
+        estado: formData.get('estado') || 'OPERATIVO',
+        precio_venta: parseFloat(formData.get('precio_venta') || 0),
+        facturas_vinculadas: this.currentLinkedInvoices 
+      };
+
+      const res = await HandooApp.api('admin.save_fixed_asset', payload);
+
+      if(res.ok) { 
+          const isInventoryZone = document.getElementById('enable-inventory-zone').checked;
+          if (isInventoryZone) {
+              await HandooApp.api('inventory.create_zone_from_asset', {
+                  asset_id: res.data.id,
+                  asset_name: payload.nombre,
+                  storage_type: document.getElementById('storage-type').value
+              });
+          }
+          
+          const overlay = document.querySelector('.h-modal-overlay');
+          if(overlay) overlay.remove(); 
+          await this.load(); 
+      } else { 
+          if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+          }
+          HandooApp.ui.showToast(res.msg, "error"); 
+      }
+    },
+
+    deleteAsset: async function(id, event = null) {
+      if(await HandooApp.ui.confirm("¿Eliminar este activo?", "Esta acción no se puede deshacer.")) {
+        const btn = event?.target?.closest('button');
+        const originalContent = btn ? btn.innerHTML : '';
+        if(btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>ELIMINANDO...';
+        }
+
+        const res = await HandooApp.api('admin.delete_fixed_asset', { id });
+        if(res.ok) {
+          await this.load();
+        } else {
+          if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+          }
+          HandooApp.ui.showToast(res.msg, "error");
+        }
+      }
+    },
+
+    /**
+     * Abre el gestor de reglas de amortización.
+     */
+    openRulesManager: async function(event = null) {
+      console.log("FixedAssetsView: openRulesManager called");
+      if (this._openingRules) return;
+      this._openingRules = true;
+
+      const btn = event?.target?.closest('button');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if(btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>ABRIENDO...';
+      }
+
+      try {
+        console.log("FixedAssetsView: Loading rules for manager...");
+        // Aseguramos que las reglas estén cargadas
+        if (!this.rules || this.rules.length === 0) {
+           const rulesRes = await HandooApp.api('admin.get_amortization_rules');
+           if(rulesRes.ok) this.rules = rulesRes.data;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.className = 'h-modal-overlay';
+        
+        overlay.innerHTML = `
+          <div class="h-modal h-modal-lg animate-slide">
+            <div class="h-modal-header bg-dark text-white">
+              <h6 class="m-0 fw-black text-uppercase">Reglas de Amortización</h6>
+              <button class="btn btn-link text-white p-0" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="h-modal-body p-4 bg-light">
+              <div class="table-responsive mb-4">
+                <table class="table table-sm align-middle" style="font-size: 11px;">
+                  <thead>
+                    <tr class="text-muted text-uppercase fw-black">
+                      <th>Nombre Categoría</th>
+                      <th>Años (Lineal)</th>
+                      <th>% Anual</th>
+                      <th>% Residual</th>
+                      <th>Años Máx</th>
+                      <th class="text-end pe-3">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rules-table-body">
+                    <tr><td colspan="6" class="text-center p-3 opacity-50">Cargando reglas...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <hr>
+              <h6 class="fw-black text-uppercase small mb-3" id="rule-form-title">Añadir Nueva Regla</h6>
+              <form id="rule-form">
+                <input type="hidden" name="id" value="new">
+                <div class="row g-2">
+                  <div class="col-md-3">
+                     <input type="text" name="name" class="form-control form-control-sm" placeholder="Nombre" required>
+                  </div>
+                  <div class="col-md-2">
+                     <input type="number" name="years" class="form-control form-control-sm" placeholder="Años" required>
+                  </div>
+                  <div class="col-md-2">
+                     <input type="number" name="percentage" class="form-control form-control-sm" placeholder="% Anual" step="0.01" required>
+                  </div>
+                  <div class="col-md-2">
+                     <input type="number" name="residual_percent" class="form-control form-control-sm" placeholder="% Residual" step="0.01">
+                  </div>
+                  <div class="col-md-2">
+                     <input type="number" name="min_years" class="form-control form-control-sm" placeholder="Años Máx">
+                  </div>
+                  <div class="col-md-1">
+                     <button type="button" class="btn btn-dark btn-sm w-100 fw-black" id="rule-save-btn" onclick="FixedAssetsView.saveRule(event)">OK</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
+        console.log("FixedAssetsView: Rules manager appended to body");
+        this.renderRulesTable(overlay);
+      } catch (err) {
+        console.error("FixedAssetsView: Error opening rules manager", err);
+        HandooApp.ui.showToast("Error al abrir gestor de reglas: " + err.message, "error");
+      } finally {
+        this._openingRules = false;
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+      }
+    },
+
+    renderRulesTable: function(scope = document) {
+      const tbody = scope.querySelector('#rules-table-body');
+      if(!tbody) return;
+
+      if(!Array.isArray(this.rules) || this.rules.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-3 opacity-50">Sin reglas definidas</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = this.rules.map(r => `
+        <tr>
+          <td class="fw-bold">${r.name}</td>
+          <td>${r.years}</td>
+          <td>${r.percentage}%</td>
+          <td>${r.residual_percent || 0}%</td>
+          <td>${r.min_years || r.years * 2}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-link text-dark p-0 me-2" onclick="FixedAssetsView.editRule('${r.id}', event); event.stopPropagation();"><i class="bi bi-pencil-square fs-5"></i></button>
+            <button class="btn btn-sm btn-link text-danger p-0" onclick="FixedAssetsView.deleteRule('${r.id}', event); event.stopPropagation();"><i class="bi bi-trash3 fs-5"></i></button>
+          </td>
+        </tr>
+      `).join('');
+    },
+
+    saveRule: async function(event = null) {
+      const form = document.getElementById('rule-form');
+      if(!form) return;
+
+      const btn = event?.target?.closest('button') || document.getElementById('rule-save-btn');
+      const originalText = btn ? btn.innerHTML : '';
+      if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>GUARDANDO...';
+      }
+
+      const formData = new FormData(form);
+      const payload = {
+        id: formData.get('id'), 
+        name: formData.get('name'), 
+        years: parseInt(formData.get('years') || 0),
+        percentage: parseFloat(formData.get('percentage') || 0), 
+        residual_percent: parseFloat(formData.get('residual_percent') || 0),
+        min_years: parseInt(formData.get('min_years') || 0)
+      };
+
+      const res = await HandooApp.api('admin.save_amortization_rule', payload);
+      if(res.ok) { 
+          await this.load(); 
+          form.reset();
+          form.id.value = "new";
+          const titleElem = document.getElementById('rule-form-title');
+          if(titleElem) titleElem.innerText = "Añadir Nueva Regla";
+          HandooApp.ui.showToast("Regla guardada", "success");
+      } else {
+          HandooApp.ui.showToast(res.msg, "error");
+      }
+
+      if(btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    },
+
+    editRule: function(id, event = null) {
+      if(event) event.stopPropagation();
+      const rule = this.rules.find(r => r.id === id);
+      if(rule) {
+        const form = document.getElementById('rule-form');
+        if(!form) return;
+
+        form.id.value = rule.id; 
+        form.name.value = rule.name; 
+        form.years.value = rule.years;
+        form.percentage.value = rule.percentage; 
+        form.residual_percent.value = rule.residual_percent || 0; 
+        form.min_years.value = rule.min_years || '';
+
+        const titleElem = document.getElementById('rule-form-title');
+        if(titleElem) {
+            titleElem.innerText = "Editar Regla: " + rule.name;
+        }
+      }
+    },
+
+    deleteRule: async function(id, event = null) {
+      if(await HandooApp.ui.confirm("¿Eliminar esta regla?", "Los activos vinculados podrían perder la referencia automática.")) {
+        const btn = event?.target?.closest('button');
+        const originalContent = btn ? btn.innerHTML : '';
+        if(btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>ELIMINANDO...';
+        }
+
+        const res = await HandooApp.api('admin.delete_amortization_rule', { id });
+        if(res.ok) { 
+            await this.load(); 
+            this.renderRulesTable();
+            HandooApp.ui.showToast("Regla eliminada", "success");
+        } else {
+          if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+          }
+          HandooApp.ui.showToast(res.msg, "error");
+        }
+      }
+    }
+  };
+
+  window.FixedAssetsView = FixedAssetsView;
+})();
+</script>

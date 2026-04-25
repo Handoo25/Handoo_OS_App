@@ -1,0 +1,603 @@
+<style>
+  .allergen-card:hover { transform: translateY(-5px); transition: 0.3s; box-shadow: 0 10px 15px rgba(0,0,0,0.1) !important; }
+  /* Estilo para que los iconos respiren dentro del círculo en la app */
+  .allergen-icon-container img { width: 75%; height: 75%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+</style>
+
+<template id="tpl-allergens">
+  <div class="animate__animated animate__fadeIn">
+    <div class="p-4 text-white d-flex justify-content-between align-items-center shadow-sm" style="background:#0f172a">
+      <div>
+        <div class="small opacity-50 text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 2px;">Seguridad Alimentaria</div>
+        <h4 class="fw-black text-uppercase mb-0" style="letter-spacing: 1px;">Maestro de Alérgenos</h4>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-warning text-dark py-2.5 px-4 fw-black text-uppercase rounded-3" onclick="AllergensView.openMenuPreviewModal()">
+           <i class="bi bi-printer me-2"></i> GENERAR CARTA PDF
+        </button>
+        <button class="btn btn-light text-dark py-2.5 px-4 fw-black text-uppercase rounded-3" onclick="AllergensView.openNewAllergenModal()">
+          <i class="bi bi-plus-lg me-1"></i> NUEVO ALÉRGENO
+        </button>
+      </div>
+    </div>
+
+    <div class="container-fluid mt-4 px-4">
+      <div class="row g-3" id="allergens-grid">
+        <div class="col-12 text-center p-5"><div class="spinner-border text-brand"></div></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<div class="modal fade" id="modal-allergen-form" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4 shadow">
+      <div class="modal-header bg-dark text-white rounded-top-4">
+        <h5 class="modal-title fw-black text-uppercase">Ficha de Alérgeno</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+            <label class="h-label-refined">NOMBRE</label>
+            <input type="text" id="m-alg-nombre" class="form-control h-form-control fw-bold text-uppercase">
+        </div>
+        <div class="mb-3">
+            <label class="h-label-refined">Icono del Alérgeno</label>
+            <div class="p-4 rounded-4 shadow-sm bg-white border block-industrial">
+                <div class="row align-items-center">
+                    <div class="col-md-3 text-center">
+                        <div id="icon-preview" class="border rounded-circle shadow-sm bg-light mb-2" 
+                             style="width:80px; height:80px; background-size: 75%; background-repeat: no-repeat; background-position: center; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                             <i class="bi bi-image text-muted opacity-25 fs-1" id="preview-placeholder"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-9 d-flex flex-column gap-2">
+                        <button type="button" class="btn btn-dark fw-black w-100 shadow-sm py-2" onclick="AllergensView.toggleGallery(true)">
+                            <i class="bi bi-images me-2 text-brand"></i> ESCOGER DE GALERÍA
+                        </button>
+                        <input type="file" id="allergen-file-input" style="display:none" accept="image/*" multiple onchange="AllergensView.handleFileUpload(this)">
+                        <button type="button" class="btn btn-outline-secondary btn-sm fw-bold border-0" onclick="document.getElementById('allergen-file-input').click()">
+                            <i class="bi bi-cloud-upload me-1"></i> o cargar una foto...
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="m-icon-url">
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <div class="d-flex gap-2 w-100">
+            <button class="btn btn-light border fw-bold flex-grow-1" data-bs-dismiss="modal">CANCELAR</button>
+            <button id="btn-save-alg" class="btn btn-dark fw-black flex-grow-1" onclick="AllergensView.saveAllergen()">GUARDAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-menu-select" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content rounded-4 shadow">
+      <div class="modal-header bg-dark text-white rounded-top-4">
+        <h5 class="modal-title fw-black text-uppercase">Productos para Carta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        
+        <div class="row g-2 mb-3 align-items-center bg-light p-3 rounded-3 border">
+            <div class="col-md-5">
+                <label class="small fw-bold text-muted mb-1 text-uppercase">Buscar</label>
+                <input type="text" id="menu-search" class="form-control" placeholder="Nombre del producto..." onkeyup="AllergensView.filterMenu()">
+            </div>
+            <div class="col-md-5">
+                <label class="small fw-bold text-muted mb-1 text-uppercase">Filtrar por Tipo</label>
+                <select id="menu-type-filter" class="form-select fw-bold" onchange="AllergensView.filterMenu()">
+                    <option value="ALL">TODOS LOS PRODUCTOS</option>
+                    <option value="FIN">SÓLO PRODUCTO FINAL (CARTA)</option>
+                    </select>
+            </div>
+            <div class="col-md-2 d-flex justify-content-end align-self-end">
+                <div class="form-check form-switch d-flex align-items-center">
+                    <input class="form-check-input flex-shrink-0" type="checkbox" id="select-all-menu" style="font-size: 1.2em;" onchange="AllergensView.toggleSelectAll()">
+                    <label class="form-check-label ms-2 small fw-bold" for="select-all-menu">Todos</label>
+                </div>
+            </div>
+        </div>
+        
+        <div id="menu-list" class="list-group" style="max-height: 400px; overflow-y: auto;"></div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn btn-light rounded-3 px-4" data-bs-dismiss="modal">CANCELAR</button>
+        <button class="btn btn-warning rounded-3 px-4 fw-black" onclick="AllergensView.generatePdf()">GENERAR PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="gallery-modal" class="h-modal-overlay" style="display:none; z-index: 21000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center;">
+    <div class="h-modal animate-slide shadow-lg bg-white rounded-4" style="width: 700px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="h-modal-header bg-dark text-white d-flex justify-content-between align-items-center p-3">
+            <h6 class="m-0 fw-black text-uppercase letter-spacing-1">Galería de Iconos Drive</h6>
+            <button class="btn btn-link text-white p-0" onclick="AllergensView.toggleGallery(false)"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="h-modal-body bg-light flex-grow-1 p-3" style="overflow-y: auto;">
+            <div id="gallery-grid" class="d-flex flex-wrap gap-3 justify-content-center p-2"></div>
+        </div>
+        <div class="h-modal-footer p-3 bg-white border-top">
+            <button class="btn btn-light border w-100 py-2 fw-bold" onclick="AllergensView.toggleGallery(false)">CERRAR</button>
+        </div>
+    </div>
+</div>
+
+<script>
+console.log("Módulo de Alérgenos Titanium (Carga Completa + Filtros)");
+
+window.AllergensView = {
+    allAllergens: [],
+    editingAllergen: null,
+    galleryImages: [],
+    catalog: [],
+
+    render: async function() {
+        console.log("Inicializando stage...");
+        // Inyectamos el HTML del template en el escenario principal
+        document.getElementById('main-stage').innerHTML = document.getElementById('tpl-allergens').innerHTML;
+        
+        await this.load();
+        this.renderGrid();
+    },
+
+    load: async function() {
+        try {
+            const res = await HandooApp.api('allergens.get_list');
+            if (res && res.ok) {
+                this.allAllergens = res.data || [];
+                // Ordenamos alfabéticamente para que sea más fácil de buscar
+                this.allAllergens.sort((a,b) => a.nombre.localeCompare(b.nombre));
+            } else {
+                this.showError(res.msg || "Error conectando con el Kernel.");
+            }
+        } catch (e) {
+            this.showError("Fallo de conexión crítico.");
+        }
+    },
+
+    showError: function(m) {
+        HandooApp.ui.showToast(m, "error");
+        const grid = document.getElementById('allergens-grid');
+        if(grid) grid.innerHTML = '<div class="col-12 text-center p-5 text-danger fw-bold">ERROR: ' + m + '</div>';
+    },
+
+    renderGrid: function() {
+        const grid = document.getElementById('allergens-grid');
+        if(!grid) return;
+        
+        if(this.allAllergens.length === 0) {
+            grid.innerHTML = '<div class="col-12 text-center p-5 text-muted fw-bold">No hay alérgenos registrados.</div>';
+            return;
+        }
+        
+        let html = '';
+        for(let i=0; i<this.allAllergens.length; i++) {
+            const a = this.allAllergens[i];
+            const icon = a.icon_url ? a.icon_url : 'https://cdn-icons-png.flaticon.com/512/1041/1041310.png';
+            
+            html += '<div class="col-md-3 col-lg-2">';
+            html += '  <div class="card h-100 border-0 shadow-sm rounded-4 p-3 d-flex align-items-center text-center allergen-card position-relative" style="cursor: pointer;" onclick="AllergensView.openEditModal(\'' + a.id + '\')">';
+            html += '    <button class="btn btn-sm btn-outline-danger rounded-circle position-absolute" style="top: 10px; right: 10px; z-index: 10; width: 26px; height: 26px; padding: 0;" onclick="event.stopPropagation(); AllergensView.deleteAllergen(\'' + a.id + '\')"><i class="bi bi-trash"></i></button>';
+            
+            // Contenedor del icono con estilo para que respire (75% size)
+            html += '    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3 allergen-icon-container" style="width: 70px; height: 70px; border: 2px solid #f1f5f9;">';
+            html += '      <img src="' + icon + '" style="width: 75%; height: 75%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">';
+            html += '    </div>';
+            
+            html += '    <h6 class="fw-black text-uppercase mb-0" style="font-size: 11px; color:#1e293b; letter-spacing: 0.5px;">' + a.nombre + '</h6>';
+            html += '  </div>';
+            html += '</div>';
+        }
+        grid.innerHTML = html;
+    },
+
+    openNewAllergenModal: function() {
+        this.editingAllergen = null;
+        document.getElementById('m-alg-nombre').value = '';
+        document.getElementById('m-icon-url').value = '';
+        this.updatePreview('');
+        document.querySelector('#modal-allergen-form .modal-title').innerText = "NUEVO ALÉRGENO";
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-allergen-form')).show();
+    },
+
+    openEditModal: function(id) {
+        const alg = this.allAllergens.find(function(a){ return String(a.id) === String(id); });
+        if (!alg) return;
+        this.editingAllergen = alg;
+        document.getElementById('m-alg-nombre').value = alg.nombre || '';
+        document.getElementById('m-icon-url').value = alg.icon_url || '';
+        this.updatePreview(alg.icon_url);
+        document.querySelector('#modal-allergen-form .modal-title').innerText = "EDITAR ALÉRGENO";
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-allergen-form')).show();
+    },
+
+    updatePreview: function(url) {
+        const preview = document.getElementById('icon-preview');
+        const placeholder = document.getElementById('preview-placeholder');
+        if (preview) {
+            if(url && url !== "") {
+                preview.style.backgroundImage = "url('" + url + "')";
+                preview.style.backgroundSize = "75%"; // Agrandado en el modal también
+                if(placeholder) placeholder.style.display = 'none';
+            } else {
+                preview.style.backgroundImage = "none";
+                if(placeholder) placeholder.style.display = 'block';
+            }
+        }
+    },
+
+    saveAllergen: async function() {
+        const nom = document.getElementById('m-alg-nombre').value.trim();
+        const url = document.getElementById('m-icon-url').value;
+        if (!nom) return HandooApp.ui.showToast("Nombre obligatorio", "error");
+        
+        HandooApp.ui.setLoading('btn-save-alg', true);
+        try {
+            // El servidor ahora usa 'hard_delete' para limpiar la basura antigua
+            const res = await HandooApp.api('allergens.save', {
+                id: this.editingAllergen ? this.editingAllergen.id : 'ALG-' + Date.now(),
+                nombre: nom.toUpperCase(), 
+                icon_url: url
+            });
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('modal-allergen-form')).hide();
+                HandooApp.ui.showToast("¡Guardado!", "success");
+                // Recarga instantánea
+                await this.load();
+                this.renderGrid();
+            } else {
+                HandooApp.ui.showToast(res.msg, "error");
+            }
+        } catch(e) {
+            HandooApp.ui.showToast("Error de conexión con el Kernel.", "error");
+        } finally { 
+            HandooApp.ui.setLoading('btn-save-alg', false); 
+        }
+    },
+
+    deleteAllergen: async function(id) {
+        if(await HandooApp.ui.confirm("¿Eliminar alérgeno?", "Se borrará de los productos asociados en todo el sistema.")) {
+            HandooApp.ui.showToast("Borrando...", "info");
+            const res = await HandooApp.api('allergens.delete', { id: id });
+            if(res.ok) {
+                HandooApp.ui.showToast("Eliminado", "success");
+                await this.load();
+                this.renderGrid();
+            }
+        }
+    },
+
+    toggleGallery: function(show) {
+        const modal = document.getElementById('gallery-modal');
+        if(modal) modal.style.display = show ? 'flex' : 'none';
+        if (show) this.loadGallery();
+    },
+
+    loadGallery: async function() {
+        const grid = document.getElementById('gallery-grid');
+        grid.innerHTML = '<div class="p-5 w-100 text-center"><div class="spinner-border text-brand"></div><p class="mt-2 small text-muted">LEYENDO DRIVE...</p></div>';
+        
+        try {
+            const res = await HandooApp.api('allergens.api_get_drive_images');
+            if (res.ok) {
+                this.galleryImages = res.data;
+                // Ordenamos por nombre
+                this.galleryImages.sort((a,b) => a.name.localeCompare(b.name));
+                
+                let html = '';
+                for(let i=0; i<this.galleryImages.length; i++) {
+                    const img = this.galleryImages[i];
+                    html += '<div onclick="AllergensView.selectFromGallery(\'' + img.url + '\')" style="width:90px; cursor:pointer;" class="text-center p-2">';
+                    html += '  <div class="border rounded-circle bg-white shadow-sm mb-1" style="width:60px; height:60px; background-image:url(\'' + img.url + '\'); background-size:80%; background-repeat:no-repeat; background-position:center; margin:0 auto;"></div>';
+                    html += '  <div style="font-size:8px; line-height:1;" class="fw-bold text-uppercase mt-1 text-muted text-truncate">' + img.name + '</div>';
+                    html += '</div>';
+                }
+                grid.innerHTML = html;
+            } else {
+                grid.innerHTML = '<div class="text-danger p-4 fw-bold">No se pudo cargar la galería (' + res.msg + ')</div>';
+            }
+        } catch(e) {
+            grid.innerHTML = '<div class="text-danger p-4">Fallo crítico al leer Drive</div>';
+        }
+    },
+
+    selectFromGallery: function(url) {
+        document.getElementById('m-icon-url').value = url;
+        this.updatePreview(url);
+        this.toggleGallery(false);
+    },
+
+    handleFileUpload: function(input) {
+        if (!input.files || input.files.length === 0) return;
+        const files = input.files;
+        
+        HandooApp.ui.showToast("Subiendo " + files.length + " imagen(es) a Drive...", "info");
+        HandooApp.ui.setLoading('btn-save-alg', true, "SUBIENDO...");
+
+        let subidasExitosas = 0;
+        let ultimaUrl = '';
+
+        // Procesamos uno a uno (Google Apps Script es síncrono por detrás)
+        const procesarSubida = (index) => {
+            if (index >= files.length) {
+                HandooApp.ui.setLoading('btn-save-alg', false);
+                if (subidasExitosas > 0) {
+                    HandooApp.ui.showToast("¡Subida de lote completada!", "success");
+                    // Refrescamos previsualización con la última
+                    if(ultimaUrl) {
+                        document.getElementById('m-icon-url').value = ultimaUrl;
+                        this.updatePreview(ultimaUrl);
+                    }
+                } else {
+                    HandooApp.ui.showToast("No se pudo subir ninguna imagen.", "error");
+                }
+                return;
+            }
+
+            const file = files[index];
+            const reader = new FileReader();
+            
+            reader.onload = async (e) => {
+                const base64 = e.target.result.split(',')[1];
+                try {
+                    const res = await HandooApp.api('allergens.upload_icon_to_drive', {
+                        fileName: file.name, 
+                        mimeType: file.type, 
+                        base64: base64
+                    });
+                    if (res.ok) {
+                        subidasExitosas++;
+                        ultimaUrl = res.url;
+                    }
+                } catch(e) { console.error("Error en subida", e); }
+                
+                // Procesar la siguiente imagen en cola
+                procesarSubida(index + 1);
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // Arrancamos el bucle
+        procesarSubida(0);
+    },
+
+    // 🔥 VISTA DE PDF CON FILTROS (Arregla Imagen 2)
+    openMenuPreviewModal: async function() {
+        HandooApp.ui.showToast("Sincronizando Catálogo y Escandallos...", "info");
+        
+        try {
+            const [resCat, resForm] = await Promise.all([
+                HandooApp.api('inventory.get_catalog'),
+                HandooApp.api('formulas.get_list') 
+            ]);
+
+            if (resCat.ok) {
+                this.catalog = resCat.data.products || resCat.data || [];
+                
+                // ¡Aseguramos que las fórmulas se guarden sea cual sea su estructura!
+                if (resForm && resForm.ok && resForm.data) {
+                    this.allFormulas = Array.isArray(resForm.data) ? resForm.data : (resForm.data.formulas || resForm.data.items || []);
+                    console.log("Fórmulas cargadas en memoria:", this.allFormulas.length);
+                } else {
+                    this.allFormulas = [];
+                }
+                
+                this.populateFilterDropdown();
+                this.filterMenu(); 
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-menu-select')).show();
+            }
+        } catch(e) { console.error("Error abriendo modal:", e); }
+    },
+
+    // Carga los tipos de producto leyendo TU catálogo real de forma dinámica
+    populateFilterDropdown: function() {
+        const select = document.getElementById('menu-type-filter');
+        select.innerHTML = '<option value="ALL">TODOS LOS PRODUCTOS</option>';
+        
+        // Extraemos todas las categorías/tipos únicos que realmente existen en tus productos
+        // (Soporta que la variable se llame 'tipo' o 'categoria' en tu base de datos)
+        const tiposUnicos = [...new Set(this.catalog.map(p => p.tipo || p.categoria))].filter(t => t && t.trim() !== '');
+        tiposUnicos.sort();
+        
+        for(let i=0; i<tiposUnicos.length; i++) {
+            const t = tiposUnicos[i];
+            const option = document.createElement('option');
+            option.value = t;
+            option.textContent = t.toUpperCase(); // Mostrará "MATERIA PRIMA", "PRODUCTO FINAL", etc.
+            select.appendChild(option);
+        }
+    },
+
+    // Filtra la lista combinando texto y tu tipo real
+    filterMenu: function() {
+        const qSearch = document.getElementById('menu-search').value.toLowerCase();
+        const qType = document.getElementById('menu-type-filter').value;
+        
+        const filtered = this.catalog.filter(function(p){
+            const matchesSearch = p.nombre.toLowerCase().includes(qSearch);
+            const pType = p.tipo || p.categoria || "";
+            const matchesType = (qType === 'ALL') || (pType === qType);
+            return matchesSearch && matchesType;
+        });
+        
+        this.renderMenuModal(filtered);
+    },
+
+    // Dibuja la lista mostrando la etiqueta real al lado del nombre
+    renderMenuModal: function(items) {
+        const list = document.getElementById('menu-list');
+        if(items.length === 0) {
+            list.innerHTML = '<div class="p-4 text-center text-muted fw-bold">No se encontraron productos con estos filtros.</div>';
+            return;
+        }
+        
+        let html = '';
+        for(let i=0; i<items.length; i++) {
+            const p = items[i];
+            const tipoReal = p.tipo || p.categoria;
+            // Mostramos el tipo real como una pequeña etiqueta (si lo tiene)
+            const tipoDisplay = tipoReal ? '<span class="badge bg-light text-muted fw-bold ms-2" style="font-size:0.75em;">' + tipoReal.toUpperCase() + '</span>' : '';
+            
+            html += '<label class="list-group-item d-flex gap-3 align-items-center border-0 border-bottom py-3">';
+            html += '  <input class="form-check-input flex-shrink-0 menu-item-check" type="checkbox" value="' + p.id + '" style="font-size: 1.2em;">';
+            html += '  <span class="flex-grow-1 fw-bold text-uppercase small">' + p.nombre + tipoDisplay + '</span>';
+            html += '</label>';
+        }
+        list.innerHTML = html;
+    },
+
+    toggleSelectAll: function() {
+        const checked = document.getElementById('select-all-menu').checked;
+        document.querySelectorAll('.menu-item-check').forEach(function(c) { c.checked = checked; });
+    },
+
+    // FIX DEFINITIVO NATALIA PACHECO (Aspiradora de Texto)
+    generatePdf: async function() {
+        const selectedIds = Array.from(document.querySelectorAll('.menu-item-check:checked')).map(c => c.value);
+        if(!selectedIds.length) return HandooApp.ui.showToast("Selecciona productos", "warning");
+
+        const selectedProducts = this.catalog.filter(p => selectedIds.includes(p.id));
+        HandooApp.ui.showToast("Generando carta...", "info");
+
+        let companyName = "MI EMPRESA";
+        let logoUrl = "";
+
+        try {
+            const res = await HandooApp.api('admin.get_settings');
+            if (res.ok && res.data) {
+                // Convertimos ABSOLUTAMENTE TODO el Kernel a texto plano
+                const textoGigante = JSON.stringify(res.data);
+                
+                // Buscamos cualquier rastro de la razón social en todo el texto
+                const matchNombre = textoGigante.match(/"razon_social"\s*:\s*"([^"]+)"/i) || 
+                                    textoGigante.match(/"nombre_empresa"\s*:\s*"([^"]+)"/i);
+                
+                if (matchNombre && matchNombre[1]) {
+                    companyName = matchNombre[1].toUpperCase();
+                } else {
+                    // Si no, tiramos de la tabla MASTERS
+                    const resMasters = await HandooApp.api('masters.get_by_type', { type: 'COMPANY' });
+                    const matchMaster = JSON.stringify(resMasters).match(/"nombre"\s*:\s*"([^"]+)"/i);
+                    if (matchMaster && matchMaster[1]) companyName = matchMaster[1].toUpperCase();
+                }
+
+                // Buscamos el logo
+                const matchLogo = textoGigante.match(/"logo_url"\s*:\s*"([^"]+)"/i) || 
+                                  textoGigante.match(/"url_logo"\s*:\s*"([^"]+)"/i);
+                if (matchLogo && matchLogo[1] && matchLogo[1].includes("http")) {
+                    logoUrl = matchLogo[1];
+                }
+            }
+        } catch(e) { console.error("Error en extracción bruta", e); }
+
+        this.generatePdfContent(selectedProducts, companyName, logoUrl);
+        bootstrap.Modal.getInstance(document.getElementById('modal-menu-select')).hide();
+    },
+
+    getProductAllergens: function(product) {
+        let total = new Set((product.alergenos || []).map(String));
+        
+        if (!this.allFormulas || this.allFormulas.length === 0) return Array.from(total);
+
+        // 1. Buscamos el escandallo de este producto (probando todos los nombres de ID posibles)
+        const formula = this.allFormulas.find(f => 
+            String(f.id_producto) === String(product.id) || 
+            String(f.producto_id) === String(product.id) ||
+            String(f.id_articulo) === String(product.id) ||
+            String(f.articulo_id) === String(product.id)
+        );
+
+        if (formula) {
+            // 2. Extraemos los ingredientes (probando todos los nombres posibles)
+            let ings = formula.ingredientes || formula.items || formula.detalle || [];
+            
+            // Si vienen como texto JSON, los abrimos
+            if (typeof ings === 'string') {
+                try { ings = JSON.parse(ings); } catch(e) {}
+            }
+            
+            if (Array.isArray(ings)) {
+                ings.forEach(ing => {
+                    // 3. Localizamos el ID del ingrediente (probando todas sus variantes)
+                    const idMateria = ing.id || ing.id_producto || ing.producto_id || ing.id_materia_prima || ing.id_articulo || ing.id_ingrediente;
+                    
+                    // 4. Buscamos esa materia prima en el catálogo general
+                    const matPrima = this.catalog.find(p => String(p.id) === String(idMateria));
+                    
+                    // 5. Si la encontramos y tiene alérgenos, se los sumamos a la Mythic
+                    if (matPrima && matPrima.alergenos) {
+                        matPrima.alergenos.forEach(a => total.add(String(a)));
+                    }
+                });
+            }
+        }
+        
+        return Array.from(total);
+    },
+
+    // Genera el contenido HTML para imprimir con ICONOS GRANDES (45px)
+    generatePdfContent: function(productos, companyName, logoUrl) {
+        const win = window.open('', '_blank');
+        let rowsHtml = '';
+        
+        for(let i=0; i<productos.length; i++) {
+            const p = productos[i];
+            console.log("DEBUG: Producto completo antes de getAllergenIds:", JSON.stringify(p));
+            
+            // Recopilar alérgenos (incluyendo componentes si existen)
+            let pAlergenosHtml = '';
+            
+            // USAMOS LA NUEVA FUNCIÓN DE HERENCIA
+            const alergenosFinales = this.getProductAllergens(p);
+            
+            if (alergenosFinales.length > 0) {
+                alergenosFinales.forEach(algId => {
+                    const alg = this.allAllergens.find(a => String(a.id) === String(algId));
+                    if (alg) {
+                        pAlergenosHtml += `<img src="${alg.icon_url}" title="${alg.nombre}" style="width:45px; height:45px; margin-right:12px; object-fit:contain;">`;
+                    }
+                });
+            }
+            
+            rowsHtml += '<tr style="border-bottom: 1px solid #e2e8f0;">';
+            rowsHtml += '  <td style="padding: 18px 16px; font-weight: 800; text-transform: uppercase; font-size: 14px; color:#0f172a;">' + p.nombre + '</td>';
+            rowsHtml += '  <td style="padding: 16px;">' + (pAlergenosHtml || '<span style="color:#94a3b8; font-size:12px; font-weight: bold;">SIN ALÉRGENOS</span>') + '</td>';
+            rowsHtml += '</tr>';
+        }
+
+        // Logo o Nombre en cabecera
+        let headerLogoHtml = logoUrl && logoUrl !== "" 
+            ? '<img src="' + logoUrl + '" style="max-height: 60px; max-width: 250px; object-fit: contain;">' 
+            : '<div style="font-weight: 900; font-size: 24px; text-transform: uppercase; color: #0f172a;">' + companyName + '</div>';
+
+        let htmlContent = '<html><head><title>CARTA DE ALÉRGENOS - ' + companyName + '</title><style>';
+        htmlContent += 'body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #334155; } ';
+        htmlContent += '.header { display: flex; justify-content: space-between; align-items: center; border-bottom: 5px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px; } ';
+        htmlContent += 'table { width: 100%; border-collapse: collapse; margin-top: 10px; } ';
+        htmlContent += 'th { background: #f8fafc; text-align: left; padding: 15px; text-transform: uppercase; font-size: 11px; color: #64748b; font-weight:bold; letter-spacing:1px; } ';
+        htmlContent += '@media print { .btn-print { display: none; } #h-toast-container { display: none; } } ';
+        htmlContent += '.btn-print { background: #f59e0b; color: #0f172a; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; float: right; font-weight: 900; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }';
+        htmlContent += '</style></head><body>';
+        htmlContent += '<button class="btn-print" onclick="window.print()"><i class="bi bi-printer"></i> IMPRIMIR CARTA (A4)</button>';
+        htmlContent += '<div class="header">';
+        htmlContent += '  <div>' + headerLogoHtml + '</div>';
+        htmlContent += '  <div style="text-align: right;"><div style="font-weight:900; font-size: 18px; color: #0f172a; letter-spacing:1px;">CARTA DE ALÉRGENOS</div><div style="font-size:12px; color:#64748b;">Actualizado: ' + new Date().toLocaleDateString() + '</div></div>';
+        htmlContent += '</div>';
+        htmlContent += '<table><thead><tr><th>NOMBRE DEL PRODUCTO / PLATO</th><th>ALÉRGENOS PRESENTES</th></tr></thead><tbody>';
+        htmlContent += rowsHtml;
+        htmlContent += '</tbody></table>';
+        htmlContent += '<div style="margin-top: 30px; font-size: 10px; color: #94a3b8; text-align: center;">Generado por Handoo OS Titanium - Seguridad Alimentaria</div>';
+        htmlContent += '</body></html>';
+        
+        win.document.write(htmlContent);
+        win.document.close();
+    }
+};
+</script>

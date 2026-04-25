@@ -1,0 +1,9 @@
+<div id="scanner-container" class="fixed inset-0 bg-black z-50 flex flex-col">
+    <video id="scanner-video" class="w-full h-full object-cover" autoplay playsinline></video>
+    <div id="focus-guides" class="absolute inset-0 border-4 border-[var(--brand)] pointer-events-none"></div>
+    <div id="thumbnail-reel" class="fixed bottom-20 left-0 right-0 h-24 bg-black/80 flex overflow-x-auto p-2 gap-2"></div>
+    <div id="controls" class="fixed bottom-4 left-0 right-0 flex justify-center gap-4">
+        <button onclick="ScannerBurstView.capture()" class="bg-[var(--brand)] text-white px-6 py-3 rounded-full font-bold">Capturar</button>
+        <button onclick="ScannerBurstView.finish()" class="bg-white text-black px-6 py-3 rounded-full font-bold">Finalizar</button>
+    </div>
+</div>

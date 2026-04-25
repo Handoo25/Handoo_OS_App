@@ -1,0 +1,274 @@
+<style>
+  .kardex-in { color: #16a34a; background-color: #f0fdf4; border: 1px solid #bbf7d0; }
+  .kardex-out { color: #dc2626; background-color: #fef2f2; border: 1px solid #fecaca; }
+</style>
+
+<script>
+// OBJETO DE VISTA GLOBAL PARA KÁRDEX
+window.KardexView = {
+    movements: [],
+    filteredLogs: [],
+
+    render: async function(params) {
+        console.log("🚀 Renderizando Kardex...");
+        
+        // Cerramos sugerencias al hacer click fuera
+        document.addEventListener('click', (e) => {
+            const sug = document.getElementById('kardex-suggestions');
+            if (sug && !sug.contains(e.target) && e.target.id !== 'kardex-search') {
+                sug.style.display = 'none';
+            }
+        });
+
+        const stage = document.getElementById('main-stage');
+        stage.innerHTML = `
+          <div class="animate__animated animate__fadeIn">
+            <div class="block-dark p-4 shadow-sm mb-4" style="background: #0f172a; border-radius: 0 0 24px 24px;">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-white-50 small text-uppercase" style="letter-spacing: 0.1em; font-weight: 800; margin-bottom: 5px;">Auditoría de Almacén</div>
+                  <h2 class="fw-black m-0 text-uppercase text-white">Kárdex de Stock</h2>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-danger rounded-pill px-4 py-2 fw-black shadow-sm" onclick="window.KardexView.exportPDF()"><i class="bi bi-file-pdf-fill me-1"></i> PDF</button>
+                    <button class="btn btn-success rounded-pill px-4 py-2 fw-black shadow-sm" onclick="window.KardexView.exportExcel()"><i class="bi bi-file-excel-fill me-1"></i> EXCEL</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="container-fluid px-4">
+                <div class="row mb-4 align-items-end g-2">
+                    <div class="col-md-4">
+                        <label class="small fw-bold text-muted mb-1" style="font-size:10px;">BUSCAR PRODUCTO / CONCEPTO</label>
+                        <div class="position-relative">
+                            <input type="text" id="kardex-search" class="form-control fw-bold shadow-sm border-dark" placeholder="🔍 Escribe..." onkeyup="window.KardexView.handleSearch(this.value)" autocomplete="off">
+                            <div id="kardex-suggestions" class="list-group position-absolute w-100 shadow-lg mt-1" style="display:none; z-index: 1050; max-height: 200px; overflow-y: auto; font-size: 11px;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted mb-1" style="font-size:10px;">CATEGORÍA</label>
+                        <select id="kardex-category" class="form-select fw-bold shadow-sm border-dark" onchange="window.KardexView.applyFilters()">
+                            <option value="ALL">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted mb-1" style="font-size:10px;">TIPO</label>
+                        <select id="kardex-type" class="form-select fw-bold shadow-sm border-dark" onchange="window.KardexView.applyFilters()">
+                            <option value="ALL">Movimientos</option>
+                            <option value="SUMA">🟢 Entradas</option>
+                            <option value="RESTA">🔴 Salidas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted mb-2" style="font-size:10px;">DESDE</label>
+                        <input type="date" id="kardex-start" class="form-control fw-bold shadow-sm border-dark" onchange="window.KardexView.applyFilters()">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small fw-bold text-muted mb-2" style="font-size:10px;">HASTA</label>
+                        <input type="date" id="kardex-end" class="form-control fw-bold shadow-sm border-dark" onchange="window.KardexView.applyFilters()">
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white rounded-4 shadow-sm border" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light sticky-top shadow-sm">
+                            <tr class="text-muted small fw-black text-uppercase" style="font-size: 10px;">
+                                <th class="ps-4 py-3">Fecha</th>
+                                <th>Artículo</th>
+                                <th>Concepto</th>
+                                <th class="text-center">Movimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kardex-list-body">
+                            <tr><td colspan="4" class="text-center p-5"><div class="spinner-border text-dark"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+          </div>
+        `;
+        this.loadData();
+    },
+
+    loadData: async function() {
+        const resultsDiv = document.getElementById('kardex-list-body'); 
+        if (resultsDiv) resultsDiv.innerHTML = '<tr><td colspan="4" class="text-center py-5"><div class="spinner-border text-primary spinner-border-sm me-2"></div> Sincronizando...</td></tr>';
+
+        try {
+            const [resCat, resLog] = await Promise.all([
+                HandooApp.api('inventory.get_catalog').catch(()=>({ok:false})),
+                HandooApp.api('inventory.get_kardex_logs').catch(()=>({ok:true, data:[]}))
+            ]);
+
+            if (resCat && resCat.ok) {
+                window.HandooCatalogGlobal = resCat.data.products || [];
+                const catSelect = document.getElementById('kardex-category');
+                if (catSelect) {
+                    const categories = [...new Set(window.HandooCatalogGlobal.map(p => p.categoria || p.category).filter(Boolean))].sort();
+                    catSelect.innerHTML = '<option value="ALL">Todas las categorías</option>' + 
+                        categories.map(c => `<option value="${window.escapeHTML(c)}">${window.escapeHTML(c).toUpperCase()}</option>`).join('');
+                }
+            }
+
+            this.movements = (resLog && resLog.ok && resLog.data) ? (Array.isArray(resLog.data) ? resLog.data : Object.values(resLog.data)) : [];
+            
+            this.movements.forEach(m => {
+                m.raw_date = m.timestamp ? new Date(m.timestamp) : new Date(m.fecha);
+                m.ts = m.raw_date.getTime();
+                if (!m.categoria && window.HandooCatalogGlobal) {
+                    const p = window.HandooCatalogGlobal.find(x => String(x.id) === String(m.producto_id));
+                    if (p) m.categoria = p.categoria || p.category;
+                }
+            });
+            
+            this.movements.sort((a,b) => b.ts - a.ts);
+            
+            const today = new Date();
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById('kardex-start').value = startOfMonth.toISOString().split('T')[0];
+            document.getElementById('kardex-end').value = today.toISOString().split('T')[0];
+            
+            this.applyFilters();
+
+        } catch (e) {
+            console.error("Error en KardexView.loadData:", e);
+        }
+    },
+
+    handleSearch: function(q) {
+        const resultsDiv = document.getElementById('kardex-suggestions');
+        if (!q || q.length < 2) { 
+            resultsDiv.style.display = 'none'; 
+            this.applyFilters();
+            return; 
+        }
+
+        const allProducts = window.HandooCatalogGlobal || [];
+        const qLower = q.toLowerCase();
+        
+        const matches = allProducts.filter(m => 
+            (m.nombre || '').toLowerCase().includes(qLower) || 
+            (m.id || '').toLowerCase().includes(qLower) ||
+            (m.categoria || '').toLowerCase().includes(qLower)
+        ).slice(0, 10);
+        
+        if (matches.length > 0) {
+            resultsDiv.innerHTML = matches.map(m => {
+                const nombre = m.nombre || m.name || '';
+                return `
+                <button type="button" class="list-group-item list-group-item-action fw-bold py-2 border-start-0 border-end-0" 
+                        onclick="window.KardexView.selectSuggestion('${window.escapeHTML(nombre).replace(/'/g, "\\'")}')">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>${window.escapeHTML(nombre)}</span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:9px;">${window.escapeHTML(m.categoria || m.category || 'MMPP')}</span>
+                    </div>
+                </button>`;
+            }).join('');
+            resultsDiv.style.display = 'block';
+        } else {
+            resultsDiv.innerHTML = '<div class="list-group-item disabled x-small py-2">Sin resultados</div>';
+            resultsDiv.style.display = 'block';
+        }
+
+        this.applyFilters();
+    },
+
+    selectSuggestion: function(name) {
+        const input = document.getElementById('kardex-search');
+        if (input) input.value = name;
+        const sug = document.getElementById('kardex-suggestions');
+        if (sug) sug.style.display = 'none';
+        this.applyFilters();
+    },
+
+    applyFilters: function() {
+        const inputSearch = document.getElementById('kardex-search');
+        const term = inputSearch ? inputSearch.value.toLowerCase() : "";
+        const typeSelect = document.getElementById('kardex-type');
+        const type = typeSelect ? typeSelect.value : "ALL";
+        const catSelect = document.getElementById('kardex-category');
+        const category = catSelect ? catSelect.value : "ALL";
+        
+        const startStr = document.getElementById('kardex-start').value;
+        const endStr = document.getElementById('kardex-end').value;
+
+        const start = startStr ? new Date(startStr) : new Date(0); start.setHours(0,0,0,0);
+        const end = endStr ? new Date(endStr) : new Date(8640000000000000); end.setHours(23,59,59,999);
+
+        this.filteredLogs = this.movements.filter(log => {
+            let prodCat = log.categoria || '';
+            if (!prodCat) {
+                const p = (window.HandooCatalogGlobal||[]).find(x => x.id === log.producto_id || x.nombre === log.producto_nombre);
+                if (p) prodCat = p.categoria || p.category || '';
+            }
+
+            const matchText = (log.producto_nombre || log.producto_id || '').toLowerCase().includes(term) || (log.concept || '').toLowerCase().includes(term);
+            const matchType = type === 'ALL' || log.tipo === type;
+            const matchCategory = category === 'ALL' || prodCat === category;
+            const matchDate = log.raw_date >= start && log.raw_date <= end;
+            return matchText && matchType && matchCategory && matchDate;
+        });
+
+        this.renderTable(this.filteredLogs);
+    },
+
+    renderTable: function(data) {
+        const tbody = document.getElementById('kardex-list-body');
+        if (!tbody) return;
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-5 text-muted fw-bold">No hay movimientos en este periodo.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(log => {
+            const isSuma = log.tipo === 'SUMA';
+            const sign = isSuma ? '+' : '-';
+            const badgeClass = isSuma ? 'kardex-in' : 'kardex-out';
+            const name = log.producto_nombre || log.producto_id;
+
+            return `
+            <tr>
+                <td class="ps-4 small text-muted fw-bold">${log.fecha}</td>
+                <td class="fw-black text-dark text-uppercase" style="font-size: 12px;">${window.escapeHTML(name)}</td>
+                <td><span class="badge bg-light text-dark border border-secondary fw-bold" style="font-size: 10px;">${window.escapeHTML(log.concept)}</span></td>
+                <td class="text-center">
+                    <span class="badge ${badgeClass} fs-6 px-3 py-2">${sign}${log.cantidad} <span style="font-size: 10px;">${window.escapeHTML(log.unidad || 'UD')}</span></span>
+                </td>
+            </tr>`;
+        }).join('');
+    },
+
+    exportExcel: function() {
+        if(this.filteredLogs.length === 0) return HandooApp.ui.showToast("No hay datos", "warning");
+        let csv = "FECHA;ARTICULO;CONCEPTO;MOVIMIENTO;UNIDAD\n";
+        this.filteredLogs.forEach(l => {
+            const sign = l.tipo === 'SUMA' ? '+' : '-';
+            csv += `${l.fecha};${(l.producto_nombre||l.producto_id).replace(/;/g,',')};${l.concept.replace(/;/g,',')};${sign}${l.cantidad};${l.unidad}\n`;
+        });
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); 
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Kardex_Handoo_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    },
+
+    exportPDF: function() {
+        if(this.filteredLogs.length === 0) return HandooApp.ui.showToast("No hay datos", "warning");
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        doc.setFillColor(15, 23, 42); doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.text("Handoo // OS", 14, 20);
+        doc.setTextColor(255, 193, 7); doc.setFontSize(10); doc.text("REPORTE KÁRDEX DE INVENTARIO", 14, 30);
+        
+        const data = this.filteredLogs.map(l => [l.fecha, l.producto_nombre || l.producto_id, l.concept, (l.tipo==='SUMA'?'+':'-') + l.cantidad + ' ' + (l.unidad||'UD')]);
+        doc.autoTable({
+            startY: 50, head: [['FECHA', 'ARTÍCULO', 'CONCEPTO', 'MOVIMIENTO']], body: data,
+            theme: 'grid', headStyles: { fillColor: [255, 193, 7], textColor: [15, 23, 42] },
+            styles: { fontSize: 9 }
+        });
+        doc.save(`Kardex_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+};
+
+window.StockMovementsView = window.KardexView;
+console.log("✅ KÁRDEX MODULE READY [KARDEXVIEW]");
+</script>

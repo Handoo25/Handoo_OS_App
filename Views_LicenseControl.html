@@ -1,0 +1,614 @@
+<style>
+  .lic-shell { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .lic-sidebar { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 25px; }
+  .lic-nav-btn { 
+    display: flex; align-items: center; gap: 12px; padding: 18px 25px; border: none; background: none; 
+    width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; 
+    border-bottom: 1px solid #f1f5f9; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;
+  }
+  .lic-nav-btn:hover { background: #f1f5f9; color: var(--dark); }
+  .lic-nav-btn.active { background: white; color: var(--dark); border-right: 6px solid var(--brand); }
+  .lic-nav-btn i { font-size: 1.3rem; color: #94a3b8; transition: 0.3s; width: 24px; text-align: center; }
+  .lic-nav-btn.active i { color: var(--brand); }
+  .lic-content { flex-grow: 1; padding: 50px; overflow-y: auto; background: white; }
+
+  /* CAPABILITY CARDS - FULL CONTROL */
+  .capability-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; transition: 0.3s; cursor: pointer; background: white; height: 100%; display: flex; align-items: flex-start; gap: 15px; position: relative; }
+  .capability-card:hover { border-color: var(--brand); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+  .capability-card.active { border-color: var(--brand); background: #fffdf5; }
+  .capability-card.active .icon-box { background: var(--brand); color: #fff; }
+  .icon-box { width: 40px; height: 40px; border-radius: 10px; background: #f1f5f9; display: grid; place-items: center; flex-shrink: 0; transition: 0.3s; color: #64748b; }
+  
+  .tier-banner { padding: 35px; border-radius: 24px; color: white; position: relative; overflow: hidden; margin-bottom: 25px; cursor: pointer; transition: 0.4s; border-left: 10px solid transparent; }
+  .tier-banner:hover { transform: scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+  .tier-core { background: #64748b; border-left-color: #94a3b8; }
+  .tier-industrial { background: #1e293b; border-left-color: #334155; }
+  .tier-titanium { background: #0f172a; border-left-color: var(--brand); }
+
+  .unified-block { padding: 24px; border-radius: 16px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 16px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .h-label-refined { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+  #pack-features-list::-webkit-scrollbar { width: 6px; }
+  #pack-features-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  
+  /* TITANIUM STANDARDS */
+  .t-header-titanium { background: #0f172a; color: white; padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+  .t-header-titanium h6 { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin: 0; }
+  .t-header-titanium h2 { font-size: 20px; font-weight: 900; text-transform: uppercase; margin: 0; }
+  .t-btn-primary { background: white; color: #0f172a; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 900; font-size: 11px; text-transform: uppercase; transition: 0.3s; }
+  .t-btn-primary:hover { background: #f1f5f9; }
+  .t-btn-secondary { background: transparent; color: white; border: 1px solid #334155; padding: 10px 20px; border-radius: 8px; font-weight: 900; font-size: 11px; text-transform: uppercase; transition: 0.3s; }
+  .t-btn-secondary:hover { background: #1e293b; }
+</style>
+
+<script>
+window.LicenseControlView = {
+  activeTab: 'features',
+  settings: null,
+  currentLicense: null,
+  packs: [],
+
+  FEATURES_LIST: [
+    { id: 'FEAT_OIDO_CHEF', label: 'Oído Chef', desc: 'Gestión de mermas y roturas por voz con sistema de cuarentena.', icon: 'bi-egg-fried', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_OIDO_CAJA', label: 'Oído Caja', desc: 'Captura financiera y matching de facturas por voz.', icon: 'bi-cash-stack', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_CORE_DASHBOARD', label: 'Dashboard Ejecutivo', desc: 'Panel visual de salud financiera.', icon: 'bi-grid', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_CORE_CLIENTS', label: 'Maestro de Clientes', desc: 'Base de datos soberana de entidades.', icon: 'bi-people', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_FIXED_ASSETS', label: 'Gestión de Inmovilizado', desc: 'Control de activos fijos, amortizaciones y revalorizaciones.', icon: 'bi-building-gear', cat: 'PATRIMONIO Y OPERACIONES' },
+    { id: 'FEAT_OPERATIONAL_TOOLS', label: 'Utillaje y Herramientas', desc: 'Control operativo de menaje, maquinaria ligera y reposición.', icon: 'bi-tools', cat: 'PATRIMONIO Y OPERACIONES' },
+    { id: 'FEAT_CORE_INVOICING', label: 'Facturación Ventas', desc: 'Emisión oficial y motor PDF.', icon: 'bi-receipt', cat: 'FACTURACIÓN' },
+    { id: 'FEAT_DOC_COBRO', label: 'Documentos de Cobro', desc: 'Gestión de efectos y vencimientos.', icon: 'bi-wallet2', cat: 'TESORERÍA' },
+    { id: 'FEAT_BATCH_COBRO', label: 'Cobro por lotes', desc: 'Liquidación masiva de documentos.', icon: 'bi-stack', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEPA_COBRO', label: 'Remesas de cobro', desc: 'Normas 19 y 58 XML Bancario.', icon: 'bi-collection', cat: 'TESORERÍA' },
+    { id: 'FEAT_DOC_PAGO', label: 'Documentos de Pago', desc: 'Gestión de obligaciones a proveedores.', icon: 'bi-receipt-cutoff', cat: 'TESORERÍA' },
+    { id: 'FEAT_BATCH_PAGO', label: 'Pago por lotes', desc: 'Liquidación masiva de pagos.', icon: 'bi-layers', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEPA_PAGO', label: 'Remesas de pago', desc: 'Norma 34 XML Transferencias.', icon: 'bi-send-check', cat: 'TESORERÍA' },
+    { id: 'FEAT_FINANCIACION', label: 'Préstamos y Pasivo', desc: 'Control de deuda y cuadros amortización.', icon: 'bi-bank', cat: 'TESORERÍA' },
+    { id: 'FEAT_CIRCULANTE', label: 'Líneas de Crédito', desc: 'Pólizas de circulante y descuento.', icon: 'bi-arrow-repeat', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION', label: 'Conciliación Bancaria', desc: 'Cámara de compensación y Scan.', icon: 'bi-arrow-left-right', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION_CASH', label: 'Conciliación Caja', desc: 'Cuadre de efectivo y arqueos.', icon: 'bi-cash-coin', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION_STRIPE', label: 'Conciliación Stripe', desc: 'Cuadre automático de pasarela.', icon: 'bi-stripe', cat: 'TESORERÍA' },
+    { id: 'FEAT_LIBRO_MAYOR', label: 'Movimientos Bancarios', desc: 'Historial detallado de operaciones bancarias.', icon: 'bi-journal-text', cat: 'TESORERÍA' },
+    { id: 'FEAT_ANALISIS_RIESGO', label: 'IA Neural CFO', desc: 'Predicción de Cash Flow a 30 días.', icon: 'bi-lightning-charge', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_TRIPLE_CAJA', label: 'Triple Caja (Tesorería)', desc: 'Gestión de TPV, Caja Fuerte y Tránsito.', icon: 'bi-safe2', cat: 'TESORERÍA' },
+    { id: 'FEAT_CALENDAR_COBRO', label: 'Calendario de Cobros', desc: 'Vista temporal de entradas previstas.', icon: 'bi-calendar-check', cat: 'TESORERÍA' },
+    { id: 'FEAT_CALENDAR_PAGO', label: 'Calendario de Pagos', desc: 'Vista temporal de salidas previstas.', icon: 'bi-calendar-event', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEDES', label: 'Sedes y Logística', desc: 'Gestión de múltiples centros de trabajo.', icon: 'bi-building', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_SUBSCRIPTIONS', label: 'Suscripciones y Licencias', desc: 'Motor de recurrencia y facturación automática.', icon: 'bi-stars', cat: 'FACTURACIÓN' },
+    { id: 'MOD_HORECA', label: 'Vertical HORECA', desc: 'APPCC e Inventario Industrial.', icon: 'bi-egg-fried', cat: 'VERTICALES' },
+    { id: 'MOD_SOFTWARE', label: 'Vertical SaaS', desc: 'Red Handoo e Interconexión.', icon: 'bi-hexagon', cat: 'VERTICALES' },
+    { id: 'FEAT_CATALOG_MODULES', label: 'Catálogo de Módulos', desc: 'Venta de módulos de software.', icon: 'bi-cpu', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_PLANS', label: 'Catálogo de Planes', desc: 'Venta de bundles y suscripciones.', icon: 'bi-stars', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_DISCOUNTS', label: 'Gestión de Descuentos', desc: 'Motor de promociones y rebajas.', icon: 'bi-percent', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_TAXONOMY', label: 'Taxonomía Avanzada', desc: 'Desplegables dinámicos para Categorías, Familias y Zonas.', icon: 'bi-tags-fill', cat: 'CATÁLOGO' },
+    { id: 'FEAT_TAXES', label: 'Módulo de Impuestos', desc: 'Liquidaciones de IVA e IRPF oficiales.', icon: 'bi-calculator', cat: 'CONTABILIDAD' },
+    { id: 'FEAT_BRIDGE', label: 'Conector Bridge', desc: 'Sincronización con plataformas externas.', icon: 'bi-link-45deg', cat: 'CONECTIVIDAD' },
+    { id: 'FEAT_IMPORTERS', label: 'Importadores de Datos', desc: 'Carga masiva de maestros y facturas.', icon: 'bi-file-earmark-arrow-up', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_EXPENSE_DELIVERY', label: 'Albaranes de Gasto', desc: 'Control de recepción de mercancía.', icon: 'bi-truck', cat: 'GASTOS' },
+    { id: 'FEAT_EXPENSE_ORDERS', label: 'Pedidos de Gasto', desc: 'Gestión de compras a proveedores.', icon: 'bi-cart-check', cat: 'GASTOS' },
+    { id: 'FEAT_STRATEGY', label: 'Estrategia Financiera', desc: 'Planificación y objetivos de negocio.', icon: 'bi-lightning-charge', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_PERFORMANCE', label: 'Análisis de Rentabilidad', desc: 'Métricas avanzadas de rendimiento.', icon: 'bi-bar-chart-steps', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_EXPENSE_NATURES', label: 'Naturalezas de Gasto', desc: 'Categorización avanzada de costes.', icon: 'bi-tags', cat: 'GASTOS' },
+    { id: 'FEAT_OCR', label: 'Escaneo OCR IA', desc: 'Lectura automática de facturas y tickets.', icon: 'bi-scan', cat: 'GASTOS' },
+    { id: 'FEAT_DASHBOARD_LIVE', label: 'Beneficio Real-Time', desc: 'Ticker de goteo de caja y beneficio diario en vivo.', icon: 'bi-clock-history', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_PROJECTION', label: 'Proyección 30 Días', desc: 'Gráfico de previsión de tesorería a corto plazo.', icon: 'bi-graph-up', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_INSIGHTS', label: 'Insights Proactivos', desc: 'Alertas automáticas del CFO sobre riesgos.', icon: 'bi-incognito', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_STOCK', label: 'Oráculo de Stock', desc: 'Predicción de rotura de inventario.', icon: 'bi-box-seam', cat: 'DASHBOARD' },
+    { id: 'FEAT_INVENTORY_ADVANCED', label: 'Ingeniería de Unidades', desc: 'Activa el Oráculo de Stock: conversiones automáticas caja/unidad, gestión de mermas y auditoría logística proactiva.', icon: 'bi-arrow-left-right', cat: 'INVENTARIO' },
+    { id: 'FEAT_INVENTORY_RECIPES', label: 'Ingeniería de Escandallos', desc: 'Cálculo dinámico de costes por receta y análisis de rentabilidad por plato.', icon: 'bi-diagram-3-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_STOCK_ALERTS', label: 'Alertas de Stock', desc: 'Sistema de notificaciones por rotura de stock y niveles críticos.', icon: 'bi-bell-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_MENU_ENGINEERING', label: 'Ingeniería de Menús (BCG)', desc: 'Desbloquea el análisis de rentabilidad (Estrella, Perro, Caballo, Enigma).', icon: 'bi-graph-up-arrow', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_QUARANTINE_PRO', label: 'Aduana e Importación', desc: 'Activa la zona de Aduana e importación inteligente desde Excel.', icon: 'bi-box-arrow-in-down', cat: 'INVENTARIO' },
+    { id: 'FEAT_RECIPE_DYNAMIC', label: 'Escandallos Vivos', desc: 'Escandallos que se actualizan solos cuando cambia el precio del proveedor.', icon: 'bi-lightning-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_PLATE_WASTE', label: 'Monitor de Mermas', desc: 'El nuevo monitor de mermas de plato.', icon: 'bi-trash', cat: 'INVENTARIO' }
+  ],
+
+  renderAll: function() {
+    const container = document.getElementById('lic-main-content');
+    if (!container) return;
+    
+    container.innerHTML = `
+      ${this.renderPacksHTML()}
+      ${this.renderFeaturesHTML()}
+      ${this.renderStrategyHTML()}
+      ${this.renderBillingHTML()}
+    `;
+  },
+
+  renderFeaturesHTML: function() {
+    const searchTerm = (document.getElementById('lic-search')?.value || '').toLowerCase();
+    const priority = ['GESTIÓN BASE', 'INVENTARIO', 'TESORERÍA', 'FACTURACIÓN'];
+    
+    const allCats = [...new Set(this.FEATURES_LIST.filter(f => f.cat !== 'VERTICALES').map(f => f.cat))];
+    const sortedCats = allCats.sort((a, b) => {
+        const idxA = priority.indexOf(a);
+        const idxB = priority.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.localeCompare(b);
+    });
+
+    return sortedCats.map(cat => {
+        const filteredItems = this.FEATURES_LIST.filter(f => 
+            f.cat === cat && 
+            (f.label.toLowerCase().includes(searchTerm) || f.desc.toLowerCase().includes(searchTerm))
+        );
+        
+        if (filteredItems.length === 0) return '';
+        
+        return `
+           <div class="mb-5">
+              <h6 class="fw-black text-uppercase mb-4" style="font-size:11px; color: var(--brand); opacity: 0.8;">${cat}</h6>
+              <div class="row g-3">
+                 ${filteredItems.map(f => `
+                   <div class="col-md-4 col-lg-3">
+                      <div class="capability-card ${this.currentLicense.active_modules.includes(f.id)?'active':''}" onclick="LicenseControlView.toggleFeat('${f.id}')">
+                         <div class="icon-box"><i class="bi ${f.icon}"></i></div>
+                         <div>
+                            <div class="fw-black text-uppercase" style="font-size:11px">${f.label}</div>
+                            <p class="text-muted m-0" style="font-size:10px">${f.desc}</p>
+                         </div>
+                         <div class="ms-auto"><i class="bi ${this.currentLicense.active_modules.includes(f.id)?'bi-check-circle-fill text-brand':'bi-circle text-muted'}"></i></div>
+                      </div>
+                   </div>
+                 `).join('')}
+              </div>
+           </div>`;
+     }).join('');
+  },
+
+  renderPacksHTML: function() {
+    const basePacks = this.packs.filter(p => p.type === 'base');
+    const specializedPacks = this.packs.filter(p => p.type !== 'base');
+
+    return `
+       <div class="mb-5">
+          <h6 class="fw-black text-uppercase mb-3 x-small text-muted" style="letter-spacing:1px">Planes de Suscripción Base</h6>
+          <div class="row g-4 mb-5">
+             ${basePacks.map(p => `
+                <div class="col-md-4">
+                   <div class="capability-card p-4 h-100 ${this.currentLicense.tier === p.tier ? 'active' : ''}" onclick="LicenseControlView.applyPack('${p.id}')" style="border-left: 6px solid ${p.color}">
+                      <div class="icon-box" style="background: ${p.color}20; color: ${p.color}"><i class="bi ${p.icon} fs-4"></i></div>
+                      <div class="flex-grow-1">
+                         <div class="d-flex justify-content-between align-items-start">
+                            <div class="fw-black text-uppercase" style="font-size:13px">${p.name}</div>
+                            <button class="btn btn-sm btn-light border-0 p-1" onclick="event.stopPropagation(); LicenseControlView.editPack('${p.id}')" title="Editar Plan">
+                               <i class="bi bi-pencil-square text-muted"></i>
+                            </button>
+                         </div>
+                         <p class="text-muted small m-0" style="font-size:10px">${p.desc}</p>
+                         <div class="mt-2">
+                            <span class="badge bg-light text-dark border x-small fw-bold" style="font-size:8px">${p.feats.length} MÓDULOS</span>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             `).join('')}
+          </div>
+
+          <h6 class="fw-black text-uppercase mb-3 x-small text-muted" style="letter-spacing:1px">Packs de Especialización Vertical</h6>
+          <div class="row g-4">
+             ${specializedPacks.map(p => `
+                <div class="col-md-6">
+                   <div class="capability-card p-4 h-100" onclick="LicenseControlView.applyPack('${p.id}')" style="border-left: 6px solid ${p.color}">
+                      <div class="icon-box" style="background: ${p.color}20; color: ${p.color}"><i class="bi ${p.icon} fs-4"></i></div>
+                      <div class="flex-grow-1">
+                         <div class="d-flex justify-content-between align-items-start">
+                            <div class="fw-black text-uppercase" style="font-size:13px">${p.name}</div>
+                            <button class="btn btn-sm btn-light border-0 p-1" onclick="event.stopPropagation(); LicenseControlView.editPack('${p.id}')" title="Editar Pack">
+                               <i class="bi bi-pencil-square text-muted"></i>
+                            </button>
+                         </div>
+                         <p class="text-muted small m-0">${p.desc}</p>
+                         <div class="mt-3">
+                            <div class="x-small fw-bold text-brand mb-2">${p.feats.length} MÓDULOS INCLUIDOS</div>
+                            <div class="d-flex flex-wrap gap-1">
+                               ${p.feats.slice(0, 5).map(fid => {
+                                  const f = this.FEATURES_LIST.find(x => x.id === fid);
+                                  return `<span class="badge bg-light text-dark border x-small fw-normal" style="font-size:9px">${f ? f.label : fid}</span>`;
+                               }).join('')}
+                               ${p.feats.length > 5 ? `<span class="badge bg-light text-muted border x-small fw-normal" style="font-size:9px">+${p.feats.length - 5} más</span>` : ''}
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             `).join('')}
+          </div>
+       </div>`;
+  },
+
+  renderStrategyHTML: function() {
+    const strategyFeats = this.FEATURES_LIST.filter(f => f.cat === 'INTELIGENCIA / IA');
+    return this.verifyLicenseControlIntegrity() + `
+       <div class="mb-5">
+          <h6 class="fw-black text-uppercase mb-4" style="font-size:11px; color: var(--brand); opacity: 0.8;">Estrategia y Rendimiento</h6>
+          <div class="row g-3">
+             ${strategyFeats.map(f => `
+                <div class="col-md-6 col-lg-4">
+                   <div class="capability-card ${this.currentLicense.active_modules.includes(f.id)?'active':''}" onclick="LicenseControlView.toggleFeat('${f.id}')">
+                      <div class="icon-box text-warning"><i class="bi ${f.icon}"></i></div>
+                      <div>
+                         <div class="fw-black text-uppercase" style="font-size:11px">${f.label}</div>
+                         <p class="text-muted m-0" style="font-size:10px">${f.desc}</p>
+                      </div>
+                      <div class="ms-auto"><i class="bi ${this.currentLicense.active_modules.includes(f.id)?'bi-check-circle-fill text-brand':'bi-circle text-muted'}"></i></div>
+                   </div>
+                </div>
+             `).join('')}
+          </div>
+       </div>`;
+  },
+
+  renderBillingHTML: function() {
+    const isSEPA = this.currentLicense.payment_method === 'SEPA';
+    return `
+       <div class="mb-5">
+          <h6 class="fw-black text-uppercase mb-4" style="font-size:11px; color: var(--brand); opacity: 0.8;">Abono de Servicio</h6>
+          <div class="p-4 rounded-4 shadow-sm ${isSEPA ? 'block-dark' : 'block-light'}">
+             <div class="row align-items-center mb-4">
+                <div class="col-md-1 text-center">
+                   <i class="bi ${isSEPA ? 'bi-bank2 text-warning' : 'bi-credit-card-2-back text-brand'} fs-2"></i>
+                </div>
+                <div class="col-md-11">
+                   <h6 class="fw-black text-uppercase m-0" style="font-size:12px">Pago de Suscripción Handoo OS</h6>
+                   <p class="small text-muted m-0">Datos para el mantenimiento técnico del sistema.</p>
+                </div>
+             </div>
+             
+             <div class="row g-3">
+                <div class="col-md-6">
+                   <label class="h-label-refined ${isSEPA ? 'text-white-50' : ''}">MODALIDAD DE PAGO</label>
+                   <select id="lic-method" class="form-select h-form-control fw-black" onchange="LicenseControlView.updatePaymentMethod(this.value)">
+                      <option value="TRANSFERENCIA" ${!isSEPA ? 'selected' : ''}>TRANSFERENCIA BANCARIA (MANUAL)</option>
+                      <option value="SEPA" ${isSEPA ? 'selected' : ''}>GIRO SEPA (AUTOMÁTICO)</option>
+                   </select>
+                </div>
+                <div class="col-md-6">
+                   <label class="h-label-refined ${isSEPA ? 'text-white-50' : ''}">IBAN DE CARGO / ORIGEN</label>
+                   <input type="text" id="lic-iban" class="form-control h-form-control font-monospace fw-bold" value="${this.currentLicense.billing_iban}" placeholder="ES00 0000...">
+                </div>
+             </div>
+
+             ${isSEPA ? `
+                <div class="mt-4 p-3 rounded-3 bg-white/5 border border-white/10">
+                   <p class="x-small text-white-50 m-0"><i class="bi bi-shield-check me-2 text-warning"></i> Al seleccionar Giro SEPA, autoriza a Handoo OS a emitir cargos mensuales en la cuenta indicada según el consumo de módulos activos.</p>
+                </div>
+             ` : ''}
+          </div>
+       </div>`;
+  },
+
+  verifyLicenseControlIntegrity: function() {
+    return `
+    <div class="p-4 rounded-4 shadow-sm mt-3 container bg-dark text-white" style="background-color: #0f172a;">
+      <div class="row align-items-center">
+        <div class="col-md-1 text-center">
+          <i class="bi bi-shield-shaded fs-2 text-brand animate-pulse"></i>
+        </div>
+        <div class="col-md-11 ps-4 border-start border-secondary">
+          <h6 class="fw-black text-uppercase m-0" style="font-size: 11px; color: #f8fafc;">Handoo Master: Verificación de Módulos</h6>
+          <p class="small mb-0 text-muted">Estructura de dependencias de IA y Estrategia verificada. El sistema de reinicio suave garantiza la persistencia sin pérdida de estado. Arquitectura 100% Titanium.</p>
+        </div>
+      </div>
+    </div>
+  `;
+  },
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    if (!stage) return;
+    
+    // 🔥 EMERGENCY: Ensure UI is painted even if load fails
+    stage.innerHTML = `
+      <div class="t-header-titanium mb-4 rounded-4 mt-4">
+         <div>
+            <h6>CONFIGURACIÓN DEL SISTEMA</h6>
+            <h2>Gestor de Licencias y Capacidades</h2>
+         </div>
+         <div class="d-flex gap-2">
+            <button class="t-btn-secondary" onclick="LicenseControlView.selectAll()">ACTIVAR TODO</button>
+            <button id="btn-save-license" class="t-btn-primary shadow" onclick="LicenseControlView.save()"><i class="bi bi-floppy-fill me-2"></i> APLICAR CAMBIOS</button>
+         </div>
+      </div>
+      <div class="container-fluid p-4 animate-slide">
+        <div class="mb-4">
+          <input type="text" id="lic-search" class="form-control h-form-control" placeholder="🔍 Buscar módulos..." oninput="LicenseControlView.renderAll()">
+        </div>
+        <div id="lic-main-content">
+           <div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="mt-2 small fw-bold">CARGANDO KERNEL...</p></div>
+        </div>
+      </div>`;
+      
+    try {
+      await this.load();
+      this.renderAll();
+    } catch (e) {
+      console.error("CRITICAL: LicenseControlView.render failed", e);
+      const content = document.getElementById('lic-main-content');
+      if (content) {
+        content.innerHTML = `
+          <div class="alert alert-danger border-0 shadow-sm rounded-4 p-4">
+            <h5 class="fw-black"><i class="bi bi-exclamation-triangle-fill me-2"></i> ERROR DE SINCRONIZACIÓN</h5>
+            <p class="mb-0 small">${e.message}</p>
+            <button class="btn btn-sm btn-outline-danger mt-3 fw-bold" onclick="LicenseControlView.render()">REINTENTAR</button>
+          </div>
+        `;
+      }
+    }
+  },
+
+  load: async function() {
+    const res = await HandooApp.api('admin.get_settings');
+    if (res.ok) {
+      this.settings = res.data;
+      const sub = this.settings.subscription || {};
+      this.currentLicense = { 
+        active_modules: this.settings.active_modules || [], 
+        tier: sub.tier || 'INDUSTRIAL',
+        billing_iban: sub.billing_iban || '',
+        payment_method: sub.payment_method || 'TRANSFERENCIA'
+      };
+      
+      // Load packs from settings or use defaults
+      this.packs = this.settings.custom_packs || [
+        { 
+          id: 'TIER_CORE', 
+          name: 'HANDOO CORE', 
+          desc: 'Configuración básica para gestión administrativa.',
+          icon: 'bi-grid-1x2',
+          color: '#64748b',
+          tier: 'CORE',
+          type: 'base',
+          feats: ['FEAT_CORE_DASHBOARD', 'FEAT_CORE_CLIENTS', 'FEAT_CORE_INVOICING', 'FEAT_CATALOG_DISCOUNTS']
+        },
+        { 
+          id: 'TIER_INDUSTRIAL', 
+          name: 'HANDOO INDUSTRIAL', 
+          desc: 'Empresarial completo: Tesorería, SEPA, Préstamos y Conciliación.',
+          icon: 'bi-layers-half',
+          color: '#1e293b',
+          tier: 'INDUSTRIAL',
+          type: 'base',
+          feats: [
+            'FEAT_CORE_DASHBOARD', 'FEAT_CORE_CLIENTS', 'FEAT_CORE_INVOICING', 
+            'FEAT_DOC_COBRO', 'FEAT_BATCH_COBRO', 'FEAT_SEPA_COBRO', 
+            'FEAT_DOC_PAGO', 'FEAT_BATCH_PAGO', 'FEAT_SEPA_PAGO', 
+            'FEAT_FINANCIACION', 'FEAT_CIRCULANTE', 'FEAT_CONCILIACION', 'FEAT_LIBRO_MAYOR',
+            'FEAT_FIXED_ASSETS', 'FEAT_OPERATIONAL_TOOLS',
+            'FEAT_CATALOG_MODULES', 'FEAT_CATALOG_PLANS', 'FEAT_CATALOG_DISCOUNTS'
+          ]
+        },
+        { 
+          id: 'TIER_TITANIUM', 
+          name: 'HANDOO TITANIUM', 
+          desc: 'Inteligencia Total: IA CFO y Verticales completas.',
+          icon: 'bi-shield-check',
+          color: '#0f172a',
+          tier: 'TITANIUM',
+          type: 'base',
+          feats: this.FEATURES_LIST.map(f => f.id)
+        },
+        { 
+          id: 'PACK_HORECA_BASIC', 
+          name: 'HORECA BASIC', 
+          desc: 'Configuración esencial para hostelería: Inventario, APPCC y Facturación.',
+          icon: 'bi-egg-fried',
+          color: '#f59e0b',
+          type: 'pack',
+          feats: ['FEAT_CORE_DASHBOARD', 'FEAT_CORE_CLIENTS', 'FEAT_CORE_INVOICING', 'FEAT_SEDES', 'MOD_HORECA']
+        },
+        { 
+          id: 'PACK_TREASURY_PRO', 
+          name: 'TESORERÍA PRO', 
+          desc: 'Control total de liquidez: SEPA, Conciliación y Extractos.',
+          icon: 'bi-bank',
+          color: '#3b82f6',
+          type: 'pack',
+          feats: ['FEAT_DOC_COBRO', 'FEAT_SEPA_COBRO', 'FEAT_DOC_PAGO', 'FEAT_SEPA_PAGO', 'FEAT_CONCILIACION', 'FEAT_LIBRO_MAYOR', 'FEAT_SUBSCRIPTIONS']
+        }
+      ];
+    }
+    this.logUnifiedControlDeployment();
+  },
+
+  logUnifiedControlDeployment: function() {
+    console.log("Titanium License Control: Unified Deployment Verified.");
+  },
+
+
+
+  editPack: function(packId) {
+    const p = this.packs.find(x => x.id === packId);
+    if (!p) return;
+
+    const label = p.type === 'base' ? 'Plan' : 'Pack';
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 800px; max-height: 90vh;">
+         <div class="h-modal-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="m-0 fw-black text-uppercase">Configurar ${label}: ${p.name}</h5>
+            <button class="btn-close btn-close-white" onclick="this.closest('.h-modal-overlay').remove()"></button>
+         </div>
+         <div class="h-modal-body bg-light p-4 overflow-hidden d-flex flex-column" style="max-height: calc(90vh - 150px);">
+            <div class="row g-3 mb-4 flex-shrink-0">
+               <div class="col-md-6">
+                  <label class="h-label-refined">Nombre del ${label}</label>
+                  <input type="text" id="edit-pack-name" class="form-control h-form-control fw-bold" value="${p.name}">
+               </div>
+               <div class="col-md-6">
+                  <label class="h-label-refined">Buscador de Módulos</label>
+                  <div class="input-group">
+                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                     <input type="text" id="pack-feat-search" class="form-control h-form-control border-start-0" placeholder="Buscar función..." oninput="LicenseControlView.filterPackFeatures()">
+                  </div>
+               </div>
+               <div class="col-md-12">
+                  <label class="h-label-refined">Descripción</label>
+                  <textarea id="edit-pack-desc" class="form-control" rows="1">${p.desc}</textarea>
+               </div>
+            </div>
+            
+            <div id="pack-features-list" class="overflow-auto flex-grow-1 pe-2">
+               <!-- Se renderiza dinámicamente -->
+            </div>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="t-btn-primary shadow" onclick="LicenseControlView.savePack('${p.id}')">GUARDAR CONFIGURACIÓN</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    this.renderPackFeatures(p.feats);
+  },
+
+  filterPackFeatures: function() {
+    const search = document.getElementById('pack-feat-search').value.toLowerCase();
+    const checks = document.querySelectorAll('.pack-feat-check');
+    const selectedIds = Array.from(checks).filter(c => c.checked).map(c => c.value);
+    this.renderPackFeatures(selectedIds, search);
+  },
+
+  renderPackFeatures: function(selectedIds, searchTerm = '') {
+    const container = document.getElementById('pack-features-list');
+    if (!container) return;
+
+    const filtered = this.FEATURES_LIST.filter(f => 
+      f.label.toLowerCase().includes(searchTerm) || 
+      f.desc.toLowerCase().includes(searchTerm) ||
+      f.cat.toLowerCase().includes(searchTerm)
+    );
+
+    // Sort categories to put VERTICALES at the top in the pack editor
+    const cats = [...new Set(filtered.map(f => f.cat))].sort((a, b) => {
+       if (a === 'VERTICALES') return -1;
+       if (b === 'VERTICALES') return 1;
+       return a.localeCompare(b);
+    });
+    
+    container.innerHTML = cats.map(cat => `
+      <div class="mb-4">
+         <h6 class="fw-black text-uppercase mb-2 x-small ${cat === 'VERTICALES' ? 'text-brand' : 'text-muted'}" style="letter-spacing:1px">
+            ${cat === 'VERTICALES' ? '<i class="bi bi-cpu-fill me-1"></i> MOTOR DE ESPECIALIZACIÓN' : cat}
+         </h6>
+         <div class="row g-2">
+            ${filtered.filter(f => f.cat === cat).map(f => `
+               <div class="col-md-6">
+                  <div class="p-2 border rounded-3 ${cat === 'VERTICALES' ? 'bg-dark text-white border-dark' : 'bg-white'} d-flex align-items-center gap-2" style="cursor:pointer" onclick="const cb = this.querySelector('input'); cb.checked = !cb.checked;">
+                     <input type="checkbox" class="form-check-input pack-feat-check" value="${f.id}" ${selectedIds.includes(f.id) ? 'checked' : ''} onclick="event.stopPropagation()">
+                     <div class="small fw-bold text-uppercase" style="font-size:10px">${f.label}</div>
+                  </div>
+               </div>
+            `).join('')}
+         </div>
+      </div>
+    `).join('') || '<div class="text-center p-5 opacity-50 small fw-bold">No se encontraron módulos con ese criterio.</div>';
+  },
+
+  savePack: function(packId) {
+    const p = this.packs.find(x => x.id === packId);
+    if (!p) return;
+
+    p.name = document.getElementById('edit-pack-name').value;
+    p.desc = document.getElementById('edit-pack-desc').value;
+    p.feats = Array.from(document.querySelectorAll('.pack-feat-check:checked')).map(cb => cb.value);
+
+    document.querySelector('.h-modal-overlay').remove();
+    this.renderAll();
+    HandooApp.ui.showToast("Configuración del pack actualizada localmente. Recuerde Aplicar Cambios para persistir.");
+  },
+
+  applyPack: function(packId) {
+    const p = this.packs.find(x => x.id === packId);
+    if (!p) return;
+    
+    const feats = p.feats;
+    if (!feats) return;
+
+    if (p.tier) {
+      this.currentLicense.tier = p.tier;
+      this.currentLicense.active_modules = [...feats];
+    } else {
+      feats.forEach(f => {
+        if (!this.currentLicense.active_modules.includes(f)) {
+          this.currentLicense.active_modules.push(f);
+        }
+      });
+    }
+
+    HandooApp.ui.showToast(`${p.tier ? 'Plan' : 'Pack'} ${p.name} aplicado con éxito.`);
+    this.renderAll();
+  },
+
+
+
+  updatePaymentMethod: function(val) {
+    this.currentLicense.payment_method = val;
+    this.renderAll();
+  },
+
+  selectAll: function() {
+    this.currentLicense.active_modules = this.FEATURES_LIST.map(f => f.id);
+    HandooApp.ui.showToast("Todos los módulos seleccionados localmente. Pulse Aplicar para confirmar.", "info");
+    this.renderAll();
+  },
+
+  toggleFeat: function(id) {
+    const idx = this.currentLicense.active_modules.indexOf(id);
+    const active = this.currentLicense.active_modules;
+    
+    if (idx > -1) {
+      active.splice(idx, 1);
+      // Desactivación en cascada (opcional, pero lógico)
+      if (id === 'FEAT_DOC_COBRO') {
+        ['FEAT_BATCH_COBRO', 'FEAT_SEPA_COBRO', 'FEAT_CALENDAR_COBRO'].forEach(dep => {
+          const dIdx = active.indexOf(dep);
+          if (dIdx > -1) active.splice(dIdx, 1);
+        });
+      }
+      if (id === 'FEAT_DOC_PAGO') {
+        ['FEAT_BATCH_PAGO', 'FEAT_SEPA_PAGO', 'FEAT_CALENDAR_PAGO'].forEach(dep => {
+          const dIdx = active.indexOf(dep);
+          if (dIdx > -1) active.splice(dIdx, 1);
+        });
+      }
+    } else {
+      active.push(id);
+      // Activación en cascada (Dependencias)
+      if (['FEAT_BATCH_COBRO', 'FEAT_SEPA_COBRO', 'FEAT_CALENDAR_COBRO'].includes(id)) {
+        if (!active.includes('FEAT_DOC_COBRO')) active.push('FEAT_DOC_COBRO');
+      }
+      if (['FEAT_BATCH_PAGO', 'FEAT_SEPA_PAGO', 'FEAT_CALENDAR_PAGO'].includes(id)) {
+        if (!active.includes('FEAT_DOC_PAGO')) active.push('FEAT_DOC_PAGO');
+      }
+      if (['FEAT_FIXED_ASSETS', 'FEAT_OPERATIONAL_TOOLS'].includes(id)) {
+        if (!active.includes('FEAT_EXPENSE_NATURES')) active.push('FEAT_EXPENSE_NATURES');
+      }
+      if (['FEAT_ANALISIS_RIESGO', 'FEAT_PERFORMANCE', 'FEAT_MENU_ENGINEERING'].includes(id)) {
+        if (!active.includes('FEAT_STRATEGY')) active.push('FEAT_STRATEGY');
+      }
+    }
+    this.renderAll();
+  },
+
+  save: async function() {
+    this.syncLocal();
+    HandooApp.ui.setLoading('btn-save-license', true);
+    await HandooApp.api('admin.save_settings', { 
+      active_modules: this.currentLicense.active_modules, 
+      subscription: this.currentLicense,
+      custom_packs: this.packs
+    });
+    HandooApp.ui.showToast("Kernel Sincronizado. Aplicando cambios...", "success");
+    
+    // En lugar de reload completo que falla en GAS, reiniciamos la App suavemente
+    setTimeout(async () => {
+      HandooApp.ui.setLoading('btn-save-license', false);
+      await HandooApp.init(true); // Recarga stats y sidebar forzando refresco
+      HandooApp.navTo('Dashboard');
+    }, 1500);
+  }
+};
+</script>

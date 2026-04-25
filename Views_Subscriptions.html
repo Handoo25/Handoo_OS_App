@@ -1,0 +1,419 @@
+<style>
+  .v-tabs-container { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .v-tabs-sidebar { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 25px; }
+  .v-tab-btn { 
+    display: flex; align-items: center; gap: 15px; padding: 20px 30px; border: none; background: none; 
+    width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; 
+    border-bottom: 1px solid #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .v-tab-btn:hover { background: #f1f5f9; color: var(--dark); }
+  .v-tab-btn.active { background: white; color: var(--dark); border-right: 6px solid var(--brand); }
+  .v-tab-btn i { font-size: 1.4rem; color: #94a3b8; transition: 0.3s; width: 24px; text-align: center; }
+  .v-tab-btn.active i { color: var(--brand); }
+  .v-tabs-content { flex-grow: 1; padding: 40px; overflow-y: auto; background: white; }
+
+  /* PATRÓN DE BLOQUE UNIFICADO TITANIUM */
+  .unified-block { padding: 24px; border-radius: 16px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 16px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .block-dark .text-muted { color: #94a3b8 !important; }
+  .block-dark .form-control, .block-dark .form-select { background: #1e293b; border-color: #334155; color: #fff; font-size: 11px; }
+  
+  .block-header-title { font-size: 12px !important; font-weight: 900; margin: 0; text-transform: uppercase; }
+  .block-header-desc { font-size: 11px; margin: 0; }
+
+  .h-form-control { height: 42px; border-radius: 10px; font-size: 13px; border-color: #e2e8f0; font-weight: 600; }
+  .h-label-refined { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+  
+  .badge-status { padding: 5px 12px; border-radius: 8px; font-weight: 900; font-size: 10px; text-transform: uppercase; }
+</style>
+
+<script>
+window.SubscriptionsView = {
+  data: [],
+  settings: null,
+  currentSub: null,
+  activeTab: 'config',
+  FEATURES_LIST: [
+    { id: 'FEAT_PROD_FLOOR', label: 'Control de Planta / Piso', desc: 'Gestión operativa en tiempo real.', icon: 'bi-activity', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_FIN_CAPTURE', label: 'Captura Financiera Rápida', desc: 'Matching de facturas y cobros ágil.', icon: 'bi-cash-stack', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_CORE_DASHBOARD', label: 'Dashboard Ejecutivo', desc: 'Panel visual de salud financiera.', icon: 'bi-grid', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_CORE_CLIENTS', label: 'Maestro de Clientes', desc: 'Base de datos soberana de entidades.', icon: 'bi-people', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_FIXED_ASSETS', label: 'Gestión de Inmovilizado', desc: 'Control de activos fijos, amortizaciones y revalorizaciones.', icon: 'bi-building-gear', cat: 'PATRIMONIO Y OPERACIONES' },
+    { id: 'FEAT_OPERATIONAL_TOOLS', label: 'Utillaje y Herramientas', desc: 'Control operativo de menaje, maquinaria ligera y reposición.', icon: 'bi-tools', cat: 'PATRIMONIO Y OPERACIONES' },
+    { id: 'FEAT_CORE_INVOICING', label: 'Facturación Ventas', desc: 'Emisión oficial y motor PDF.', icon: 'bi-receipt', cat: 'FACTURACIÓN' },
+    { id: 'FEAT_DOC_COBRO', label: 'Documentos de Cobro', desc: 'Gestión de efectos y vencimientos.', icon: 'bi-wallet2', cat: 'TESORERÍA' },
+    { id: 'FEAT_BATCH_COBRO', label: 'Cobro por lotes', desc: 'Liquidación masiva de documentos.', icon: 'bi-stack', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEPA_COBRO', label: 'Remesas de cobro', desc: 'Normas 19 y 58 XML Bancario.', icon: 'bi-collection', cat: 'TESORERÍA' },
+    { id: 'FEAT_DOC_PAGO', label: 'Documentos de Pago', desc: 'Gestión de obligaciones a proveedores.', icon: 'bi-receipt-cutoff', cat: 'TESORERÍA' },
+    { id: 'FEAT_BATCH_PAGO', label: 'Pago por lotes', desc: 'Liquidación masiva de pagos.', icon: 'bi-layers', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEPA_PAGO', label: 'Remesas de pago', desc: 'Norma 34 XML Transferencias.', icon: 'bi-send-check', cat: 'TESORERÍA' },
+    { id: 'FEAT_FINANCIACION', label: 'Préstamos y Pasivo', desc: 'Control de deuda y cuadros amortización.', icon: 'bi-bank', cat: 'TESORERÍA' },
+    { id: 'FEAT_CIRCULANTE', label: 'Líneas de Crédito', desc: 'Pólizas de circulante y descuento.', icon: 'bi-arrow-repeat', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION', label: 'Conciliación Bancaria', desc: 'Cámara de compensación y Scan.', icon: 'bi-arrow-left-right', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION_CASH', label: 'Conciliación Caja', desc: 'Cuadre de efectivo y arqueos.', icon: 'bi-cash-coin', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION_STRIPE', label: 'Conciliación Stripe', desc: 'Cuadre automático de pasarela.', icon: 'bi-stripe', cat: 'TESORERÍA' },
+    { id: 'FEAT_LIBRO_MAYOR', label: 'Movimientos Bancarios', desc: 'Historial detallado de operaciones bancarias.', icon: 'bi-journal-text', cat: 'TESORERÍA' },
+    { id: 'FEAT_ANALISIS_RIESGO', label: 'IA Neural CFO', desc: 'Predicción de Cash Flow a 30 días.', icon: 'bi-lightning-charge', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_TRIPLE_CAJA', label: 'Triple Caja (Tesorería)', desc: 'Gestión de TPV, Caja Fuerte y Tránsito.', icon: 'bi-safe2', cat: 'TESORERÍA' },
+    { id: 'FEAT_CALENDAR_COBRO', label: 'Calendario de Cobros', desc: 'Vista temporal de entradas previstas.', icon: 'bi-calendar-check', cat: 'TESORERÍA' },
+    { id: 'FEAT_CALENDAR_PAGO', label: 'Calendario de Pagos', desc: 'Vista temporal de salidas previstas.', icon: 'bi-calendar-event', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEDES', label: 'Sedes y Logística', desc: 'Gestión de múltiples centros de trabajo.', icon: 'bi-building', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_SUBSCRIPTIONS', label: 'Suscripciones y Licencias', desc: 'Motor de recurrencia y facturación automática.', icon: 'bi-stars', cat: 'FACTURACIÓN' },
+    { id: 'MOD_QMS_QUALITY', label: 'Vertical QMS / Calidad', desc: 'Trazabilidad, Lotes y Puntos Críticos (APPCC).', icon: 'bi-shield-check', cat: 'VERTICALES' },
+    { id: 'MOD_SOFTWARE', label: 'Vertical SaaS', desc: 'Red Handoo e Interconexión.', icon: 'bi-hexagon', cat: 'VERTICALES' },
+    { id: 'FEAT_CATALOG_MODULES', label: 'Catálogo de Módulos', desc: 'Venta de módulos de software.', icon: 'bi-cpu', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_PLANS', label: 'Catálogo de Planes', desc: 'Venta de bundles y suscripciones.', icon: 'bi-stars', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_DISCOUNTS', label: 'Gestión de Descuentos', desc: 'Motor de promociones y rebajas.', icon: 'bi-percent', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_TAXONOMY', label: 'Taxonomía Avanzada', desc: 'Desplegables dinámicos para Categorías, Familias y Zonas.', icon: 'bi-tags-fill', cat: 'CATÁLOGO' },
+    { id: 'FEAT_TAXES', label: 'Módulo de Impuestos', desc: 'Liquidaciones de IVA e IRPF oficiales.', icon: 'bi-calculator', cat: 'CONTABILIDAD' },
+    { id: 'FEAT_BRIDGE', label: 'Conector Bridge', desc: 'Sincronización con plataformas externas.', icon: 'bi-link-45deg', cat: 'CONECTIVIDAD' },
+    { id: 'FEAT_IMPORTERS', label: 'Importadores de Datos', desc: 'Carga masiva de maestros y facturas.', icon: 'bi-file-earmark-arrow-up', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_EXPENSE_DELIVERY', label: 'Albaranes de Gasto', desc: 'Control de recepción de mercancía.', icon: 'bi-truck', cat: 'GASTOS' },
+    { id: 'FEAT_EXPENSE_ORDERS', label: 'Pedidos de Gasto', desc: 'Gestión de compras a proveedores.', icon: 'bi-cart-check', cat: 'GASTOS' },
+    { id: 'FEAT_STRATEGY', label: 'Estrategia Financiera', desc: 'Planificación y objetivos de negocio.', icon: 'bi-lightning-charge', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_PERFORMANCE', label: 'Análisis de Rentabilidad', desc: 'Métricas avanzadas de rendimiento.', icon: 'bi-bar-chart-steps', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_EXPENSE_NATURES', label: 'Naturalezas de Gasto', desc: 'Categorización avanzada de costes.', icon: 'bi-tags', cat: 'GASTOS' },
+    { id: 'FEAT_OCR', label: 'Escaneo OCR IA', desc: 'Lectura automática de facturas y tickets.', icon: 'bi-scan', cat: 'GASTOS' },
+    { id: 'FEAT_DASHBOARD_LIVE', label: 'Beneficio Real-Time', desc: 'Ticker de goteo de caja y beneficio diario en vivo.', icon: 'bi-clock-history', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_PROJECTION', label: 'Proyección 30 Días', desc: 'Gráfico de previsión de tesorería a corto plazo.', icon: 'bi-graph-up', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_INSIGHTS', label: 'Insights Proactivos', desc: 'Alertas automáticas del CFO sobre riesgos.', icon: 'bi-incognito', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_STOCK', label: 'Oráculo de Stock', desc: 'Predicción de rotura de inventario.', icon: 'bi-box-seam', cat: 'DASHBOARD' },
+    { id: 'FEAT_INVENTORY_ADVANCED', label: 'Ingeniería de Unidades', desc: 'Conversiones automáticas caja/unidad, gestión de mermas.', icon: 'bi-arrow-left-right', cat: 'INVENTARIO' },
+    { id: 'FEAT_INVENTORY_RECIPES', label: 'Ingeniería de Escandallos', desc: 'Cálculo dinámico de costes por receta.', icon: 'bi-diagram-3-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_STOCK_ALERTS', label: 'Alertas de Stock', desc: 'Sistema de notificaciones por rotura de stock.', icon: 'bi-bell-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_MENU_ENGINEERING', label: 'Ingeniería de Productos (BCG)', desc: 'Desbloquea el análisis de rentabilidad (Estrella, Perro, Caballo, Enigma).', icon: 'bi-graph-up-arrow', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_QUARANTINE_PRO', label: 'Aduana e Importación', desc: 'Activa la zona de Aduana e importación inteligente.', icon: 'bi-box-arrow-in-down', cat: 'INVENTARIO' },
+    { id: 'FEAT_RECIPE_DYNAMIC', label: 'Estructuras Vivas', desc: 'Estructuras de coste que se actualizan solas con precios de proveedor.', icon: 'bi-lightning-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_PLATE_WASTE', label: 'Monitor de Mermas', desc: 'Monitor avanzado de desperdicio operativo.', icon: 'bi-trash', cat: 'INVENTARIO' }
+  ],
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">SISTEMA DE RECURRENCIA</h6><h2 class="fw-black m-0 text-uppercase">Gestión de Licencias</h2></div>
+         <button class="h-btn bg-white text-dark px-5 py-2 fw-black shadow-sm" onclick="SubscriptionsView.openForm('new')">+ NUEVA LICENCIA</button>
+      </div>
+      <div class="p-5 animate-slide">
+         <div class="card-industrial border-0 overflow-hidden shadow-sm">
+            <div class="p-4 bg-light border-bottom">
+               <div class="row g-3">
+                  <div class="col-md-5">
+                     <label class="h-label-refined">BÚSQUEDA GLOBAL</label>
+                     <div class="input-group"><span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span><input type="text" id="sub-search" class="form-control border-start-0 ps-0 h-form-control" placeholder="Cliente o ID de Licencia..." onkeyup="SubscriptionsView.applyFilters()"></div>
+                  </div>
+                  <div class="col-md-3">
+                     <label class="h-label-refined">ESTADO ACTIVO</label>
+                     <select id="sub-filter-status" class="form-select h-form-control fw-bold" onchange="SubscriptionsView.applyFilters()"><option value="ALL">TODOS</option><option value="Activo" selected>SOLO ACTIVAS</option><option value="Suspensión">SUSPENSIÓN</option><option value="Baja">BAJA</option></select>
+                  </div>
+                  <div class="col-md-4 text-end d-flex align-items-end justify-content-end pb-1"><div class="small text-muted fw-bold" id="sub-counter">SINCRONIZANDO...</div></div>
+               </div>
+            </div>
+            <div class="table-responsive">
+               <table class="table table-hover m-0 align-middle">
+                  <thead class="bg-light">
+                    <tr><th class="ps-4 py-3">ID</th><th>CLIENTE / SEDE</th><th>PLAN / MÓDULO</th><th class="text-end">PRECIO (€)</th><th class="text-center">PRÓX. COBRO</th><th class="text-center">ESTADO</th><th class="text-end pe-4">GESTIÓN</th></tr>
+                  </thead>
+                  <tbody id="sub-table-body"></tbody>
+               </table>
+            </div>
+         </div>
+      </div>`;
+    this.load();
+  },
+
+  load: async function() {
+    const [resSubs, resSet] = await Promise.all([HandooApp.api('subscription.list'), HandooApp.api('admin.get_settings')]);
+    if(resSubs.ok) this.data = resSubs.data || [];
+    if(resSet.ok) this.settings = resSet.data;
+    this.applyFilters();
+  },
+
+  applyFilters: function() {
+    const q = document.getElementById('sub-search')?.value.toLowerCase() || "";
+    const status = document.getElementById('sub-filter-status')?.value || "Activo";
+    const filtered = this.data.filter(s => {
+      const matchQ = !q || (s.client_name||'').toLowerCase().includes(q) || (s.id||'').toLowerCase().includes(q);
+      const matchS = status === 'ALL' || s.status === status;
+      return matchQ && matchS;
+    });
+    this.renderRows(filtered);
+    document.getElementById('sub-counter').innerText = `LICENCIAS: ${filtered.length}`;
+  },
+
+  renderRows: function(data) {
+    const body = document.getElementById('sub-table-body');
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    body.innerHTML = data.map(s => {
+      const vto = s.next_billing ? new Date(s.next_billing) : null;
+      const isLate = vto && vto < today && s.status === 'Activo';
+      
+      return `
+      <tr onclick="SubscriptionsView.openForm('${s.id}')" style="cursor:pointer">
+         <td class="ps-4 font-monospace small text-muted">${s.id}</td>
+         <td><div class="fw-black text-uppercase" style="font-size:11px">${escapeHTML(s.client_name)}</div><div class="small text-muted" style="font-size:10px">${escapeHTML(s.sede_name || 'SEDE CENTRAL')}</div></td>
+         <td><span class="badge ${s.item_type==='PLAN'?'bg-dark':'bg-warning text-dark'} text-uppercase" style="font-size:9px">${escapeHTML(s.item_display_name)}</span></td>
+         <td class="text-end fw-black">${parseFloat(s.price || 0).toLocaleString('es-ES', {minimumFractionDigits:2})} €</td>
+         <td class="text-center font-monospace small ${isLate?'text-danger fw-black':''}">${s.next_billing ? new Date(s.next_billing).toLocaleDateString() : '---'}</td>
+         <td class="text-center"><span class="badge-status ${s.status==='Activo'?'bg-success text-white':(s.status==='Baja'?'bg-danger text-white':'bg-warning text-dark')}">${(s.status||'Activo').toUpperCase()}</span></td>
+         <td class="text-end pe-4" onclick="event.stopPropagation()"><button class="btn btn-link text-danger p-0" onclick="SubscriptionsView.delete('${s.id}')"><i class="bi bi-trash3"></i></button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" class="p-5 text-center opacity-25 fw-black">SIN LICENCIAS COINCIDENTES</td></tr>';
+  },
+
+  openForm: function(id) {
+    const today = new Date().toISOString().split('T')[0];
+    const empty = { 
+      id:'new', client_id:'', sede_id:'', item_type: 'PLAN', plan_id:'', module_id:'', price:0, cycle:'Mensual', 
+      status:'Activo', activation_date: today, next_billing:'', series_id: '', event_reason: '', active_modules: []
+    };
+    const raw = id === 'new' ? empty : this.data.find(x => x.id === id);
+    this.currentSub = JSON.parse(JSON.stringify(Object.assign({}, empty, raw)));
+    this.activeTab = 'config';
+    this.renderFormContainer();
+  },
+
+  renderFormContainer: function() {
+    const s = this.currentSub;
+    document.getElementById('main-stage').innerHTML = `
+      <div class="bg-white border-bottom px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow-sm">
+         <div class="d-flex align-items-center gap-4">
+            <button class="btn btn-link text-dark p-0" onclick="SubscriptionsView.render()"><i class="bi bi-arrow-left-circle-fill fs-3"></i></button>
+            <div><h6 class="h-label text-muted">EXPEDIENTE LICENCIA: ${s.id}</h6><h2 class="fw-black m-0 text-uppercase">${escapeHTML(s.client_name) || 'NUEVA CONTRATACIÓN'}</h2></div>
+         </div>
+         <div class="d-flex gap-2">
+            <button class="btn btn-light border px-4 fw-bold" onclick="SubscriptionsView.render()">DESCARTAR</button>
+            <button id="btn-save-sub" class="h-btn h-btn-dark px-5 py-2 shadow" onclick="SubscriptionsView.save()">SINCRONIZAR KERNEL</button>
+         </div>
+      </div>
+      <div class="p-5"><div class="v-tabs-container animate-slide"><div class="v-tabs-sidebar" id="sub-tabs-nav"></div><div class="v-tabs-content" id="sub-tabs-content"></div></div></div>`;
+    this.renderTabs();
+  },
+
+  renderTabs: function() {
+    const tabs = [
+      {id:'config', icon:'bi-person-vcard', label:'Config. Titular'},
+      {id:'plan', icon:'bi-stars', label:'Plan y Precios'},
+      {id:'feats', icon:'bi-toggle-on', label:'Capacidades'},
+      {id:'ciclo', icon:'bi-calendar-check', label:'Ciclo y Control'}
+    ];
+    document.getElementById('sub-tabs-nav').innerHTML = tabs.map(t => `<button class="v-tab-btn ${this.activeTab===t.id?'active':''}" onclick="SubscriptionsView.setTab('${t.id}')"><i class="${t.icon}"></i> ${t.label}</button>`).join('');
+    this.renderActiveTabContent();
+  },
+
+  setTab: function(id) { this.syncLocal(); this.activeTab = id; this.renderTabs(); },
+
+  syncLocal: function() {
+    const s = this.currentSub;
+    const g = (id) => document.getElementById(id)?.value;
+    
+    if(g('s-client')) s.client_id = g('s-client');
+    if(g('s-sede')) s.sede_id = g('s-sede');
+    if(g('s-serie')) s.series_id = g('s-serie');
+    if(document.querySelector('input[name="s-type"]:checked')) s.item_type = document.querySelector('input[name="s-type"]:checked').value;
+    if(g('s-plan')) s.plan_id = g('s-plan');
+    if(g('s-module')) s.module_id = g('s-module');
+    if(g('s-price')) s.price = parseFloat(g('s-price'));
+    if(g('s-activation')) s.activation_date = g('s-activation');
+    if(g('s-cycle')) s.cycle = g('s-cycle');
+    if(g('s-next')) s.next_billing = g('s-next');
+    if(g('s-status')) s.status = g('s-status');
+    if(g('s-reason')) s.event_reason = g('s-reason');
+    
+    // Sync modules from DOM if in feats tab
+    if(this.activeTab === 'feats') {
+      const checks = document.querySelectorAll('.sub-feat-check:checked');
+      s.active_modules = Array.from(checks).map(c => c.value);
+    }
+  },
+
+  renderActiveTabContent: function() {
+    const s = this.currentSub;
+    const container = document.getElementById('sub-tabs-content');
+    const masters = this.settings?.masters || {};
+    const clients = this.settings?.clients || [];
+
+    if(this.activeTab === 'config') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-light mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-person-vcard fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Asignación de Titularidad</h6><p class="block-header-desc text-muted">Defina el cliente y la ubicación legal del servicio.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-12"><label class="h-label-refined">CLIENTE ASOCIADO</label><select id="s-client" class="form-select h-form-control fw-black" onchange="SubscriptionsView.onClientChange(this.value)"><option value="">-- SELECCIONE CLIENTE --</option>${clients.map(c => `<option value="${c.id}" ${s.client_id===c.id?'selected':''}>${c.nombre_fiscal} (${c.cif})</option>`).join('')}</select></div>
+                 <div class="col-md-6"><label class="h-label-refined">CENTRO DE TRABAJO (SEDE)</label><select id="s-sede" class="form-select h-form-control fw-bold"><option value="">SEDE CENTRAL / FISCAL</option>${(clients.find(c=>c.id===s.client_id)?.sedes||[]).map(sd => `<option value="${sd.id}" ${s.sede_id===sd.id?'selected':''}>${sd.nombre}</option>`).join('')}</select></div>
+                 <div class="col-md-6"><label class="h-label-refined">SERIE DE FACTURACIÓN</label><select id="s-serie" class="form-select h-form-control fw-bold"><option value="">SERIE DEFAULT CLIENTE</option>${(masters.series||[]).map(ser => `<option value="${ser.id}" ${s.series_id===ser.id?'selected':''}>${ser.nombre.toUpperCase()}</option>`).join('')}</select></div>
+              </div>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'plan') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-dark mt-0">
+              <div class="row align-items-center mb-4">
+                 <div class="col-md-1 text-center"><i class="bi bi-box-seam fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Definición de Producto y Activo</h6><p class="block-header-desc text-muted">Seleccione la modalidad de contratación y el PVP acordado.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-12">
+                    <label class="h-label-refined text-white-50">MODALIDAD</label>
+                    <div class="btn-group w-100 shadow-sm">
+                       <input type="radio" class="btn-check" name="s-type" id="t-plan" value="PLAN" ${s.item_type==='PLAN'?'checked':''} onchange="SubscriptionsView.toggleItemType('PLAN')">
+                       <label class="btn btn-outline-light fw-black py-2" for="t-plan">PLAN / BUNDLE</label>
+                       <input type="radio" class="btn-check" name="s-type" id="t-mod" value="MODULE" ${s.item_type==='MODULE'?'checked':''} onchange="SubscriptionsView.toggleItemType('MODULE')">
+                       <label class="btn btn-outline-light fw-black py-2" for="t-mod">MÓDULO UNITARIO</label>
+                    </div>
+                 </div>
+                 <div class="col-md-8" id="box-plan" style="display:${s.item_type==='PLAN'?'block':'none'}"><label class="h-label-refined text-white-50">PLAN SELECCIONADO</label><select id="s-plan" class="form-select h-form-control fw-black" onchange="SubscriptionsView.onItemChange('PLAN', this.value)"><option value="">-- SELECCIONE PLAN --</option>${(masters.plans||[]).map(p => `<option value="${p.id}" ${s.plan_id===p.id?'selected':''}>${p.nombre}</option>`).join('')}</select></div>
+                 <div class="col-md-8" id="box-mod" style="display:${s.item_type==='MODULE'?'block':'none'}"><label class="h-label-refined text-white-50">MÓDULO SELECCIONADO</label><select id="s-module" class="form-select h-form-control fw-black" onchange="SubscriptionsView.onItemChange('MODULE', this.value)"><option value="">-- SELECCIONE MÓDULO --</option>${(masters.modules||[]).map(m => `<option value="${m.id}" ${s.module_id===m.id?'selected':''}>${m.nombre}</option>`).join('')}</select></div>
+                 <div class="col-md-4"><label class="h-label-refined text-brand">PRECIO (€/CICLO)</label><input type="number" id="s-price" class="form-control h-form-control bg-white text-dark fw-black fs-5" value="${s.price || 0}"></div>
+              </div>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'feats') {
+      const searchTerm = (document.getElementById('sub-lic-search')?.value || '').toLowerCase();
+      const cats = [...new Set(this.FEATURES_LIST.map(f => f.cat))];
+      
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="mb-4">
+              <div class="input-group">
+                 <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                 <input type="text" id="sub-lic-search" class="form-control h-form-control border-start-0" placeholder="Filtrar capacidades para esta licencia..." oninput="SubscriptionsView.renderActiveTabContent()" value="${searchTerm || ''}">
+              </div>
+           </div>
+           ${cats.map(cat => {
+              const items = this.FEATURES_LIST.filter(f => f.cat === cat && (f.label.toLowerCase().includes(searchTerm) || f.desc.toLowerCase().includes(searchTerm)));
+              if(items.length === 0) return '';
+              return `
+                <div class="mb-4">
+                   <h6 class="fw-black text-uppercase mb-3 x-small text-muted" style="letter-spacing:1px">${cat}</h6>
+                   <div class="row g-2">
+                      ${items.map(f => `
+                        <div class="col-md-6">
+                           <div class="p-3 border rounded-3 bg-white d-flex align-items-center gap-3 shadow-sm" style="cursor:pointer" onclick="SubscriptionsView.toggleSubFeat('${f.id}')">
+                              <div class="form-check m-0">
+                                 <input type="checkbox" class="form-check-input sub-feat-check" value="${f.id}" ${s.active_modules?.includes(f.id) ? 'checked' : ''} onclick="event.stopPropagation(); SubscriptionsView.toggleSubFeat('${f.id}')">
+                              </div>
+                              <div class="icon-box" style="width:32px; height:32px; font-size:1rem"><i class="bi ${f.icon}"></i></div>
+                              <div>
+                                 <div class="fw-black text-uppercase" style="font-size:10px">${f.label}</div>
+                                 <p class="text-muted m-0" style="font-size:9px">${f.desc}</p>
+                              </div>
+                           </div>
+                        </div>
+                      `).join('')}
+                   </div>
+                </div>`;
+           }).join('')}
+        </div>`;
+    }
+    else if(this.activeTab === 'ciclo') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-light mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-calendar-check fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Cronograma de Recurrencia</h6><p class="block-header-desc text-muted">Control de periodos de facturación y automatización.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-4"><label class="h-label-refined">INICIO CONTRATO</label><input type="date" id="s-activation" class="form-control h-form-control fw-bold" value="${s.activation_date}" onchange="SubscriptionsView.autoCalculateNext()"></div>
+                 <div class="col-md-4"><label class="h-label-refined">CICLO FACTURACIÓN</label><select id="s-cycle" class="form-select h-form-control fw-bold" onchange="SubscriptionsView.autoCalculateNext()"><option ${s.cycle==='Mensual'?'selected':''}>Mensual</option><option ${s.cycle==='Trimestral'?'selected':''}>Trimestral</option><option ${s.cycle==='Anual'?'selected':''}>Anual</option></select></div>
+                 <div class="col-md-4"><label class="h-label-refined text-brand">PRÓXIMO COBRO (ROBOT)</label><input type="date" id="s-next" class="form-control h-form-control border-brand fw-black shadow-sm" value="${s.next_billing}"></div>
+              </div>
+           </div>
+
+           <div class="unified-block block-dark">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-info-circle fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Estado de Vida de la Licencia</h6><p class="block-header-desc text-muted">Gestión de suspensiones temporales o bajas definitivas.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-4"><label class="h-label-refined text-white-50">ESTADO OPERATIVO</label><select id="s-status" class="form-select h-form-control fw-black" onchange="SubscriptionsView.toggleReason(this.value)"><option value="Activo" ${s.status==='Activo'?'selected':''}>ACTIVO</option><option value="Suspensión" ${s.status==='Suspensión'?'selected':''}>SUSPENSIÓN</option><option value="Baja" ${s.status==='Baja'?'selected':''}>BAJA DEFINITIVA</option></select></div>
+                 <div class="col-md-8" id="box-reason" style="display:${s.status==='Activo'?'none':'block'}"><label class="h-label-refined text-danger">MOTIVO DEL CAMBIO</label><input type="text" id="s-reason" class="form-control h-form-control border-danger" value="${s.event_reason || ''}" placeholder="Impago, solicitud cliente, obsolescencia..."></div>
+              </div>
+           </div>
+        </div>`;
+    }
+  },
+
+  onClientChange: function(clientId) {
+    const client = this.settings.clients.find(c => c.id === clientId);
+    if(client) {
+      this.currentSub.client_id = clientId;
+      this.currentSub.client_name = client.nombre_fiscal;
+      this.currentSub.series_id = client.default_series_id || '';
+      this.renderActiveTabContent();
+    }
+  },
+
+  toggleItemType: function(type) {
+    this.syncLocal();
+    this.currentSub.item_type = type;
+    this.renderActiveTabContent();
+  },
+
+  toggleReason: function(status) {
+    const box = document.getElementById('box-reason');
+    if(box) box.style.display = status === 'Activo' ? 'none' : 'block';
+  },
+
+  toggleSubFeat: function(id) {
+    const s = this.currentSub;
+    if(!s.active_modules) s.active_modules = [];
+    const idx = s.active_modules.indexOf(id);
+    if(idx > -1) s.active_modules.splice(idx, 1);
+    else s.active_modules.push(id);
+    this.renderActiveTabContent();
+  },
+
+  onItemChange: function(type, id) {
+    const list = type === 'PLAN' ? this.settings.masters.plans : this.settings.masters.modules;
+    const found = list.find(x => x.id === id);
+    if(found) {
+      document.getElementById('s-price').value = found.pvp || 0;
+      this.autoCalculateNext();
+    }
+  },
+
+  autoCalculateNext: function() {
+    const start = document.getElementById('s-activation')?.value;
+    const cycle = document.getElementById('s-cycle')?.value;
+    const nextInp = document.getElementById('s-next');
+    if(!start || !cycle || !nextInp) return;
+    
+    let d = new Date(start);
+    if(cycle === 'Mensual') d.setMonth(d.getMonth() + 1);
+    else if(cycle === 'Trimestral') d.setMonth(d.getMonth() + 3);
+    else if(cycle === 'Anual') d.setFullYear(d.getFullYear() + 1);
+    
+    nextInp.value = d.toISOString().split('T')[0];
+  },
+
+  save: async function() {
+    this.syncLocal();
+    const s = this.currentSub;
+    if(!s.client_id) return HandooApp.ui.showToast("Seleccione un Cliente", "error");
+    if(s.item_type === 'PLAN' && !s.plan_id) return HandooApp.ui.showToast("Seleccione un Plan", "error");
+    if(s.item_type === 'MODULE' && !s.module_id) return HandooApp.ui.showToast("Seleccione un Módulo", "error");
+    
+    HandooApp.ui.setLoading('btn-save-sub', true);
+    const res = await HandooApp.api('subscription.save', s);
+    HandooApp.ui.setLoading('btn-save-sub', false);
+    if(res.ok) { HandooApp.ui.showToast("Kernel Sincronizado"); this.render(); }
+  },
+
+  delete: async function(id) {
+    if(await HandooApp.ui.confirm("¿ELIMINAR SUSCRIPCIÓN?", "Esta acción cancelará la recurrencia definitivamente.")) {
+      const res = await HandooApp.api('subscription.delete', { id });
+      if(res.ok) this.load();
+    }
+  }
+};
+</script>

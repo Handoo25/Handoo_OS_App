@@ -1,0 +1,123 @@
+<style>
+  .cat-card { transition: 0.3s; }
+  .cat-card:hover { transform: translateY(-2px); }
+</style>
+
+<div id="view-production-settings" class="animate__animated animate__fadeIn">
+  <!-- Cabecera -->
+  <div class="p-4 text-white d-flex justify-content-between align-items-center shadow-sm" style="background:#0f172a">
+    <div>
+      <div class="small opacity-50 text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 1px;">Configuración</div>
+      <h4 class="fw-black text-uppercase mb-0">Categorías de Producción</h4>
+    </div>
+    <button class="btn btn-light text-dark rounded-pill px-4 fw-black shadow-sm" style="font-size: 11px;" onclick="ProductionSettingsView.addNewCategory()">
+      <i class="bi bi-plus-lg me-1"></i> NUEVA CATEGORÍA
+    </button>
+  </div>
+
+  <div class="container-fluid mt-4 px-4">
+    <div class="p-4 rounded-4 shadow-sm bg-white border">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="small text-muted">
+          <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px;" class="text-uppercase">
+            <th>Nombre de la Categoría</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="categories-list">
+          <tr><td colspan="2" class="text-center p-5"><div class="spinner-border text-brand"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+window.ProductionSettingsView = {
+  categories: [],
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    const vistaOriginal = document.getElementById('view-production-settings');
+    if (vistaOriginal) stage.innerHTML = vistaOriginal.outerHTML;
+
+    try {
+      const res = await HandooApp.api('admin.get_settings', {});
+      if(res && res.ok) {
+        let cats = res.data.categorias_produccion || [];
+        if (typeof cats === 'string') {
+          try { cats = JSON.parse(cats); } catch(e) { cats = []; }
+        }
+        this.categories = Array.isArray(cats) ? cats : [];
+        this.renderTable();
+      }
+    } catch(e) {
+      HandooApp.ui.showToast("Error cargando categorías", "error");
+    }
+  },
+
+  renderTable: function() {
+    const tbody = document.getElementById('categories-list');
+    if(!tbody) return;
+
+    if(this.categories.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" class="text-center p-4 text-muted small">No hay categorías definidas.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = this.categories.map((cat, index) => `
+      <tr>
+        <td>
+          <input type="text" class="form-control form-control-sm fw-bold" value="${cat}" id="cat-input-${index}">
+        </td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-success me-2" onclick="ProductionSettingsView.saveCategory(${index})">
+            <i class="bi bi-check-lg"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="ProductionSettingsView.deleteCategory(${index})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  addNewCategory: function() {
+    this.categories.push("NUEVA CATEGORÍA");
+    this.renderTable();
+  },
+
+  saveCategory: async function(index) {
+    const newValue = document.getElementById(`cat-input-${index}`).value.trim();
+    if(!newValue) return HandooApp.ui.showToast("El nombre no puede estar vacío", "warning");
+    
+    this.categories[index] = newValue;
+    await this.persistSettings();
+  },
+
+  deleteCategory: async function(index) {
+    if(await HandooApp.ui.confirm("¿Eliminar categoría?")) {
+      this.categories.splice(index, 1);
+      await this.persistSettings();
+    }
+  },
+
+  persistSettings: async function() {
+    try {
+      const res = await HandooApp.api('admin.save_settings', { 
+        categorias_produccion: JSON.stringify(this.categories) 
+      });
+      if(res && res.ok) {
+        HandooApp.ui.showToast("Configuración guardada", "success");
+        this.renderTable();
+        // Sincronizar caché global si existe
+        if(window.TitaniumStateSync) window.TitaniumStateSync.updateCache('SETTINGS', this.categories);
+      } else {
+        throw new Error(res.msg);
+      }
+    } catch(e) {
+      HandooApp.ui.showToast("Error al guardar: " + e.message, "error");
+    }
+  }
+};
+</script>

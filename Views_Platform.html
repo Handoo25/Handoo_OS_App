@@ -1,0 +1,1081 @@
+<style>
+  .v-tabs-container { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .v-tabs-sidebar { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 25px; }
+  .v-tab-btn { 
+    display: flex; align-items: center; gap: 15px; padding: 20px 30px; border: none; background: none; 
+    width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; 
+    border-bottom: 1px solid #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .v-tab-btn:hover { background: #f1f5f9; color: var(--dark); }
+  .v-tab-btn.active { background: white; color: var(--dark); border-right: 6px solid var(--brand); }
+  .v-tab-btn i { font-size: 1.4rem; color: #94a3b8; transition: 0.3s; width: 24px; text-align: center; }
+  .v-tab-btn.active i { color: var(--brand); }
+  .v-tabs-content { flex-grow: 1; padding: 40px; overflow-y: auto; background: white; }
+
+  /* PATRÓN DE BLOQUE UNIFICADO TITANIUM */
+  .unified-block { padding: 24px; border-radius: 16px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 16px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .block-dark .text-muted { color: #94a3b8 !important; }
+  .block-dark .form-control, .block-dark .form-select { background: #1e293b; border-color: #334155; color: #fff; font-size: 11px; }
+  
+  .block-header-title { font-size: 12px !important; font-weight: 900; margin: 0; text-transform: uppercase; }
+  .block-header-desc { font-size: 11px; margin: 0; }
+
+  .h-form-control { height: 42px; border-radius: 10px; font-size: 13px; border-color: #e2e8f0; font-weight: 600; }
+  .h-label-refined { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+
+  .risk-indicator { border-radius: 8px; padding: 4px 10px; font-weight: 900; font-size: 9px; text-transform: uppercase; }
+  .risk-white { background: white; color: var(--dark); border: 1px solid #e2e8f0; }
+  .risk-yellow { background: #f59e0b; color: #0f172a; }
+  .risk-red { background: #ef4444; color: white; animation: h-pulse-red 2s infinite; }
+
+  .bank-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 10px; transition: 0.3s; }
+  .bank-card.is-fav { border-color: var(--brand); background: #fffdf5; }
+
+  .alert-lock-titanium { background: #fee2e2; border: 2px solid #ef4444; color: #991b1b; padding: 15px 30px; border-radius: 14px; margin-bottom: 25px; display: flex; align-items: center; gap: 20px; animation: slideDown 0.4s ease; }
+
+  .sede-item { cursor: pointer; transition: 0.3s; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 12px; background: white; }
+  .sede-item:hover { border-color: var(--brand); transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+
+  @keyframes h-pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+  @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+
+<script>
+window.ClientsView = {
+  cache: [],
+  allSubscriptions: [],
+  allInvoices: [],
+  allEffects: [],
+  settings: null,
+  currentClient: null,
+  activeTab: 'fiscal',
+  historyFilters: { status: 'ALL', start: '', end: '' },
+
+  bankDict: {
+    '0049': { n: 'SANTANDER', s: 'BSCH ES MM' },
+    '0182': { n: 'BBVA', s: 'BBVA ES MM' },
+    '2100': { n: 'CAIXABANK', s: 'CAIX ES BB' },
+    '0081': { n: 'SABADELL', s: 'BSAB ES BB' },
+    '0128': { n: 'BANKINTER', s: 'BKNTE ES MM' },
+    '2038': { n: 'BANKIA / CAIXA', s: 'CAIX ES BB' },
+    '0239': { n: 'EVO BANK', s: 'EVOB ES MM' },
+    '0149': { n: 'BNP PARIBAS', s: 'BNPA ES MM' }
+  },
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">SISTEMA DE ENTIDADES</h6><h2 class="fw-black m-0 text-uppercase">Gestión de Clientes</h2></div>
+         <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="ClientsView.openForm('new')">+ NUEVO CLIENTE</button>
+      </div>
+      <div class="p-5 animate-slide">
+         <div class="card-industrial border-0 overflow-hidden shadow-sm">
+            <div class="p-4 bg-light border-bottom">
+               <div class="row g-2 align-items-end">
+                  <div class="col-md-5">
+                     <label class="h-label-refined">BÚSQUEDA INTELIGENTE</label>
+                     <div class="input-group"><span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span><input type="text" id="cli-search" class="form-control border-start-0 ps-0 h-form-control" placeholder="Nombre, CIF o ID..." onkeyup="ClientsView.applyFilters()"></div>
+                  </div>
+                  <div class="col-md-3">
+                     <label class="h-label-refined">ESTADO OPERATIVO</label>
+                     <select id="cli-filter-status" class="form-select h-form-control fw-bold" onchange="ClientsView.applyFilters()"><option value="ALL" selected>TODOS</option><option value="Activo">SOLO ACTIVOS</option><option value="Suspensión">SUSPENSIÓN</option><option value="Baja">BAJA</option></select>
+                  </div>
+                  <div class="col-md-4 text-end d-flex align-items-center justify-content-end pb-1" id="cli-counter-container">
+                     <div class="d-flex align-items-center gap-2 small text-muted fw-bold">
+                        <div class="spinner-border spinner-border-sm text-brand" style="width: 14px; height: 14px;"></div>
+                        <span>SINCRONIZANDO KERNEL...</span>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <div class="table-responsive">
+               <table class="table table-hover m-0 align-middle">
+                  <thead class="bg-light"><tr><th class="ps-4">ID</th><th>RAZÓN SOCIAL / EXPOSICIÓN</th><th class="text-center">CIF</th><th class="text-center">ESTADO</th><th class="text-end pe-4">GESTIÓN</th></tr></thead>
+                  <tbody id="cli-table-body"></tbody>
+               </table>
+            </div>
+         </div>
+      </div>`;
+    this.load();
+  },
+
+  load: async function() {
+    const [resC, resS, resSub, resInv, resEff] = await Promise.all([
+      HandooApp.api('platform.get_clients'), 
+      HandooApp.api('admin.get_settings'),
+      HandooApp.api('subscription.list'),
+      HandooApp.api('invoice.get_history'),
+      HandooApp.api('treasury.list_all_effects')
+    ]);
+    if(resC.ok) this.cache = resC.data || [];
+    if(resS.ok) this.settings = resS.data;
+    if(resSub.ok) this.allSubscriptions = resSub.data || [];
+    if(resInv.ok) this.allInvoices = resInv.data || [];
+    if(resEff.ok) this.allEffects = resEff.data || [];
+    this.applyFilters();
+  },
+
+  validateIBAN: function(iban) {
+    const clean = iban.replace(/\s/g, '').toUpperCase();
+    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}$/.test(clean)) return false;
+    const rearranged = clean.slice(4) + clean.slice(0, 4);
+    const numeric = rearranged.split('').map(c => {
+      const code = c.charCodeAt(0);
+      return code >= 65 && code <= 90 ? (code - 55).toString() : c;
+    }).join('');
+    let remainder = numeric;
+    while (remainder.length > 2) {
+      let block = remainder.slice(0, 9);
+      remainder = (parseInt(block, 10) % 97).toString() + remainder.slice(block.length);
+    }
+    return parseInt(remainder, 10) % 97 === 1;
+  },
+
+  applyFilters: function() {
+    const q = document.getElementById('cli-search')?.value.toLowerCase() || "";
+    const status = document.getElementById('cli-filter-status')?.value || "ALL";
+    const filtered = this.cache.filter(c => {
+      const matchQ = !q || (c.nombre_fiscal||'').toLowerCase().includes(q) || (c.cif||'').toLowerCase().includes(q);
+      const matchS = status === 'ALL' || c.estado === status;
+      return matchQ && matchS;
+    });
+    this.renderRows(filtered);
+    
+    const counter = document.getElementById('cli-counter-container');
+    if(counter) {
+      counter.innerHTML = `
+        <div class="small text-muted fw-black text-uppercase animate-slide" style="font-size: 10px; letter-spacing: 0.5px;">
+           <i class="bi bi-check2-circle text-success me-1"></i> REGISTROS LOCALIZADOS: ${filtered.length}
+        </div>`;
+    }
+  },
+
+  renderRows: function(data) {
+    const body = document.getElementById('cli-table-body');
+    const bals = this.settings?.balances || {};
+    body.innerHTML = data.map(c => {
+      const exp430 = parseFloat(bals[c.cuenta_contable] || 0);
+      const exp431 = parseFloat(bals[c.cuenta_contable?.replace('430','431')] || 0);
+      const exp4315 = parseFloat(bals[c.cuenta_contable?.replace('430','4315')] || 0);
+      
+      return `
+      <tr onclick="ClientsView.openForm('${c.id}')" style="cursor:pointer">
+         <td class="ps-4 font-monospace small text-muted">${c.id}</td>
+         <td>
+            <div class="fw-black text-uppercase" style="font-size:12px">${escapeHTML(c.nombre_fiscal)} ${c.bloqueado_impago ? '<i class="bi bi-shield-lock-fill text-danger ms-1"></i>' : ''}</div>
+            <div class="d-flex gap-2 mt-1">
+               ${exp4315 > 0 ? `<span class="risk-indicator risk-red">IMPAGADO: ${exp4315.toLocaleString()}€</span>` : ''}
+               ${exp431 > 0 ? `<span class="risk-indicator risk-yellow">REMESADO: ${exp431.toLocaleString()}€</span>` : ''}
+               ${exp430 > 0 ? `<span class="risk-indicator risk-white">COMERCIAL: ${exp430.toLocaleString()}€</span>` : ''}
+            </div>
+         </td>
+         <td class="text-center font-monospace small">${c.cif}</td>
+         <td class="text-center"><span class="os-badge ${c.estado==='Activo'?'bg-success':(c.estado==='Baja'?'bg-danger':'bg-warning text-dark')}">${(c.estado||'Activo').toUpperCase()}</span></td>
+         <td class="text-end pe-4" onclick="event.stopPropagation()"><button class="btn btn-link text-danger p-0" onclick="ClientsView.deleteClient('${c.id}')"><i class="bi bi-trash3"></i></button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" class="p-5 text-center opacity-25 fw-black">SIN RESULTADOS</td></tr>';
+  },
+
+  openForm: function(id) {
+    const today = new Date().toISOString().split('T')[0];
+    const empty = { 
+      id:'new', nombre_fiscal:'', cif:'', estado:'Activo', notas: '', fecha_alta: today,
+      fecha_estado: '', motivo_estado: '', bloqueado_impago: false, handoo_network: false,
+      direccion_fiscal: { tipo_via:'Calle', nombre:'', num:'', portal:'', escalera:'', cp:'', pob:'', prov:'' }, 
+      direccion_comercial: { tipo_via:'Calle', nombre:'', num:'', portal:'', CP:'', pob:'', prov:'' }, 
+      comercial: { persona_contacto:'', email_facturacion:'', email_contacto:'', telefono:'', telefono_2:'', web:'' },
+      facturacion: { 
+        forma_pago:'TRANSFERENCIA', vencimiento:'30', periodicidad:'Mensual',
+        tipo_impuesto_valor:21, retencion:0, descuento:0, billing_type: 'CLIENT',
+        nuestros_bancos:[], banco_sepa_id:'', default_series_id:'' ,
+        sepa_mandato: { referencia: '', fecha_firma: '', tipo: 'Recurrente' }
+      }, 
+      bancos:[],
+      sedes:[],
+      stripe_customer_id: '',
+      stripe_autopay: false
+    };
+    const raw = id === 'new' ? empty : this.cache.find(x => x.id === id);
+    this.currentClient = JSON.parse(JSON.stringify(Object.assign({}, empty, raw)));
+    
+    if(!this.currentClient.direccion_fiscal) this.currentClient.direccion_fiscal = Object.assign({}, empty.direccion_fiscal);
+    if(!this.currentClient.direccion_comercial) this.currentClient.direccion_comercial = Object.assign({}, empty.direccion_comercial);
+    if(!this.currentClient.comercial) this.currentClient.comercial = empty.comercial;
+    if(!this.currentClient.facturacion) this.currentClient.facturacion = empty.facturacion;
+    if(!this.currentClient.facturacion.sepa_mandato) this.currentClient.facturacion.sepa_mandato = empty.facturacion.sepa_mandato;
+    if(!this.currentClient.bancos) this.currentClient.bancos = [];
+    if(!this.currentClient.sedes) this.currentClient.sedes = [];
+    
+    this.renderFormContainer();
+  },
+
+  navigate: function(direction) {
+      if (!this.cache || this.cache.length <= 1) return;
+      const currentId = this.currentClient.id;
+      const currentIndex = this.cache.findIndex(c => String(c.id) === String(currentId));
+      
+      let targetIndex = currentIndex + direction;
+      if (targetIndex < 0) targetIndex = this.cache.length - 1;
+      if (targetIndex >= this.cache.length) targetIndex = 0;
+      
+      this.openForm(this.cache[targetIndex].id);
+  },
+
+  renderFormContainer: function() {
+    const c = this.currentClient;
+    document.getElementById('main-stage').innerHTML = `
+      <div class="bg-white border-bottom px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow-sm">
+         <div class="d-flex align-items-center gap-4">
+            <button class="btn btn-link text-dark p-0" onclick="ClientsView.render()"><i class="bi bi-arrow-left-circle-fill fs-3"></i></button>
+            <div class="d-flex align-items-center gap-2">
+                <button class="h-nav-arrow" onclick="ClientsView.navigate(-1)"><i class="bi bi-chevron-left"></i></button>
+                <div><h6 class="h-label text-muted">EXPEDIENTE: ${c.id}</h6><h2 class="fw-black m-0 text-uppercase">${escapeHTML(c.nombre_fiscal) || 'NUEVA ENTIDAD'}</h2></div>
+                <button class="h-nav-arrow" onclick="ClientsView.navigate(1)"><i class="bi bi-chevron-right"></i></button>
+            </div>
+         </div>
+         <div class="d-flex gap-2">
+            <button class="btn btn-light border px-4 fw-bold" onclick="ClientsView.render()">DESCARTAR</button>
+            <button id="btn-save-cli" class="h-btn h-btn-dark px-5 py-2 shadow" onclick="ClientsView.save()">SINCRONIZAR KERNEL</button>
+         </div>
+      </div>
+      <div class="p-5">
+         ${c.bloqueado_impago ? `
+            <div class="alert-lock-titanium shadow-sm">
+               <i class="bi bi-shield-lock-fill fs-1"></i>
+               <div>
+                  <h6 class="fw-black m-0 text-uppercase" style="font-size:13px">Bloqueo de Seguridad Activo</h6>
+                  <p class="m-0 small fw-bold opacity-75">Este expediente ha sido restringido por impago técnico. El motor de facturación no procesará nuevos cargos hasta la regularización.</p>
+               </div>
+               <button class="btn btn-sm btn-danger ms-auto fw-black" onclick="ClientsView.unlockClient()">DESBLOQUEAR MANUAL</button>
+            </div>
+         ` : ''}
+         <div class="v-tabs-container animate-slide"><div class="v-tabs-sidebar" id="c-tabs-nav"></div><div class="v-tabs-content" id="c-tabs-content"></div></div>
+      </div>`;
+    this.renderTabs();
+  },
+
+  unlockClient: function() {
+    this.currentClient.bloqueado_impago = false;
+    HandooApp.ui.showToast("Restricción de seguridad eliminada provisionalmente.");
+    this.renderActiveTabContent();
+  },
+
+  renderTabs: function() {
+    const activeModules = this.settings?.active_modules || [];
+    const hasSedes = activeModules.includes('FEAT_SEDES');
+    const hasSubs = activeModules.includes('FEAT_SUBSCRIPTIONS');
+
+    const tabs = [
+      {id:'fiscal', icon:'bi-bank', label:'Fiscal / Identidad'},
+      {id:'comercial', icon:'bi-chat-dots', label:'Comercial / Localización'},
+      {id:'cobro', icon:'bi-credit-card', label:'Cobro y Multi-Banca'},
+      {id:'subs', icon:'bi-stars', label:'Licencias / Recurrencia', hidden: !hasSubs},
+      {id:'history', icon:'bi-receipt', label:'Facturación (Historial)'},
+      {id:'sedes', icon:'bi-building', label:'Sedes y Logística', hidden: !hasSedes},
+      {id:'audit', icon:'bi-shield-check', label:'Auditoría de Control'}
+    ].filter(t => !t.hidden);
+
+    if (!tabs.find(t => t.id === this.activeTab)) {
+      this.activeTab = 'fiscal';
+    }
+
+    document.getElementById('c-tabs-nav').innerHTML = tabs.map(t => `<button class="v-tab-btn ${this.activeTab===t.id?'active':''}" onclick="ClientsView.setTab('${t.id}')"><i class="${t.icon}"></i> ${t.label}</button>`).join('');
+    this.renderActiveTabContent();
+  },
+
+  setTab: function(id) { this.syncLocal(); this.activeTab = id; this.renderTabs(); },
+
+  syncLocal: function() {
+    const c = this.currentClient;
+    const g = (id) => document.getElementById(id)?.value;
+    
+    if(g('f-nombre')) c.nombre_fiscal = g('f-nombre');
+    if(g('f-cif')) c.cif = g('f-cif');
+    if(g('f-estado')) c.estado = g('f-estado');
+    if(g('f-notas')) c.notas = g('f-notas');
+    if(g('f-fecha-estado')) c.fecha_estado = g('f-fecha-estado');
+    if(g('f-motivo-estado')) c.motivo_estado = g('f-motivo-estado');
+    if(document.getElementById('f-bloqueo')) c.bloqueado_impago = document.getElementById('f-bloqueo').checked;
+    if(document.getElementById('f-handoo-network')) c.handoo_network = document.getElementById('f-handoo-network').checked;
+
+    if(document.getElementById('f-via')) {
+      c.direccion_fiscal.tipo_via = g('f-via');
+      c.direccion_fiscal.nombre = g('f-calle');
+      c.direccion_fiscal.num = g('f-num');
+      c.direccion_fiscal.portal = g('f-portal');
+      c.direccion_fiscal.escalera = g('f-esc');
+      c.direccion_fiscal.piso = g('f-piso');
+      c.direccion_fiscal.puerta = g('f-pta');
+      c.direccion_fiscal.cp = g('f-cp');
+      c.direccion_fiscal.pob = g('f-pob');
+      c.direccion_fiscal.prov = g('f-prov');
+    }
+
+    if(document.getElementById('cm-via')) {
+      c.direccion_comercial.tipo_via = g('cm-via');
+      c.direccion_comercial.nombre = g('cm-calle');
+      c.direccion_comercial.num = g('cm-num');
+      c.direccion_comercial.portal = g('cm-portal');
+      c.direccion_comercial.escalera = g('cm-esc');
+      c.direccion_comercial.piso = g('cm-piso');
+      c.direccion_comercial.puerta = g('cm-pta');
+      c.direccion_comercial.cp = g('cm-cp');
+      c.direccion_comercial.pob = g('cm-pob');
+      c.direccion_comercial.prov = g('cm-prov');
+    }
+
+    if(document.getElementById('c-email-fac')) {
+      c.comercial.persona_contacto = g('c-persona');
+      c.comercial.email_facturacion = g('c-email-fac');
+      c.comercial.email_contacto = g('c-email-con');
+      c.comercial.telefono = g('c-tel');
+      c.comercial.telefono_2 = g('c-tel2');
+      c.comercial.web = g('c-web');
+    }
+
+    if(document.getElementById('b-metodo')) {
+      c.facturacion.forma_pago = g('b-metodo');
+      c.facturacion.vencimiento = g('b-vto');
+      c.facturacion.periodicidad = g('b-periodo');
+      c.facturacion.billing_type = g('b-billing-type');
+      c.facturacion.tipo_impuesto_valor = parseFloat(g('b-iva') || 0);
+      c.facturacion.retencion = parseFloat(g('b-retencion') || 0);
+      c.facturacion.descuento = parseFloat(g('b-descuento') || 0);
+      c.facturacion.banco_sepa_id = g('b-banco-cliente');
+      c.facturacion.nuestros_bancos = Array.from(document.querySelectorAll('.ck-nuestro-banco:checked')).map(ck => ck.value);
+      
+      if(document.getElementById('s-mandato-ref')) {
+        c.facturacion.sepa_mandato = {
+          referencia: g('s-mandato-ref'),
+          fecha_firma: g('s-mandato-fecha'),
+          tipo: g('s-mandato-tipo')
+        };
+      }
+    }
+
+    if(document.getElementById('s-stripe-id')) {
+      c.stripe_customer_id = g('s-stripe-id');
+      c.stripe_autopay = document.getElementById('s-stripe-auto').checked;
+    }
+  },
+
+  renderActiveTabContent: function() {
+    const c = this.currentClient;
+    const container = document.getElementById('c-tabs-content');
+    const bals = this.settings?.balances || {};
+    const masters = this.settings?.masters || {};
+    const activeModules = this.settings?.active_modules || [];
+    
+    if(this.activeTab === 'fiscal') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-light mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-bank fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Identidad Legal y Jurídica</h6><p class="block-header-desc text-muted">Datos oficiales y cronología de registro.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-6"><label class="h-label-refined">RAZÓN SOCIAL</label><input type="text" id="f-nombre" class="form-control h-form-control fw-black text-uppercase" value="${escapeHTML(c.nombre_fiscal)}"></div>
+                 <div class="col-md-3"><label class="h-label-refined">CIF / NIF</label><input type="text" id="f-cif" class="form-control h-form-control font-monospace fw-bold" value="${c.cif}"></div>
+                 <div class="col-md-3"><label class="h-label-refined">FECHA DE ALTA</label><input type="date" class="form-control h-form-control bg-white" readonly value="${c.fecha_alta ? c.fecha_alta.split('T')[0] : ''}"></div>
+              </div>
+              <div class="row g-3 mt-1">
+                 <div class="col-md-4"><label class="h-label-refined">ESTADO OPERATIVO</label><select id="f-estado" class="form-select h-form-control fw-bold" onchange="ClientsView.setTab('fiscal')"><option value="Activo" ${c.estado==='Activo'?'selected':''}>ACTIVO</option><option value="Suspensión" ${c.estado==='Suspensión'?'selected':''}>SUSPENSIÓN</option><option value="Baja" ${c.estado==='Baja'?'selected':''}>BAJA</option></select></div>
+                 ${c.estado !== 'Activo' ? `
+                    <div class="col-md-3"><label class="h-label-refined text-danger">FECHA CAMBIO</label><input type="date" id="f-fecha-estado" class="form-control h-form-control border-danger" value="${c.fecha_estado || ''}"></div>
+                    <div class="col-md-5"><label class="h-label-refined text-danger">MOTIVO DEL CAMBIO</label><input type="text" id="f-motivo-estado" class="form-control h-form-control border-danger" value="${escapeHTML(c.motivo_estado || '')}" placeholder="Indique la causa técnica o comercial..."></div>
+                 ` : ''}
+              </div>
+           </div>
+
+           <!-- BLOQUE UNIFICADO RED HANDOO (SOLICITADO) -->
+           <div class="unified-block block-dark">
+              <div class="row align-items-center">
+                 <div class="col-md-1 text-center"><i class="bi bi-hexagon-fill fs-2 text-brand"></i></div>
+                 <div class="col-md-8">
+                    <h6 class="block-header-title" style="color:#fff !important;">Conexión en Red Handoo Network</h6>
+                    <p class="small text-muted m-0">Si el cliente usa Handoo, las facturas se registrarán automáticamente en su buzón neural.</p>
+                 </div>
+                 <div class="col-md-3 text-end">
+                    <div class="form-check form-switch d-inline-block">
+                       <input class="form-check-input" type="checkbox" id="f-handoo-network" style="width: 3.5em; height: 1.8em; cursor:pointer;" ${c.handoo_network ? 'checked' : ''}>
+                    </div>
+                 </div>
+              </div>
+           </div>
+           
+           <!-- BLOQUE INDEPENDIENTE DE BLOQUEO POR IMPAGO -->
+           <div class="unified-block ${c.bloqueado_impago ? 'block-dark border-danger' : 'block-light'}">
+              <div class="row align-items-center">
+                 <div class="col-md-1 text-center"><i class="bi bi-shield-lock-fill fs-2 ${c.bloqueado_impago ? 'text-danger' : 'text-muted'}"></i></div>
+                 <div class="col-md-8">
+                    <h6 class="block-header-title">Restricción de Seguridad por Riesgo</h6>
+                    <p class="block-header-desc text-muted">Independiente del estado operativo. Si se activa, el Kernel recibirá el bloqueo y rechazará nuevas emisiones.</p>
+                 </div>
+                 <div class="col-md-3 text-end">
+                    <div class="form-check form-switch d-inline-block">
+                       <input class="form-check-input" type="checkbox" id="f-bloqueo" style="width: 3.5em; height: 1.8em; cursor:pointer;" ${c.bloqueado_impago ? 'checked' : ''} onchange="ClientsView.setTab('fiscal')">
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <div class="unified-block block-light">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-geo-alt fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Domicilio Social (Fiscal)</h6><p class="block-header-desc text-muted">Dirección que figurará en las facturas emitidas.</p></div>
+              </div>
+              <div class="row g-2">
+                 <div class="col-md-2"><label class="h-label-refined">VÍA</label><input type="text" id="f-via" class="form-control h-form-control" value="${c.direccion_fiscal.tipo_via || ''}" placeholder="Calle, Av..."></div>
+                 <div class="col-md-7"><label class="h-label-refined">NOMBRE CALLE / PLAZA</label><input type="text" id="f-calle" class="form-control h-form-control" value="${c.direccion_fiscal.nombre || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">Nº</label><input type="text" id="f-num" class="form-control h-form-control" value="${c.direccion_fiscal.num || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">PTL</label><input type="text" id="comp-portal" class="form-control h-form-control" value="${c.direccion_fiscal.portal || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">ESC</label><input type="text" id="comp-esc" class="form-control h-form-control" value="${c.direccion_fiscal.escalera || ''}"></div>
+              </div>
+              <div class="row g-2 mt-2">
+                 <div class="col-md-1"><label class="h-label-refined">PISO</label><input type="text" id="f-piso" class="form-control h-form-control" value="${c.direccion_fiscal.piso || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">PTA</label><input type="text" id="f-pta" class="form-control h-form-control" value="${c.direccion_fiscal.puerta || ''}"></div>
+                 <div class="col-md-2"><label class="h-label-refined">CP</label><input type="text" id="f-cp" class="form-control h-form-control fw-bold" value="${c.direccion_fiscal.cp || ''}"></div>
+                 <div class="col-md-4"><label class="h-label-refined">POBLACIÓN</label><input type="text" id="f-pob" class="form-control h-form-control" value="${c.direccion_fiscal.pob || ''}"></div>
+                 <div class="col-md-4"><label class="h-label-refined">PROVINCIA</label><input type="text" id="f-prov" class="form-control h-form-control" value="${c.direccion_fiscal.prov || ''}"></div>
+              </div>
+           </div>
+           <div class="unified-block block-light">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-sticky fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Anotaciones y Observaciones</h6><p class="block-header-desc text-muted">Información interna no visible en documentos oficiales.</p></div>
+              </div>
+              <textarea id="f-notas" class="form-control h-form-control" style="height: 100px; resize: none;" placeholder="Acuerdos especiales, horarios de descarga...">${c.notas || ''}</textarea>
+           </div>
+        </div>`;
+    } 
+    else if(this.activeTab === 'comercial') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-light mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-envelope-at fs-2 text-brand"></i></div>
+                 <div class="col-md-8"><h6 class="block-header-title">Canales de Comunicación y Contacto</h6><p class="block-header-desc text-muted">Personas y correos vinculados a la operativa diaria.</p></div>
+                 <div class="col-md-3 text-end"><button class="btn btn-dark btn-sm fw-black px-3" onclick="ClientsView.mirrorEmail()"><i class="bi bi-magic me-2"></i> CLONAR EMAIL</button></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-12"><label class="h-label-refined">PERSONA DE CONTACTO (TITULAR)</label><input type="text" id="c-persona" class="form-control h-form-control fw-bold" value="${c.comercial.persona_contacto || ''}"></div>
+                 <div class="col-md-6"><label class="h-label-refined">EMAIL CONTACTO GENERAL</label><input type="email" id="c-email-con" class="form-control h-form-control" value="${c.comercial.email_contacto || ''}"></div>
+                 <div class="col-md-6"><label class="h-label-refined text-brand">EMAIL FACTURACIÓN (PDF)</label><input type="email" id="c-email-fac" class="form-control h-form-control fw-bold" value="${c.comercial.email_facturacion || ''}"></div>
+                 <div class="col-md-4"><label class="h-label-refined">TELÉFONO PRINCIPAL</label><input type="text" id="c-tel" class="form-control h-form-control" value="${c.comercial.telefono || ''}"></div>
+                 <div class="col-md-4"><label class="h-label-refined">TELÉFONO 2 (URGENCIAS)</label><input type="text" id="c-tel2" class="form-control h-form-control" value="${c.comercial.telefono_2 || ''}"></div>
+                 <div class="col-md-4"><label class="h-label-refined">WEB CORPORATIVA</label><input type="text" id="c-web" class="form-control h-form-control" value="${c.comercial.web || ''}" placeholder="https://..."></div>
+              </div>
+           </div>
+           <div class="unified-block block-light">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-geo-fill fs-2 text-brand"></i></div>
+                 <div class="col-md-8"><h6 class="block-header-title">Dirección de Entrega / Servicio</h6><p class="block-header-desc text-muted">Ubicación donde se presta el servicio o se envía mercancía.</p></div>
+                 <div class="col-md-3 text-end"><button class="btn btn-dark btn-sm fw-black px-3" onclick="ClientsView.mirrorFiscal()"><i class="bi bi-geo-alt me-2"></i> CLONAR FISCAL</button></div>
+              </div>
+              <div class="row g-2">
+                 <div class="col-md-2"><label class="h-label-refined">VÍA</label><input type="text" id="cm-via" class="form-control h-form-control" value="${c.direccion_comercial.tipo_via || ''}"></div>
+                 <div class="col-md-7"><label class="h-label-refined">NOMBRE CALLE / PLAZA</label><input type="text" id="cm-calle" class="form-control h-form-control" value="${c.direccion_comercial.nombre || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">Nº</label><input type="text" id="cm-num" class="form-control h-form-control" value="${c.direccion_comercial.num || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">PTL</label><input type="text" id="cm-portal" class="form-control h-form-control" value="${c.direccion_comercial.portal || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">ESC</label><input type="text" id="cm-esc" class="form-control h-form-control" value="${c.direccion_comercial.escalera || ''}"></div>
+              </div>
+              <div class="row g-2 mt-2">
+                 <div class="col-md-1"><label class="h-label-refined">PISO</label><input type="text" id="cm-piso" class="form-control h-form-control" value="${c.direccion_comercial.piso || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">PTA</label><input type="text" id="cm-pta" class="form-control h-form-control" value="${c.direccion_comercial.puerta || ''}"></div>
+                 <div class="col-md-2"><label class="h-label-refined">CP</label><input type="text" id="cm-cp" class="form-control h-form-control fw-bold" value="${c.direccion_comercial.cp || ''}"></div>
+                 <div class="col-md-4"><label class="h-label-refined">POBLACIÓN</label><input type="text" id="cm-pob" class="form-control h-form-control" value="${c.direccion_comercial.pob || ''}"></div>
+                 <div class="col-md-4"><label class="h-label-refined">PROVINCIA</label><input type="text" id="cm-prov" class="form-control h-form-control" value="${c.direccion_comercial.prov || ''}"></div>
+              </div>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'cobro') {
+      const e430 = parseFloat(bals[c.cuenta_contable] || 0);
+      const e431 = parseFloat(bals[c.cuenta_contable?.replace('430','431')] || 0);
+      const e4315 = parseFloat(bals[c.cuenta_contable?.replace('430','4315')] || 0);
+      
+      const pmSelected = masters.payment_methods?.find(pm => pm.nombre === (c.facturacion.forma_pago || 'TRANSFERENCIA')) || {};
+
+      container.innerHTML = `
+        <div class="animate-slide">
+           <!-- RIESGO PGC -->
+           <div class="unified-block block-dark mt-0">
+              <div class="row align-items-center mb-4">
+                 <div class="col-md-1 text-center"><i class="bi bi-shield-exclamation fs-2 text-brand"></i></div>
+                 <div class="col-md-11 ps-4"><h6 class="block-header-title">Control de Exposición PGC</h6><p class="block-header-desc text-muted">Desglose de deuda viva y riesgos bancarios.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-4"><label class="h-label-refined text-white-50">SALDO COMERCIAL (430)</label><input type="text" class="form-control h-form-control bg-white text-dark fw-black" readonly value="${e430.toLocaleString()} €"></div>
+                 <div class="col-md-4"><label class="h-label-refined text-warning">PAPEL REMESADO (431)</label><input type="text" class="form-control h-form-control bg-dark border-warning text-warning fw-black" readonly value="${e431.toLocaleString()} €"></div>
+                 <div class="col-md-4"><label class="h-label-refined text-danger">IMPAGADOS (4315)</label><input type="text" class="form-control h-form-control bg-dark border-danger text-danger fw-black" readonly value="${e4315.toLocaleString()} €"></div>
+              </div>
+           </div>
+
+           <!-- BLOQUE UNIFICADO STRIPE (MÉTODO AUTOMÁTICO/CRÍTICO) -->
+           ${activeModules.includes('FEAT_CONCILIACION_STRIPE') ? `
+           <div class="unified-block block-dark">
+              <div class="row align-items-center">
+                 <div class="col-md-1 text-center"><i class="bi bi-stripe fs-2 text-brand"></i></div>
+                 <div class="col-md-11">
+                    <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Stripe Autopay Connect</h6>
+                    <p class="small text-muted m-0">Pasarela para cobros automáticos de licencias recurrentes.</p>
+                    <div class="row mt-3 g-3">
+                       <div class="col-md-8">
+                          <label class="h-label-refined text-white-50">CUSTOMER ID (STRIPE)</label>
+                          <input type="text" id="s-stripe-id" class="form-control bg-dark border-secondary text-brand fw-black h-form-control" value="${c.stripe_customer_id || ''}" placeholder="cus_...">
+                       </div>
+                       <div class="col-md-4">
+                          <label class="h-label-refined text-white-50">ESTADO AUTO-PAY</label>
+                          <div class="form-check form-switch p-0 mt-2">
+                             <input class="form-check-input ms-0" type="checkbox" id="s-stripe-auto" style="width:3em; height:1.5em;" ${c.stripe_autopay ? 'checked' : ''}>
+                             <label class="form-check-label text-white ms-4 fw-bold small" for="s-stripe-auto">${c.stripe_autopay ? 'CONECTADO' : 'MANUAL'}</label>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+           ` : ''}
+
+           <!-- BLOQUE UNIFICADO MANDATO SEPA (AUTOMÁTICO/CRÍTICO) -->
+           ${activeModules.includes('FEAT_SEPA_COBRO') ? `
+           <div class="unified-block block-dark">
+              <div class="row align-items-center">
+                 <div class="col-md-1 text-center"><i class="bi bi-shield-check fs-2 text-warning"></i></div>
+                 <div class="col-md-11">
+                    <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Mandato de Domiciliación SEPA</h6>
+                    <p class="small text-muted m-0">Información legal requerida para la emisión de adeudos bancarios.</p>
+                    <div class="row mt-3 g-3">
+                       <div class="col-md-5">
+                          <label class="h-label-refined text-white-50">REFERENCIA DEL MANDATO</label>
+                          <input type="text" id="s-mandato-ref" class="form-control bg-dark border-secondary text-white h-form-control font-monospace" value="${c.facturacion.sepa_mandato?.referencia || ''}" placeholder="UMR-XXXXX">
+                       </div>
+                       <div class="col-md-4">
+                          <label class="h-label-refined text-white-50">FECHA DE FIRMA</label>
+                          <input type="date" id="s-mandato-fecha" class="form-control bg-dark border-secondary text-white h-form-control" value="${c.facturacion.sepa_mandato?.fecha_firma || ''}">
+                       </div>
+                       <div class="col-md-3">
+                          <label class="h-label-refined text-white-50">TIPO DE PAGO</label>
+                          <select id="s-mandato-tipo" class="form-select bg-dark border-secondary text-white h-form-control fw-bold">
+                             <option value="Recurrente" ${c.facturacion.sepa_mandato?.tipo === 'Recurrente' ? 'selected' : ''}>RECURRENTE</option>
+                             <option value="Único" ${c.facturacion.sepa_mandato?.tipo === 'Único' ? 'selected' : ''}>ÚNICO</option>
+                          </select>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+           ` : ''}
+           
+           <!-- INGENIERÍA FISCAL -->
+           <div class="unified-block block-light">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-sliders fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Ingeniería Fiscal Preferente</h6><p class="block-header-desc text-muted">Impuestos y bonificaciones por defecto para facturación.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-3"><label class="h-label-refined">TIPO IVA (%)</label><select id="b-iva" class="form-select h-form-control fw-bold"><option value="0">0% - EXENTO</option>${(masters.taxes||[]).map(t => `<option value="${t.valor}" ${parseFloat(c.facturacion.tipo_impuesto_valor)===parseFloat(t.valor)?'selected':''}>${t.nombre} (${t.valor}%)</option>`).join('')}</select></div>
+                 <div class="col-md-3"><label class="h-label-refined text-danger">RETENCIÓN IRPF (%)</label><select id="b-retencion" class="form-select h-form-control fw-black text-danger"><option value="0">0% - NINGUNA</option>${(masters.retentions||[]).map(r => `<option value="${r.valor}" ${parseFloat(c.facturacion.retencion)===parseFloat(r.valor)?'selected':''}>${r.nombre} (${r.valor}%)</option>`).join('')}</select></div>
+                 <div class="col-md-3"><label class="h-label-refined text-brand">DTO. COMERCIAL (%)</label><select id="b-descuento" class="form-select h-form-control text-brand">${(masters.discounts||[]).map(d => `<option value="${d.pvp || d.valor}" ${parseFloat(c.facturacion.descuento)===parseFloat(d.pvp || d.valor)?'selected':''}>${d.nombre} (${d.pvp || d.valor}%)</option>`).join('') || '<option value="0">0%</option>'}</select></div>
+                 <div class="col-md-3"><label class="h-label-refined">TIPO FACTURACIÓN</label><select id="b-billing-type" class="form-select h-form-control fw-black"><option value="CLIENT" ${c.facturacion.billing_type==='CLIENT'?'selected':''}>POR CLIENTE</option><option value="SEDE" ${c.facturacion.billing_type==='SEDE'?'selected':''}>POR SEDE</option></select></div>
+              </div>
+           </div>
+
+           <!-- ACUERDOS DE LIQUIDACIÓN -->
+           <div class="unified-block block-light">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-file-earmark-check fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Acuerdos de Liquidación</h6><p class="block-header-desc text-muted">Condiciones de pago y distribución de efectos.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-4"><label class="h-label-refined">FORMA DE PAGO</label><select id="b-metodo" class="form-select h-form-control fw-black" onchange="ClientsView.setTab('cobro')"><option value="STRIPE" ${c.facturacion.forma_pago==='STRIPE'?'selected':''}>STRIPE (AUTO-PAY)</option>${(masters.payment_methods||[]).map(pm => `<option value="${pm.nombre}" ${c.facturacion.forma_pago===pm.nombre?'selected':''}>${pm.nombre.toUpperCase()}</option>`).join('')}</select></div>
+                 <div class="col-md-4"><label class="h-label-refined">Nº PLAZOS (FRACCIONES)</label><select id="b-vto" class="form-select h-form-control fw-bold">${(masters.payment_terms||[]).map(pt => `<option value="${pt.id}" ${c.facturacion.vencimiento===pt.id?'selected':''}>${pt.nombre.toUpperCase()}</option>`).join('')}</select></div>
+                 <div class="col-md-4"><label class="h-label-refined">PERIODICIDAD RECURRENTE</label><select id="b-periodo" class="form-select h-form-control fw-bold">${(masters.periodicities||[]).map(pr => `<option value="${pr.nombre}" ${c.facturacion.periodicidad===pr.nombre?'selected':''}>${pr.nombre.toUpperCase()}</option>`).join('')}</select></div>
+              </div>
+           </div>
+
+           <!-- BLOQUE DINÁMICO DE CANAL -->
+           ${c.facturacion.forma_pago === 'TRANSFERENCIA' ? `
+              <div class="unified-block block-dark">
+                 <div class="row align-items-center mb-3">
+                    <div class="col-md-1 text-center"><i class="bi bi-bank fs-2 text-brand"></i></div>
+                    <div class="col-md-11"><h6 class="block-header-title">Nuestras Cuentas de Abono</h6><p class="block-header-desc text-muted text-white-50">Seleccione qué cuentas bancarias de la empresa se mostrarán en la factura para transferencia.</p></div>
+                 </div>
+                 <div class="row g-2">
+                    ${(masters.bank_accounts||[]).map(ba => `
+                       <div class="col-md-6">
+                          <div class="form-check border border-secondary p-3 rounded-4 bg-dark bg-opacity-25 h-100">
+                             <input class="form-check-input ms-0 me-3 ck-nuestro-banco" type="checkbox" value="${ba.id}" id="ba-${ba.id}" ${c.facturacion.nuestros_bancos?.includes(ba.id)?'checked':''}>
+                             <label class="form-check-label text-white" for="ba-${ba.id}">
+                                <div class="fw-black" style="font-size:11px">${ba.nombre.toUpperCase()}</div>
+                                <div class="font-monospace small text-muted">${ba.iban}</div>
+                             </label>
+                          </div>
+                       </div>
+                    `).join('') || '<div class="p-3 text-center text-muted">No hay bancos de empresa configurados en ajustes.</div>'}
+                 </div>
+              </div>
+           ` : ''}
+
+           ${pmSelected.implies_domiciliation ? `
+              <div class="unified-block block-dark">
+                 <div class="row align-items-center mb-3">
+                    <div class="col-md-1 text-center"><i class="bi bi-shield-check fs-2 text-brand"></i></div>
+                    <div class="col-md-11"><h6 class="block-header-title">Gestión de Adeudo Directo (SEPA)</h6><p class="block-header-desc text-muted text-white-50">Mandato de domiciliación para cobro automático.</p></div>
+                 </div>
+                 <div class="row g-3">
+                    <div class="col-md-10">
+                       <label class="h-label-refined text-white-50">CUENTA BANCARIA DEL CLIENTE</label>
+                       <select id="b-banco-cliente" class="form-select h-form-control fw-bold">
+                          <option value="">-- SELECCIONE BANCO VINCULADO --</option>
+                          ${c.bancos.map(b => `<option value="${b.iban}" ${c.facturacion.banco_sepa_id===b.iban?'selected':''}>${b.entidad} (${b.iban}) - ${b.alias}</option>`).join('')}
+                       </select>
+                    </div>
+                    <div class="col-md-2 text-center">
+                       <button class="btn btn-warning btn-sm fw-black mt-4 px-3" onclick="ClientsView.addBank()"><i class="bi bi-plus-circle"></i> NUEVO</button>
+                    </div>
+                 </div>
+              </div>
+           ` : ''}
+
+           ${c.facturacion.forma_pago !== 'EFECTIVO' ? `
+              <div class="unified-block block-light">
+                 <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center">
+                       <i class="bi bi-list-stars fs-2 text-brand me-3"></i>
+                       <div><h6 class="block-header-title">Diccionario de Bancos Cliente</h6><p class="block-header-desc text-muted">Gestión de todas las cuentas registradas del titular.</p></div>
+                    </div>
+                    <button class="btn btn-dark btn-sm fw-black px-4" onclick="ClientsView.addBank()">+ AÑADIR CUENTA</button>
+                 </div>
+                 <div id="bank-list">
+                    ${c.bancos.length === 0 ? '<div class="p-4 text-center text-muted opacity-50 small fw-bold">SIN CUENTAS BANCARIAS CONFIGURADAS</div>' : ''}
+                    ${c.bancos.map((b, idx) => `
+                       <div class="bank-card ${b.is_fav?'is-fav':''}">
+                          <div class="d-flex justify-content-between">
+                             <div>
+                                <div class="fw-black text-uppercase text-dark" style="font-size:11px">${escapeHTML(b.entidad)} ${b.is_fav?'<span class="badge bg-brand text-dark ms-2" style="font-size:8px">FAVORITO</span>':''}</div>
+                                <div class="font-monospace fw-bold text-muted mt-1" style="font-size:12px">${b.iban}</div>
+                                <div class="small text-muted mt-1" style="font-size:9px">BIC: ${b.swift} | ALIAS: ${escapeHTML(b.alias)}</div>
+                             </div>
+                             <div class="d-flex gap-2 align-items-center">
+                                <button class="btn btn-sm text-dark p-0" onclick="ClientsView.setFavBank(${idx})"><i class="bi bi-star${b.is_fav?'-fill':''}"></i></button>
+                                <button class="btn btn-sm text-danger p-0" onclick="ClientsView.removeBank(${idx})"><i class="bi bi-trash3"></i></button>
+                             </div>
+                          </div>
+                       </div>
+                    `).join('')}
+                 </div>
+              </div>
+           ` : ''}
+        </div>`;
+    }
+    else if(this.activeTab === 'subs') {
+      const clientSubs = this.allSubscriptions.filter(s => String(s.client_id) === String(c.id));
+      const activeCount = clientSubs.filter(s => s.status === 'Activo').length;
+      const totalRecurrency = clientSubs.filter(s => s.status === 'Activo').reduce((acc, s) => acc + (parseFloat(s.price) || 0), 0);
+      const today = new Date(); today.setHours(0,0,0,0);
+
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-light mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-stars fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Ecosistema Recurrente</h6><p class="block-header-desc text-muted">Resumen de licencias activas y MRR estimado.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-6"><div class="card p-3 border-0 bg-white shadow-sm"><label class="h-label-refined">LICENCIAS ACTIVAS</label><h4 class="fw-black m-0">${activeCount}</h4></div></div>
+                 <div class="col-md-6"><div class="card p-3 border-0 bg-dark text-white shadow-sm"><label class="h-label-refined text-white-50">MRR ESTIMADO (€)</label><h4 class="fw-black m-0 text-brand">${totalRecurrency.toLocaleString()} €</h4></div></div>
+              </div>
+           </div>
+           <div class="mt-4">
+              <div class="card-industrial border-0 overflow-hidden shadow-sm">
+                 <table class="table table-hover m-0 align-middle" style="font-size:11px">
+                    <thead class="bg-light">
+                       <tr><th class="ps-3 py-2">PLAN / MÓDULO</th><th class="text-end">PRECIO</th><th class="text-center">PRÓX. COBRO</th><th class="text-center">ESTADO</th></tr>
+                    </thead>
+                    <tbody>
+                       ${clientSubs.map(s => {
+                         const isLate = s.next_billing && new Date(s.next_billing) < today && s.status === 'Activo';
+                         return `
+                         <tr>
+                            <td class="ps-3"><div class="fw-black text-uppercase">${escapeHTML(s.item_display_name)}</div></td>
+                            <td class="text-end fw-black">${parseFloat(s.price || 0).toLocaleString()} €</td>
+                            <td class="text-center font-monospace ${isLate?'text-danger fw-black':''}">${s.next_billing ? new Date(s.next_billing).toLocaleDateString() : '---'}</td>
+                            <td class="text-center"><span class="badge ${s.status==='Activo'?'bg-success':'bg-danger'}">${s.status}</span></td>
+                         </tr>`;
+                       }).join('') || '<tr><td colspan="4" class="p-5 text-center opacity-25">SIN LICENCIAS</td></tr>'}
+                    </tbody>
+                 </table>
+              </div>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'history') {
+      const clientInvs = this.allInvoices.filter(inv => {
+        const matchesClient = String(inv.client_id) === String(c.id);
+        const eff = this.allEffects.find(e => String(e.invoice_id) === String(inv.id));
+        const status = eff ? eff.status : 'PENDIENTE';
+        const matchStatus = this.historyFilters.status === 'ALL' || status === this.historyFilters.status;
+        const d = new Date(inv.fecha);
+        const start = this.historyFilters.start ? new Date(this.historyFilters.start) : null;
+        const end = this.historyFilters.end ? new Date(this.historyFilters.end) : null;
+        return matchesClient && matchStatus && (!start || d >= start) && (!end || d <= end);
+      });
+
+      container.innerHTML = `
+        <div class="animate-slide">
+           <!-- FILTROS DE HISTORIAL TITANIUM -->
+           <div class="unified-block block-dark mt-0 mb-4">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-funnel fs-3 text-brand"></i></div>
+                 <div class="col-md-11 ps-4"><h6 class="block-header-title" style="color:#fff !important;">Filtros de Auditoría</h6><p class="block-header-desc text-muted">Acote la búsqueda por estado de tesorería o cronología.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-4"><label class="h-label-refined text-white-50">ESTADO PGC</label><select class="form-select h-form-control fw-bold" onchange="ClientsView.historyFilters.status=this.value; ClientsView.renderActiveTabContent()"><option value="ALL">TODOS</option><option value="PENDIENTE" ${this.historyFilters.status==='PENDIENTE'?'selected':''}>PENDIENTES</option><option value="REMESADO" ${this.historyFilters.status==='REMESADO'?'selected':''}>REMESADOS</option><option value="COBRADO" ${this.historyFilters.status==='COBRADO'?'selected':''}>COBRADOS</option><option value="DEVUELTO" ${this.historyFilters.status==='DEVUELTO'?'selected':''}>DEVUELTOS</option></select></div>
+                 <div class="col-md-3"><label class="h-label-refined text-white-50">DESDE</label><input type="date" class="form-control h-form-control fw-bold" value="${this.historyFilters.start}" onchange="ClientsView.historyFilters.start=this.value; ClientsView.renderActiveTabContent()"></div>
+                 <div class="col-md-3"><label class="h-label-refined text-white-50">HASTA</label><input type="date" class="form-control h-form-control fw-bold" value="${this.historyFilters.end}" onchange="ClientsView.historyFilters.end=this.value; ClientsView.renderActiveTabContent()"></div>
+                 <div class="col-md-2 d-flex align-items-end"><button class="btn btn-outline-light border-secondary text-white w-100 py-2 small fw-black" onclick="ClientsView.historyFilters={status:'ALL',start:'',end:''}; ClientsView.renderActiveTabContent()">LIMPIAR</button></div>
+              </div>
+           </div>
+
+           <div class="d-flex justify-content-between align-items-center mb-4">
+              <h6 class="fw-black text-uppercase m-0">Registro Histórico de Documentos</h6>
+              <button class="btn btn-dark btn-sm fw-black px-4" onclick="InvoicesView.openManualModal(null, '${c.id}')"><i class="bi bi-plus-circle me-2"></i> NUEVA FACTURA</button>
+           </div>
+
+           <div class="card-industrial border-0 overflow-hidden shadow-sm">
+              <table class="table table-hover m-0 align-middle" style="font-size:11px">
+                 <thead class="bg-light">
+                    <tr><th class="ps-3">Nº FACTURA</th><th>FECHA</th><th class="text-end">BASE</th><th class="text-end">TOTAL</th><th class="text-center">ESTADO PGC</th><th class="text-center">PDF</th><th class="text-center">ENVÍO</th></tr>
+                 </thead>
+                 <tbody>
+                    ${clientInvs.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).map(inv => {
+                       const eff = this.allEffects.find(e => String(e.invoice_id) === String(inv.id));
+                       const status = eff ? eff.status : 'PENDIENTE';
+                       const statusClass = status === 'COBRADO' ? 'bg-success' : (status === 'REMESADO' ? 'bg-warning text-dark' : (status === 'DEVUELTOS' ? 'bg-danger' : 'bg-light text-dark border'));
+                       
+                       return `
+                       <tr onclick="InvoicesView.openManualModal('${inv.id}')" style="cursor:pointer">
+                          <td class="ps-3 fw-black font-monospace">${inv.numero}</td>
+                          <td class="small text-muted">${new Date(inv.fecha).toLocaleDateString()}</td>
+                          <td class="text-end font-monospace">${parseFloat(inv.base || 0).toLocaleString()} €</td>
+                          <td class="text-end fw-black">${parseFloat(inv.total || 0).toLocaleString()} €</td>
+                          <td class="text-center"><span class="badge ${statusClass}" style="font-size:8px">${status}</span></td>
+                          <td class="text-center" onclick="event.stopPropagation()"><button class="btn btn-link text-dark p-0" onclick="InvoicesView.openPDF('${inv.id}')"><i class="bi bi-file-pdf fs-5"></i></button></td>
+                          <td class="text-center" onclick="event.stopPropagation()"><button class="btn btn-link ${inv.email_sent?'text-success':'text-brand'} p-0" onclick="ClientsView.sendInvoiceEmail('${inv.id}')" title="Enviar por Email"><i class="bi bi-envelope-at fs-5"></i></button></td>
+                       </tr>`;
+                    }).join('') || '<tr><td colspan="7" class="p-5 text-center opacity-25">SIN FACTURAS REGISTRADAS</td></tr>'}
+                 </tbody>
+              </table>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'sedes') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="d-flex justify-content-between align-items-center mb-4">
+              <div><h6 class="fw-black text-uppercase m-0">Centros de Trabajo y Sedes</h6><p class="small text-muted m-0">Gestione puntos de servicio secundarios y su logística.</p></div>
+              <button class="btn btn-dark btn-sm fw-black px-4" onclick="ClientsView.addSede()">+ AÑADIR SEDE</button>
+           </div>
+           <div id="sedes-list">
+              ${c.sedes.length === 0 ? '<div class="p-5 text-center bg-light rounded-4 opacity-50 fw-bold">SIN SEDES SECUNDARIAS REGISTRADAS</div>' : ''}
+              ${c.sedes.map((s, idx) => `
+                <div class="sede-item d-flex justify-content-between align-items-center" onclick="ClientsView.editSede(${idx})">
+                   <div class="flex-grow-1">
+                      <div class="fw-black text-uppercase" style="font-size:12px">${escapeHTML(s.nombre || 'SEDE SIN NOMBRE')}</div>
+                      <div class="small text-muted">
+                        <i class="bi bi-geo-alt me-1"></i> ${escapeHTML(s.direccion?.nombre || 'S/D')} ${s.direccion?.num || ''}, ${s.direccion?.pob || ''} 
+                        ${s.telefono ? ` | <i class="bi bi-telephone ms-2"></i> ${s.telefono}` : ''}
+                        ${s.contacto ? ` | <i class="bi bi-person ms-2"></i> ${s.contacto}` : ''}
+                      </div>
+                      ${s.notas ? `<div class="mt-1 x-small fw-bold opacity-75 text-brand" style="font-size:9px"><i class="bi bi-info-circle me-1"></i> ${escapeHTML(s.notas)}</div>` : ''}
+                   </div>
+                   <div class="d-flex gap-2 ms-4">
+                      <button class="btn btn-sm text-danger p-0" onclick="event.stopPropagation(); ClientsView.removeSede(${idx})"><i class="bi bi-trash3 fs-5"></i></button>
+                   </div>
+                </div>
+              `).join('')}
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'audit') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-dark mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-shield-check fs-2 text-success"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Auditoría de Integridad Kernel</h6><p class="block-header-desc text-muted">Parámetros técnicos de persistencia y trazabilidad contable.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-6"><label class="h-label-refined text-white-50">UID KERNEL</label><div class="p-3 bg-dark bg-opacity-50 rounded border border-secondary font-monospace small text-white">${c.id}</div></div>
+                 <div class="col-md-6"><label class="h-label-refined text-white-50">SUBCUENTA PGC (430)</label><div class="p-3 bg-dark bg-opacity-50 rounded border border-secondary font-monospace small text-brand">${c.cuenta_contable || '---'}</div></div>
+                 <div class="col-md-4"><label class="h-label-refined text-white-50">FECHA REGISTRO</label><div class="p-3 bg-dark bg-opacity-50 rounded border border-secondary small text-white">${new Date(c.fecha_alta).toLocaleString()}</div></div>
+                 <div class="col-md-4"><label class="h-label-refined text-white-50">BLOQUEO IMPAGO</label><div class="p-3 bg-dark bg-opacity-50 rounded border ${c.bloqueado_impago?'border-danger text-danger':'border-success text-success'} fw-black">${c.bloqueado_impago ? 'ACTIVO' : 'INACTIVO'}</div></div>
+                 <div class="col-md-4"><label class="h-label-refined text-white-50">ÚLTIMA SINCRONÍA</label><div class="p-3 bg-dark bg-opacity-50 rounded border border-secondary small text-white">${new Date().toLocaleString()}</div></div>
+              </div>
+           </div>
+        </div>`;
+    }
+  },
+
+  mirrorFiscal: function() {
+    this.syncLocal();
+    const c = this.currentClient;
+    c.direccion_comercial = JSON.parse(JSON.stringify(c.direccion_fiscal));
+    HandooApp.ui.showToast("Dirección de Entrega Sincronizada");
+    this.renderActiveTabContent();
+  },
+
+  mirrorEmail: function() {
+    const contact = document.getElementById('c-email-con')?.value;
+    if(!contact) return HandooApp.ui.showToast("Defina primero el email de contacto", "error");
+    document.getElementById('c-email-fac').value = contact;
+    this.syncLocal();
+    HandooApp.ui.showToast("Email de Facturación Sincronizado");
+  },
+
+  sendInvoiceEmail: async function(id) {
+    if(await HandooApp.ui.confirm("¿ENVIAR FACTURA POR EMAIL?", "Se enviará al correo de facturación configurado del cliente.")) {
+       HandooApp.ui.showToast("Preparando envío...", "info");
+       const res = await HandooApp.api('invoice.send_batch_emails', { ids: [id] });
+       if(res.ok) {
+         HandooApp.ui.showToast(res.msg);
+         this.load(); 
+       } else {
+         HandooApp.ui.showToast(res.msg, "error");
+       }
+    }
+  },
+
+  addBank: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px">
+         <div class="h-modal-header"><h5 class="m-0 fw-black text-uppercase">VINCULAR CUENTA BANCARIA</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="row g-3">
+               <div class="col-md-12"><label class="h-label">ALIAS DE LA CUENTA</label><input type="text" id="b-alias" class="form-control fw-bold" placeholder="EJ: CUENTA PRINCIPAL"></div>
+               <div class="col-md-12">
+                  <label class="h-label">IBAN COMPLETO</label>
+                  <input type="text" id="b-iban-val" class="form-control font-monospace fw-black" placeholder="ES00 0000 0000 0000 0000" oninput="ClientsView.detectIBAN(this.value)">
+                  <div id="iban-cli-error" class="text-danger small fw-bold mt-1" style="display:none; font-size:10px;"><i class="bi bi-exclamation-triangle-fill"></i> IBAN No supera algoritmo Mod-97. Bloqueando guardado.</div>
+               </div>
+               <div class="col-md-8"><label class="h-label">ENTIDAD</label><input type="text" id="b-entidad" class="form-control bg-white" readonly></div>
+               <div class="col-md-4"><label class="h-label">SWIFT / BIC</label><input type="text" id="b-swift" class="form-control bg-white" readonly></div>
+            </div>
+         </div>
+         <div class="h-modal-footer"><button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button><button id="btn-save-bank-cli" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="ClientsView.saveBank()">VINCULAR CUENTA</button></div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  detectIBAN: function(val) {
+    let clean = val.replace(/\s/g, '').toUpperCase();
+    const masked = clean.replace(/(.{4})/g, '$1 ').trim();
+    document.getElementById('b-iban-val').value = masked;
+    
+    const isValid = !clean || this.validateIBAN(clean);
+    const btn = document.getElementById('btn-save-bank-cli');
+    const msg = document.getElementById('iban-cli-error');
+    if (btn) btn.disabled = !isValid;
+    if (msg) msg.style.display = isValid ? 'none' : 'block';
+
+    if(clean.length >= 8) {
+       const code = clean.substring(4, 8);
+       const bank = this.bankDict[code] || { n: 'ENTIDAD DESCONOCIDA', s: '---' };
+       document.getElementById('b-entidad').value = bank.n;
+       document.getElementById('b-swift').value = bank.s;
+    }
+  },
+
+  detectSedeIBAN: function(val) {
+    let clean = val.replace(/\s/g, '').toUpperCase();
+    const masked = clean.replace(/(.{4})/g, '$1 ').trim();
+    document.getElementById('s-iban').value = masked;
+    
+    const isValid = !clean || this.validateIBAN(clean);
+    const btn = document.getElementById('btn-action-save-sede');
+    const msg = document.getElementById('s-iban-error');
+    if (btn) btn.disabled = !isValid;
+    if (msg) msg.style.display = isValid ? 'none' : 'block';
+  },
+
+  saveBank: function() {
+    const ibanVal = document.getElementById('b-iban-val').value.replace(/\s/g, '').toUpperCase();
+    if(!this.validateIBAN(ibanVal)) return HandooApp.ui.showToast("IBAN Inválido", "error");
+
+    const bank = {
+       alias: document.getElementById('b-alias').value || 'Cuenta',
+       iban: ibanVal,
+       entidad: document.getElementById('b-entidad').value,
+       swift: document.getElementById('b-swift').value,
+       is_fav: this.currentClient.bancos.length === 0
+    };
+    this.currentClient.bancos.push(bank);
+    document.querySelector('.h-modal-overlay').remove();
+    this.renderActiveTabContent();
+  },
+
+  setFavBank: function(idx) {
+    this.currentClient.bancos.forEach((b, i) => b.is_fav = (i === idx));
+    this.renderActiveTabContent();
+  },
+
+  removeBank: function(idx) { if(confirm("¿Eliminar esta cuenta?")) { this.currentClient.bancos.splice(idx, 1); this.renderActiveTabContent(); } },
+
+  addSede: function() { this.editSede(-1); },
+  
+  editSede: function(idx) {
+    const isNew = idx === -1;
+    const masters = this.settings?.masters || {};
+    const client = this.currentClient;
+    const sede = isNew ? { 
+      id: Date.now(), nombre: '', 
+      direccion: { nombre:'', num:'', cp:'', pob:'' },
+      telefono: '', contacto: '', notas: '',
+      facturacion: {
+        forma_pago: client.facturacion.forma_pago,
+        vencimiento: client.facturacion.vencimiento,
+        periodicidad: client.facturacion.periodicidad,
+        tipo_impuesto_valor: client.facturacion.tipo_impuesto_valor,
+        retencion: client.facturacion.retencion,
+        descuento: client.facturacion.descuento,
+        iban: '',
+        swift: ''
+      }
+    } : JSON.parse(JSON.stringify(this.currentClient.sedes[idx]));
+    
+    if(!sede.facturacion) sede.facturacion = JSON.parse(JSON.stringify(this.currentClient.facturacion));
+    if(!sede.direccion) sede.direccion = { nombre:'', num:'', cp:'', pob:'' };
+
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 850px">
+         <div class="h-modal-header"><h5 class="m-0 fw-black text-uppercase">${isNew?'REGISTRAR':'EDITAR'} SEDE OPERATIVA</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <div class="row g-3">
+                  <div class="col-md-12"><label class="h-label">NOMBRE DE LA SEDE / CENTRO</label><input type="text" id="s-nombre" class="form-control h-form-control fw-black text-uppercase" value="${sede.nombre}" placeholder="EJ: PLANTA NORTE"></div>
+                  <div class="col-md-6"><label class="h-label">PERSONA DE CONTACTO</label><input type="text" id="s-contacto" class="form-control h-form-control" value="${sede.contacto || ''}"></div>
+                  <div class="col-md-6"><label class="h-label">TELÉFONO SEDE</label><input type="text" id="s-tel" class="form-control h-form-control" value="${sede.telefono || ''}"></div>
+               </div>
+            </div>
+            <div class="unified-block block-light">
+               <div class="row g-3">
+                  <div class="col-md-9"><label class="h-label">DIRECCIÓN / CALLE</label><input type="text" id="s-calle" class="form-control h-form-control" value="${sede.direccion?.nombre || ''}"></div>
+                  <div class="col-md-3"><label class="h-label">Nº</label><input type="text" id="s-num" class="form-control h-form-control" value="${sede.direccion?.num || ''}"></div>
+                  <div class="col-md-4"><label class="h-label">CP</label><input type="text" id="s-cp" class="form-control h-form-control fw-bold" value="${sede.direccion?.cp || ''}"></div>
+                  <div class="col-md-8"><label class="h-label">POBLACIÓN</label><input type="text" id="s-pob" class="form-control h-form-control" value="${sede.direccion?.pob || ''}"></div>
+               </div>
+            </div>
+            ${client.facturacion.billing_type === 'SEDE' ? `
+               <!-- BLOQUE UNIFICADO: DATOS BANCARIOS DE SEDE (TITANIUM DARK) -->
+               <div class="p-4 rounded-4 shadow-sm mt-3 block-dark">
+                  <div class="row align-items-center">
+                     <div class="col-md-1 text-center"><i class="bi bi-bank fs-2 text-warning"></i></div>
+                     <div class="col-md-11">
+                        <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Cuenta de Cobro Específica</h6>
+                        <p class="small text-muted m-0">IBAN propio para esta ubicación (Habilitado por Facturación por Sede).</p>
+                        <div class="row mt-3 g-3">
+                           <div class="col-md-8">
+                              <label class="h-label text-white-50">IBAN COMPLETO (REQUERIDO MOD-97)</label>
+                              <input type="text" id="s-iban" class="form-control bg-dark border-secondary text-brand fw-black h-form-control font-monospace" value="${sede.facturacion?.iban || ''}" placeholder="ES00 0000..." oninput="ClientsView.detectSedeIBAN(this.value)">
+                              <div id="s-iban-error" class="text-danger small fw-bold mt-1" style="display:none; font-size:10px;"><i class="bi bi-exclamation-triangle-fill"></i> Algoritmo de Validación Mod-97 Fallido.</div>
+                           </div>
+                           <div class="col-md-4">
+                              <label class="h-label text-white-50">BIC / SWIFT</label>
+                              <input type="text" id="s-swift" class="form-control bg-dark border-secondary text-white h-form-control" value="${sede.facturacion?.swift || ''}" placeholder="XXXXXXXX">
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <div class="unified-block block-dark">
+                  <div class="row align-items-center mb-3">
+                     <div class="col-md-1 text-center"><i class="bi bi-receipt fs-2 text-brand"></i></div>
+                     <div class="col-md-11"><h6 class="block-header-title">Condiciones Comerciales de Sede</h6><p class="block-header-desc text-muted">Configuración propia para esta ubicación.</p></div>
+                  </div>
+                  <div class="row g-3">
+                     <div class="col-md-6"><label class="h-label text-white-50">FORMA PAGO</label><select id="s-pago" class="form-select h-form-control">${(masters.payment_methods||[]).map(pm => `<option value="${pm.nombre}" ${sede.facturacion.forma_pago===pm.nombre?'selected':''}>${pm.nombre.toUpperCase()}</option>`).join('')}</select></div>
+                     <div class="col-md-6"><label class="h-label text-white-50">Nº PLAZOS (FRACCIONES)</label><select id="s-vto" class="form-select h-form-control">${(masters.payment_terms||[]).map(pt => `<option value="${pt.id}" ${sede.facturacion.vencimiento===pt.id?'selected':''}>${pt.nombre.toUpperCase()}</option>`).join('')}</select></div>
+                     <div class="col-md-4"><label class="h-label text-white-50">IVA (%)</label><select id="s-iva" class="form-select h-form-control">${(masters.taxes||[]).map(t => `<option value="${t.valor}" ${parseFloat(sede.facturacion.tipo_impuesto_valor)===parseFloat(t.valor)?'selected':''}>${t.nombre} (${t.valor}%)</option>`).join('')}</select></div>
+                     <div class="col-md-4"><label class="h-label text-white-50">IRPF (%)</label><select id="s-ret" class="form-select h-form-control text-danger">${(masters.retentions||[]).map(r => `<option value="${r.valor}" ${parseFloat(sede.facturacion.retencion)===parseFloat(r.valor)?'selected':''}>${r.nombre} (${r.valor}%)</option>`).join('')}</select></div>
+                     <div class="col-md-4"><label class="h-label text-white-50">DTO (%)</label><select id="s-dto" class="form-select h-form-control text-brand">${(masters.discounts||[]).map(d => `<option value="${d.pvp || d.valor}" ${parseFloat(sede.facturacion.descuento)===parseFloat(d.pvp || d.valor)?'selected':''}>${d.nombre} (${d.pvp || d.valor}%)</option>`).join('')}</select></div>
+                  </div>
+               </div>
+            ` : ''}
+            <div class="unified-block block-light">
+               <label class="h-label">NOTAS LOGÍSTICAS / OBSERVACIONES</label>
+               <textarea id="s-notas" class="form-control" rows="3" placeholder="Horario de muelle, accesos restringidos...">${sede.notas || ''}</textarea>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button id="btn-action-save-sede" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="ClientsView.executeSaveSede('${idx}')">GUARDAR CAMBIOS</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeSaveSede: function(idxStr) {
+    const idx = parseInt(idxStr);
+    const isNew = idx === -1;
+    const s = isNew ? { id: Date.now() } : this.currentClient.sedes[idx];
+    
+    s.nombre = document.getElementById('s-nombre').value;
+    s.contacto = document.getElementById('s-contacto').value;
+    s.telefono = document.getElementById('s-tel').value;
+    s.notas = document.getElementById('s-notas').value;
+    s.direccion = { nombre: document.getElementById('s-calle').value, num: document.getElementById('s-num').value, cp: document.getElementById('s-cp').value, pob: document.getElementById('s-pob').value };
+    
+    if (document.getElementById('s-pago')) {
+      // BLINDAJE V131: Validación de IBAN previa al guardado
+      const ibanVal = document.getElementById('s-iban')?.value || '';
+      if(ibanVal && !this.validateIBAN(ibanVal)) {
+         return HandooApp.ui.showToast("IBAN DE SEDE INVÁLIDO: No se puede sincronizar con errores algorítmicos.", "error");
+      }
+
+      s.facturacion = {
+        forma_pago: document.getElementById('s-pago').value,
+        vencimiento: document.getElementById('s-vto').value,
+        tipo_impuesto_valor: parseFloat(document.getElementById('s-iva').value),
+        retencion: parseFloat(document.getElementById('s-ret').value),
+        descuento: parseFloat(document.getElementById('s-dto').value),
+        periodicidad: s.facturacion?.periodicidad || 'Mensual',
+        iban: ibanVal,
+        swift: document.getElementById('s-swift')?.value || ''
+      };
+    }
+    
+    if(isNew) this.currentClient.sedes.push(s);
+    document.querySelector('.h-modal-overlay').remove();
+    this.renderActiveTabContent();
+    HandooApp.ui.showToast("Sede actualizada localmente");
+  },
+
+  removeSede: function(idx) { if(confirm("¿Eliminar esta sede?")) { this.currentClient.sedes.splice(idx, 1); this.renderActiveTabContent(); } },
+
+  save: async function() {
+    this.syncLocal();
+    HandooApp.ui.setLoading('btn-save-cli', true);
+    const res = await HandooApp.api('platform.save_client', this.currentClient);
+    HandooApp.ui.setLoading('btn-save-cli', false);
+    if(res.ok) { HandooApp.ui.showToast("Expediente Sincronizado"); this.render(); }
+    else { HandooApp.ui.showToast(res.msg, "error"); }
+  },
+
+  deleteClient: async function(id) {
+    if(await HandooApp.ui.confirm("¿ELIMINAR CLIENTE?", "Se requiere que no tenga deudas ni facturas activas.")) {
+       const res = await HandooApp.api('platform.delete_client', { id });
+       if(res.ok) this.load(); else HandooApp.ui.showToast(res.msg, "error");
+    }
+  }
+};
+</script>

@@ -1,0 +1,316 @@
+
+<style>
+  .strategy-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 35px; }
+  .strategy-stat { padding: 30px; border-radius: 24px; background: white; border: 1px solid var(--border); box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .strategy-stat::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: #e2e8f0; }
+  .stat-stable::after { background: #22c55e !important; }
+  .stat-risk::after { background: #ef4444 !important; }
+
+  .area-chart-container { 
+    height: 450px; 
+    background: #0f172a; 
+    border-radius: 24px; 
+    padding: 160px 40px 40px 40px; /* Margen superior masivo para tooltips */
+    position: relative; 
+    margin-top: 30px; 
+    overflow: visible !important; 
+  }
+  
+  .projection-row { display: flex; align-items: flex-end; gap: 8px; height: 100%; width: 100%; overflow: visible !important; }
+  .projection-bar-group { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; position: relative; overflow: visible !important; }
+  
+  .p-stack-mrr { width: 100%; background: #334155; border-radius: 4px; transition: 0.3s; }
+  .p-stack-cash { width: 100%; background: var(--brand); border-radius: 4px 4px 0 0; transition: 0.3s; }
+  
+  /* ESCENARIO BARS */
+  .p-stack-scenario { width: 100%; background: #ef4444; border-radius: 4px; opacity: 0.3; position: absolute; bottom: 0; z-index: 1; pointer-events: none; }
+
+  .p-label { color: #94a3b8; font-size: 9px; font-weight: 900; margin-top: 15px; transform: rotate(-45deg); white-space: nowrap; }
+  
+  .p-tooltip { 
+    position: absolute; 
+    top: -75px; /* Elevación para máxima visibilidad */
+    background: white; 
+    color: var(--dark); 
+    padding: 8px 14px; 
+    border-radius: 12px; 
+    font-size: 11px; 
+    font-weight: 900; 
+    opacity: 0; 
+    pointer-events: none; 
+    transition: 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    z-index: 5000; 
+    white-space: nowrap; 
+    box-shadow: 0 15px 40px rgba(0,0,0,0.5); 
+    border: 1px solid #e2e8f0;
+  }
+  .projection-bar-group:hover .p-tooltip { opacity: 1; transform: translateY(-10px); }
+
+  .scenario-card { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 20px; padding: 30px; height: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; transition: 0.3s; }
+  .scenario-card:hover { border-color: var(--brand); background: #fffdf5; transform: scale(1.02); }
+
+  .variance-box { background: #0f172a; border-radius: 24px; padding: 40px; color: white; margin-top: 40px; }
+  .precision-meter { width: 150px; height: 150px; border-radius: 50%; border: 10px solid #1e293b; display: grid; place-items: center; position: relative; }
+  
+  .table-variance th { background: #1e293b; color: #94a3b8; padding: 15px; text-transform: uppercase; font-size: 10px; }
+  .table-variance td { padding: 20px 15px; border-bottom: 1px solid #1e293b; font-size: 13px; font-weight: 700; }
+</style>
+
+<script>
+window.StrategyView = {
+  data: null,
+  variance: null,
+  scenario: { deltaMRR: 0, deltaCosts: 0 },
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">PROYECCIÓN ESTRATÉGICA</h6><h2 class="fw-black m-0 text-uppercase">PLAN DE NEGOCIO VIVO (12 MESES)</h2></div>
+         <div class="d-flex gap-2">
+            <button class="h-btn bg-brand text-dark px-4 py-2 fw-black shadow-sm" onclick="StrategyView.takeSnapshot()"><i class="bi bi-camera-fill me-2"></i> CAPTURAR SNAPSHOT</button>
+            <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="StrategyView.load()"><i class="bi bi-arrow-repeat me-2"></i> RE-CALCULAR REALIDAD</button>
+         </div>
+      </div>
+      
+      <div class="p-5 animate-slide">
+         <div class="strategy-grid" id="strategy-stats-area">
+            <div class="strategy-stat text-center p-5"><div class="spinner-border text-brand"></div></div>
+         </div>
+
+         <div class="row g-4">
+            <div class="col-md-9">
+               <div class="card-industrial p-5 h-100" style="overflow: visible !important;">
+                  <div class="d-flex justify-content-between align-items-center mb-4">
+                     <div>
+                        <h6 class="h-label m-0">Forward View: Previsión de Caja y Recurrencia</h6>
+                        <p class="small text-muted m-0">Simulación basada en MRR activo y gastos históricos.</p>
+                     </div>
+                     <div class="d-flex gap-4">
+                        <div class="d-flex align-items-center gap-2 small fw-black"><div style="width:12px; height:12px; background:var(--brand); border-radius:3px;"></div> DISPONIBILIDAD</div>
+                        <div class="d-flex align-items-center gap-2 small fw-black"><div style="width:12px; height:12px; background:#334155; border-radius:3px;"></div> MRR CONTRATADO</div>
+                        <div id="scenario-legend" style="display:none" class="d-flex align-items-center gap-2 small fw-black"><div style="width:12px; height:12px; background:#ef4444; border-radius:3px; opacity:0.3"></div> ESCENARIO</div>
+                     </div>
+                  </div>
+                  <div class="area-chart-container" id="strategy-chart-area"></div>
+               </div>
+            </div>
+            <div class="col-md-3">
+               <div class="scenario-card" onclick="StrategyView.openScenarioWizard()">
+                  <i class="bi bi-plus-circle fs-1 text-brand mb-3"></i>
+                  <h6 class="fw-black text-uppercase">NUEVO ESCENARIO</h6>
+                  <p class="small text-muted">¿Qué pasa si contrato personal o pierdo un cliente importante? Simula el impacto en tu caja futura.</p>
+               </div>
+            </div>
+         </div>
+
+         <!-- SECCIÓN DE ANÁLISIS DE DESVIACIÓN (V107.0) -->
+         <div id="variance-report-area"></div>
+
+         <div class="unified-block block-light mt-5 p-4 row align-items-center">
+            <div class="col-md-1 text-center"><i class="bi bi-info-circle-fill fs-2 text-dark"></i></div>
+            <div class="col-md-11">
+               <h6 class="fw-black text-uppercase m-0 small">Nota sobre el Algoritmo de Proyección</h6>
+               <p class="small text-muted m-0">Este gráfico no es contabilidad pasada, es probabilidad futura. El sistema asume una tasa de cobro del 100% de tus suscripciones y mantiene tus gastos fijos actuales constantes.</p>
+            </div>
+         </div>
+      </div>`;
+    
+    this.load();
+  },
+
+  load: async function() {
+    const [resProj, resVar] = await Promise.all([
+      HandooApp.api('strategy.get_projections'),
+      HandooApp.api('admin.get_variance_report')
+    ]);
+    if(resProj.ok) {
+       this.data = resProj.data;
+       this.renderStats();
+       this.renderChart();
+    }
+    if(resVar.ok) {
+       this.variance = resVar.data;
+       this.renderVariance();
+    }
+  },
+
+  takeSnapshot: async function() {
+    HandooApp.ui.showToast("Capturando estado actual del Kernel...", "info");
+    const res = await HandooApp.api('admin.save_strategy_snapshot');
+    if(res.ok) {
+       HandooApp.ui.showToast("Snapshot V107 consolidado con éxito.");
+       this.load();
+    }
+  },
+
+  renderStats: function() {
+    const d = this.data;
+    const area = document.getElementById('strategy-stats-area');
+    area.innerHTML = `
+      <div class="strategy-stat stat-stable">
+         <h6 class="h-label">MRR ACTUAL</h6>
+         <h2 class="fw-black m-0">${d.mrr.toLocaleString()} €</h2>
+         <p class="small text-muted mb-0 mt-1">Ingresos mensuales base</p>
+      </div>
+      <div class="strategy-stat stat-stable">
+         <h6 class="h-label">EBITDA ANUAL EST.</h6>
+         <h2 class="fw-black m-0 text-success">${d.estimated_annual_ebitda.toLocaleString()} €</h2>
+         <p class="small text-muted mb-0 mt-1">Beneficio operativo bruto</p>
+      </div>
+      <div class="strategy-stat ${d.annual_runway==='STABLE'?'stat-stable':'stat-risk'}">
+         <h6 class="h-label">RUNWAY (12M)</h6>
+         <h2 class="fw-black m-0">${d.annual_runway === 'STABLE' ? 'SALUDABLE' : 'TENSIÓN'}</h2>
+         <p class="small text-muted mb-0 mt-1">Solvencia proyectada</p>
+      </div>
+      <div class="strategy-stat stat-stable">
+         <h6 class="h-label">CAJA FIN PERIODO</h6>
+         <h2 class="fw-black m-0 text-brand">${d.projections[11].cash.toLocaleString()} €</h2>
+         <p class="small text-muted mb-0 mt-1">Efectivo en 12 meses</p>
+      </div>`;
+  },
+
+  renderChart: function() {
+    const area = document.getElementById('strategy-chart-area');
+    const p = this.data.projections;
+    const maxVal = Math.max(...p.map(x => Math.max(x.mrr, x.cash))) || 1;
+
+    area.innerHTML = `
+      <div class="projection-row">
+         ${p.map(m => {
+            const hMrr = (m.mrr / maxVal) * 45; // Escala reducida para seguridad
+            const hCash = (m.cash / maxVal) * 45; 
+            return `
+               <div class="projection-bar-group">
+                  <div class="p-tooltip">
+                     <b>Caja: ${m.cash.toLocaleString()}€</b><br>
+                     <span class="text-muted">MRR: ${m.mrr.toLocaleString()}€</span>
+                  </div>
+                  <div class="p-stack-cash" style="height: ${Math.max(2, hCash)}%"></div>
+                  <div class="p-stack-mrr" style="height: ${Math.max(2, hMrr)}%"></div>
+                  <div class="p-label">${m.label}</div>
+               </div>`;
+         }).join('')}
+      </div>`;
+  },
+
+  renderVariance: function() {
+    const v = this.variance;
+    const area = document.getElementById('variance-report-area');
+    if(!v) return;
+
+    area.innerHTML = `
+      <div class="variance-box animate-slide">
+         <div class="row align-items-center">
+            <div class="col-md-3 text-center">
+               <div class="precision-meter mx-auto" style="border: 10px solid #1e293b; display: grid; place-items: center; position: relative;">
+                  <div>
+                     <h2 class="fw-black m-0">${Math.round(v.reliability_index)}%</h2>
+                     <p class="small text-muted fw-bold m-0" style="font-size:9px">PRECISIÓN</p>
+                  </div>
+               </div>
+               <h6 class="fw-black text-uppercase mt-4" style="font-size:11px">Índice de Fiabilidad</h6>
+               <p class="small text-white-50 px-4">Capacidad del sistema para predecir tu realidad financiera.</p>
+            </div>
+            <div class="col-md-9 border-start border-secondary">
+               <div class="px-4">
+                  <div class="d-flex justify-content-between align-items-center mb-4">
+                     <h5 class="fw-black text-uppercase m-0">Control de Desviación: Mes Vencido (${v.period})</h5>
+                     <div class="badge bg-brand text-dark fw-black">VARIANCE REPORT V107</div>
+                  </div>
+                  <table class="table table-borderless table-variance m-0">
+                     <thead>
+                        <tr><th>MÉTRICA KERNEL</th><th class="text-end">PROYECTADO</th><th class="text-end">REAL CONTABLE</th><th class="text-end">DESVIACIÓN</th></tr>
+                     </thead>
+                     <tbody>
+                        <tr>
+                           <td class="text-white-50">INGRESOS RECURRENTES (MRR)</td>
+                           <td class="text-end">${v.mrr.projected.toLocaleString()}€</td>
+                           <td class="text-end text-brand">${v.mrr.real.toLocaleString()}€</td>
+                           <td class="text-end ${v.mrr.perc >= 0 ? 'text-success' : 'text-danger'}">${v.mrr.perc.toFixed(1)}%</td>
+                        </tr>
+                        <tr>
+                           <td class="text-white-50">GASTOS Y COSTES FIJOS</td>
+                           <td class="text-end">${v.expenses.projected.toLocaleString()}€</td>
+                           <td class="text-end text-brand">${v.expenses.real.toLocaleString()}€</td>
+                           <td class="text-end ${v.expenses.perc <= 0 ? 'text-success' : 'text-danger'}">${v.expenses.perc.toFixed(1)}%</td>
+                        </tr>
+                     </tbody>
+                  </table>
+                  <div class="mt-4 p-3 rounded-4 bg-white bg-opacity-10 small">
+                     <i class="bi bi-lightbulb text-brand me-2"></i>
+                     <b>Consejo del CFO:</b> Tu desviación en gastos es del ${v.expenses.perc.toFixed(1)}%. ${v.expenses.perc > 0 ? 'Detecto fugas de capital no previstas en el presupuesto base.' : 'Has optimizado la caja mejor de lo esperado.'}
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>`;
+  },
+
+  openScenarioWizard: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">SIMULADOR DE IMPACTO (WHAT-IF)</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <label class="h-label-refined">MODIFICACIÓN MRR (€/MES)</label>
+               <input type="number" id="sc-mrr" class="form-control h-form-control fw-black mb-3" value="0" placeholder="Ej: -500 (pérdida cliente)">
+               <label class="h-label-refined">MODIFICACIÓN COSTES (€/MES)</label>
+               <input type="number" id="sc-costs" class="form-control h-form-control fw-black mb-3" value="0" placeholder="Ej: 2000 (nueva contratación)">
+               <p class="small text-muted">El sistema recalculará la caja acumulada aplicando estos cambios desde el mes 1.</p>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-brand-titanium fw-black flex-grow-1 shadow" onclick="StrategyView.applyScenario()">PROYECTAR ESCENARIO</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  applyScenario: function() {
+     const deltaM = parseFloat(document.getElementById('sc-mrr').value || 0);
+     const deltaC = parseFloat(document.getElementById('sc-costs').value || 0);
+     this.scenario = { deltaMRR: deltaM, deltaCosts: deltaC };
+     
+     document.getElementById('scenario-legend').style.display = 'flex';
+     document.querySelector('.h-modal-overlay').remove();
+     this.renderChartWithScenario();
+     HandooApp.ui.showToast("Escenario proyectado con éxito.");
+  },
+
+  renderChartWithScenario: function() {
+    const area = document.getElementById('strategy-chart-area');
+    const p = this.data.projections;
+    
+    // Calcular nueva curva de caja
+    let runningScenarioCash = p[0].cash - p[0].mrr + (p[0].mrr + this.scenario.deltaMRR) - (p[0].fixed + this.scenario.deltaCosts);
+    const scenarioPoints = p.map((m, i) => {
+       if(i > 0) runningScenarioCash += (m.mrr + this.scenario.deltaMRR) - (m.fixed + this.scenario.deltaCosts);
+       return runningScenarioCash;
+    });
+
+    const maxVal = Math.max(...p.map(x => Math.max(x.mrr, x.cash)), ...scenarioPoints) || 1;
+
+    area.innerHTML = `
+      <div class="projection-row">
+         ${p.map((m, i) => {
+            const hCash = (m.cash / maxVal) * 45; 
+            const hScen = (scenarioPoints[i] / maxVal) * 45;
+            return `
+               <div class="projection-bar-group">
+                  <div class="p-tooltip">
+                     <b>Caja: ${m.cash.toLocaleString()}€</b><br>
+                     <span class="text-danger">Escenario: ${scenarioPoints[i].toLocaleString()}€</span>
+                  </div>
+                  <div class="p-stack-scenario" style="height: ${Math.max(2, hScen)}%"></div>
+                  <div class="p-stack-cash" style="height: ${Math.max(2, hCash)}%; z-index: 2; position:relative;"></div>
+                  <div class="p-label">${m.label}</div>
+               </div>`;
+         }).join('')}
+      </div>`;
+  }
+};
+</script>

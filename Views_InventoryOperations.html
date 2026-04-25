@@ -1,0 +1,1456 @@
+<!-- Views_InventoryOperations.html - Hoja de Servicio Viva & Auditoría Visual -->
+<script>console.log('Loading Views_InventoryOperations.html');</script>
+<style>
+  /* ESTRUCTURA CORE - CLONADA DE CATALOGO (IMAGEN 2) */
+  .v-tabs-container-inv { display: flex; background: white; border: 1px solid #e2e8f0; border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .v-tabs-sidebar-inv { width: 300px; background: #f8fafc; border-right: 1px solid #e2e8f0; flex-shrink: 0; padding-top: 25px; }
+  
+  .v-tab-btn-inv { 
+    display: flex; align-items: center; gap: 15px; padding: 20px 30px; border: none; background: none; 
+    width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; 
+    border-bottom: 1px solid #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;
+  }
+  .v-tab-btn-inv:hover { background: #f1f5f9; color: #0f172a; }
+  .v-tab-btn-inv.active { background: white; color: #0f172a; border-right: 6px solid #facc15; } /* Amarillo marca */
+  .v-tab-btn-inv i { font-size: 1.4rem; color: #94a3b8; transition: 0.3s; width: 24px; text-align: center; }
+  .v-tab-btn-inv.active i { color: #facc15; }
+  
+  .v-tabs-content-inv { flex-grow: 1; padding: 40px; overflow-y: auto; background: white; }
+
+  /* ESTILOS DE FILAS Y CARDS */
+  .shelf-row-item { border-bottom: 1px solid #f1f5f9; padding: 12px; transition: 0.2s; border-radius: 12px; }
+  .shelf-row-item:hover { background: #f8fafc; }
+  .h-label-refined { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+  .block-dark { background: #0f172a; color: white; padding: 20px; border-radius: 16px; }
+  
+  /* BUSCADOR ESTILO FORMULARIO */
+  .h-form-control { height: 42px; border-radius: 10px; font-size: 13px; border: 1px solid #e2e8f0; font-weight: 600; width: 100%; padding: 0 15px; }
+  .h-form-control:focus { border-color: #facc15; outline: none; box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.1); }
+</style>
+
+<div class="modal fade" id="modal-omni-waste" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header p-3 border-0 bg-dark text-white">
+        <h6 class="modal-title fw-black text-uppercase mb-0" style="font-size: 13px;">
+          <i class="bi bi-recycle me-2 text-warning"></i>Registro Central de Mermas
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 bg-light">
+        
+        <div class="alert alert-dark border-0 shadow-sm mb-4" style="font-size: 10px;">
+           <i class="bi bi-robot me-1 text-brand"></i> <strong>Chemin AI:</strong> Clasifica el origen para ajustar el inventario y la previsión.
+        </div>
+
+        <div class="mb-3">
+           <label class="small fw-black text-muted mb-1" style="font-size:10px;">TIPO DE MERMA</label>
+           <select id="omni-waste-type" class="form-select fw-bold border-dark shadow-sm" onchange="HandooApp.WasteManager.updateUI()">
+             <option value="INVENTARIO">📦 MATERIA PRIMA (Crudo / Sin procesar)</option>
+             <option value="FRESCO">🍳 PRODUCCIÓN DEL DÍA (Elaborado / Cocinado hoy)</option>
+             <option value="ARRASTRE">🥐 PRODUCCIÓN ANTERIOR (Arrastre / Sobró de ayer)</option>
+             <option value="PLATO">🍽️ RETORNO DE PLATO (Sobra del cliente)</option>
+           </select>
+        </div>
+        <div class="mb-3">
+           <label class="small fw-bold text-muted mb-1" style="font-size:10px;">PRODUCTO / PLATO</label>
+           <div class="position-relative">
+             <input type="text" class="form-control fw-bold shadow-sm border-dark" id="omni-waste-product-search" placeholder="Escribe para buscar..." onkeyup="HandooApp.WasteManager.search()" autocomplete="off">
+             <div id="omni-waste-results" class="list-group position-absolute w-100 shadow-lg" style="display:none; max-height: 180px; overflow-y: auto; z-index: 1050;"></div>
+           </div>
+        </div>
+           <div class="col-5">
+             <label class="small fw-bold text-muted mb-1" style="font-size:9px;">CANTIDAD</label>
+             <input type="number" step="any" class="form-control text-center fw-bold shadow-sm" id="omni-waste-qty" placeholder="0">
+           </div>
+           <div class="col-7">
+             <label class="small fw-bold text-muted mb-1" style="font-size:9px;">MOTIVO</label>
+             <select id="omni-waste-reason" class="form-select fw-bold shadow-sm">
+               <option value="CADUCADO">Caducidad / Fin de turno</option>
+               <option value="MAL_ESTADO">Mal estado / Contaminado</option>
+               <option value="ERROR_COCINA">Error de cocina / Quemado</option>
+               <option value="SOBRA_CLIENTE">Sobra en plato</option>
+             </select>
+           </div>
+        </div>
+
+      </div>
+      <div class="modal-footer p-3 border-0 bg-white">
+        <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border" data-bs-dismiss="modal">CANCELAR</button>
+        <button class="btn btn-danger rounded-pill px-4 fw-black shadow" onclick="HandooApp.WasteManager.save()">REGISTRAR PÉRDIDA</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+console.log('Loading Views_InventoryOperations.html');
+
+// --- BASE DE DATOS SIMULADA PARA HISTÓRICO ---
+window.HandooClosedShifts = window.HandooClosedShifts || []; 
+
+// --- MOTOR DE CACHÉ (INDEXEDDB) ---
+const HandooCache = {
+  dbName: 'HandooDB', storeName: 'catalog', db: null,
+  init: function() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, 2);
+      request.onupgradeneeded = (e) => { e.target.result.createObjectStore(this.storeName, { keyPath: 'id' }); };
+      request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+      request.onerror = reject;
+    });
+  },
+  save: function(data) {
+    if (!this.db) return;
+    const tx = this.db.transaction(this.storeName, 'readwrite');
+    const store = tx.objectStore(this.storeName);
+    data.forEach(item => store.put({ 
+        id: item.id, nombre: item.nombre, name: item.nombre, unit: item.unidad, price: item.precio,
+        packaging_id: item.packaging_id, price_local: item.price_local,
+        price_web: item.price_web, price_delivery: item.price_delivery
+    }));
+  },
+  get: function() {
+    return new Promise((resolve) => {
+      if (!this.db) return resolve([]);
+      const tx = this.db.transaction(this.storeName, 'readonly');
+      const store = tx.objectStore(this.storeName);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+    });
+  }
+};
+
+// --- UTILIDAD DE UI GLOBAL PARA MODALES DINÁMICOS ---
+if (!window.HandooApp) window.HandooApp = { ui: {} };
+HandooApp.ui.createCustomModal = function(title, bodyHtml, onConfirmCallback, confirmText = "CONFIRMAR") {
+    const existing = document.getElementById('handoo-custom-modal');
+    if (existing) { existing.remove(); document.querySelectorAll('.modal-backdrop').forEach(el=>el.remove()); }
+
+    const modalHtml = `
+    <div class="modal fade" id="handoo-custom-modal" tabindex="-1" data-bs-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+          <div class="modal-header p-3 border-0 bg-dark text-white">
+            <h6 class="modal-title fw-black text-uppercase mb-0" style="font-size: 13px;">${title}</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4 bg-light">${bodyHtml}</div>
+          <div class="modal-footer p-3 border-0 bg-white">
+            <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border" data-bs-dismiss="modal">CANCELAR</button>
+            <button class="btn btn-brand-titanium rounded-pill px-4 fw-black shadow" id="handoo-custom-modal-btn">${confirmText}</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const mEl = document.getElementById('handoo-custom-modal');
+    const modalInstance = new bootstrap.Modal(mEl);
+    
+    document.getElementById('handoo-custom-modal-btn').addEventListener('click', async function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm"></i>'; btn.disabled = true;
+        
+        try {
+            const shouldClose = await onConfirmCallback();
+            if (shouldClose) {
+                modalInstance.hide();
+                setTimeout(() => { mEl.remove(); document.querySelectorAll('.modal-backdrop').forEach(el=>el.remove()); document.body.classList.remove('modal-open'); document.body.style=''; }, 350);
+            } else {
+                btn.innerHTML = originalText; btn.disabled = false;
+            }
+        } catch(e) {
+            HandooApp.ui.showToast(e.message, "danger");
+            btn.innerHTML = originalText; btn.disabled = false;
+        }
+    });
+
+    modalInstance.show();
+};
+
+window.InventoryOperationsView = {
+  initView: function() { console.log("Inventory Ops Initialized"); },
+  activeTab: 'OPERATIONS',
+  zones: [],
+  identifiers: [], 
+  catalogProducts: [],
+  cachedShifts: null,
+  currentShift: null,
+  render: function() {
+    if (!this.catalogProducts) this.catalogProducts = HandooApp.cache ? HandooApp.cache.get('catalog') : [];
+    const stage = document.getElementById('main-stage');
+    
+    stage.innerHTML = `
+      <div class="block-dark p-4 shadow-sm" style="border-radius: 0 !important; margin-bottom: 20px;">
+        <div class="text-white-50 small text-uppercase" style="letter-spacing: 0.1em; font-weight: 800; margin-bottom: 5px;">SISTEMA DE ACTIVOS (PRO)</div>
+        <h2 class="fw-black m-0 text-uppercase text-white">HOJA DE SERVICIO VIVA</h2>
+      </div>
+      <div class="p-5 animate-slide">
+        <div class="v-tabs-container-inv">
+          <div class="v-tabs-sidebar-inv">
+            <button class="v-tab-btn-inv ${this.activeTab === 'OPERATIONS' ? 'active' : ''}" onclick="InventoryOperationsView.setTab('OPERATIONS')">
+              <i class="bi bi-clipboard-data"></i> OPERACIONES DE TURNO
+            </button>
+            <button class="v-tab-btn-inv ${this.activeTab === 'HISTORY' ? 'active' : ''}" onclick="InventoryOperationsView.setTab('HISTORY')">
+              <i class="bi bi-currency-euro"></i> VALORACIONES Y CIERRES
+            </button>
+            <button class="v-tab-btn-inv ${this.activeTab === 'MAP' ? 'active' : ''}" onclick="InventoryOperationsView.setTab('MAP')">
+              <i class="bi bi-map"></i> MAPA Y NEVERAS
+            </button>
+            <button class="v-tab-btn-inv ${this.activeTab === 'CONFIG' ? 'active' : ''}" onclick="InventoryOperationsView.setTab('CONFIG')">
+              <i class="bi bi-gear"></i> CONFIGURACIÓN
+            </button>
+          </div>
+          <div class="v-tabs-content-inv" id="op-content-area"></div>
+        </div>
+      </div>`;
+    
+    this.renderTabContent();
+    this.loadData();
+  },
+
+
+  setTab: function(tab) { this.activeTab = tab; this.render(); },
+
+  renderTabContent: async function() {
+    const area = document.getElementById('op-content-area');
+    if (this.activeTab === 'MAP') return this.renderMapConfig(area);
+    if (this.activeTab === 'CONFIG') return this.renderConfig(area);
+    
+    if (this.activeTab === 'HISTORY') {
+        area.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="mt-3 small fw-bold text-muted">Recuperando histórico de valoraciones...</p></div>`;
+        google.script.run
+            .withSuccessHandler(res => {
+                const apiShifts = (res && res.ok) ? res.data : [];
+                // Unimos histórico local con histórico de servidor si es necesario
+                const allShifts = [...(window.HandooClosedShifts || []), ...apiShifts.filter(s => s.status !== 'IN_PROGRESS')];
+
+                if(!allShifts || allShifts.length === 0) {
+                    area.innerHTML = `<div class="p-5 text-center text-muted fw-bold border border-dashed rounded-4 mt-4"><i class="bi bi-search fs-1"></i><p class="mt-2 mb-0">No hay turnos cerrados todavía.</p></div>`;
+                    return;
+                }
+
+                // Generamos el HTML del histórico con valoración financiera
+                const catalog = window.HandooCatalogGlobal || [];
+                const historyHtml = allShifts.map(s => {
+                    let totalLoss = 0;
+                    // Los items pueden venir como end_items (API) o items (Local)
+                    const displayItems = s.end_items || s.items || [];
+                    
+                    const rows = displayItems.map(item => {
+                        const prodId = item.producto_id || item.id;
+                        const catalogItem = catalog.find(p => p.id === prodId || p.nombre === prodId) || { precio: 0, price: 0 };
+                        const price = catalogItem.precio || catalogItem.price || 0;
+                        
+                        // Mapeo de campos para compatibilidad
+                        const qtyInitial = item.cantidad_inicial || item.qty || 0;
+                        const qtyEnd = item.qty_end !== undefined ? item.qty_end : (item.real !== undefined ? item.real : 0);
+                        const diff = item.diff !== undefined ? item.diff : (item.desfase !== undefined ? item.desfase : 0);
+                        const unit = item.unidad || item.unit || 'uds';
+                        
+                        const valueImpact = diff * price;
+                        totalLoss += valueImpact;
+                        
+                        const isLoss = diff < 0;
+                        const impactClass = isLoss ? 'text-danger' : (diff > 0 ? 'text-success' : 'text-muted');
+                        const reasonBadge = item.motivo ? `<span class="badge bg-secondary bg-opacity-10 text-dark border ms-2" style="font-size:8px;">${item.motivo}</span>` : '';
+
+                        return `
+                        <tr>
+                            <td class="fw-bold small text-uppercase">${item.nombre || item.id} ${reasonBadge}</td>
+                            <td class="text-center text-muted">${qtyInitial}</td>
+                            <td class="text-center text-muted">-${(qtyInitial - qtyEnd - diff).toFixed(1)}</td>
+                            <td class="text-center fw-bold bg-light">${(qtyInitial - (qtyInitial - qtyEnd - diff)).toFixed(1)}</td>
+                            <td class="text-center fw-black border-start border-end" style="background: #fdfdfd;">${qtyEnd}</td>
+                            <td class="text-center fw-bold ${impactClass}">${diff > 0 ? '+'+diff : diff} ${unit}</td>
+                            <td class="text-end fw-black ${impactClass}">${valueImpact.toFixed(2)} €</td>
+                        </tr>`;
+                    }).join('');
+
+                    const dateLabel = new Date(s.date || Date.now()).toLocaleString('es-ES', {dateStyle: 'medium', timeStyle: 'short'});
+
+                    return `
+                    <div class="mb-4 p-4 bg-white border shadow-sm rounded-4 animate-slide">
+                        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                            <div>
+                                <h6 class="fw-black text-uppercase m-0">${s.shift_type || s.name || 'TURNO'} <span class="badge bg-success ms-2">EQUILIBRADO</span></h6>
+                                <p class="small text-muted m-0" style="font-size:9px">${dateLabel}</p>
+                            </div>
+                            <div class="text-end">
+                                <div class="small fw-bold text-muted" style="font-size:9px;">BALANCE FINANCIERO</div>
+                                <div class="fw-black fs-5 ${totalLoss < 0 ? 'text-danger' : 'text-success'}">${totalLoss > 0 ? '+' : ''}${totalLoss.toFixed(2)} €</div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0" style="font-size:11px;">
+                                <thead class="bg-light text-muted" style="font-size:8px;">
+                                    <tr class="text-center text-uppercase">
+                                        <th class="text-start">Producto</th>
+                                        <th>Inicio</th>
+                                        <th>Ventas</th>
+                                        <th>Teórico</th>
+                                        <th class="text-dark">REAL</th>
+                                        <th>Desfase</th>
+                                        <th class="text-end">Valoración</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button class="btn btn-link text-danger p-0 small fw-bold" style="font-size:10px;" onclick="InventoryOperationsView.deleteShift('${s.id}')">
+                                <i class="bi bi-trash3 me-1"></i> Borrar Registro
+                            </button>
+                        </div>
+                    </div>`;
+                }).reverse().join('');
+
+                area.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-black m-0">Auditoría y Valoraciones</h4>
+                        <button class="btn btn-sm btn-outline-dark rounded-pill fw-bold" onclick="InventoryOperationsView.renderTabContent()"><i class="bi bi-arrow-clockwise"></i> ACTUALIZAR</button>
+                    </div>
+                    ${historyHtml}
+                `;
+            }).TITANIUM_get_all_shifts();
+        return;
+    }
+
+    // ---------------------------------------------------------
+    // PESTAÑA 1: OPERACIONES DE TURNO ACTIVO
+    // ---------------------------------------------------------
+    const isShiftOpen = this.currentShift !== null;
+    area.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-5 border-bottom pb-3">
+        <div>
+           <h4 class="fw-black m-0">Monitor de Turno Actual</h4>
+           <div class="small text-muted mt-1 fw-bold">${isShiftOpen ? '🟢 TURNO EN CURSO' : '🔴 FUERA DE SERVICIO'}</div>
+        </div>
+        <div class="d-flex gap-2">
+           <button class="btn btn-outline-dark py-2 px-4 fw-black rounded-pill shadow-sm" onclick="HandooApp.WasteManager.open()">
+             <i class="bi bi-trash me-2"></i> REGISTRAR MERMA
+           </button>
+           ${!isShiftOpen ? `
+           <button class="btn btn-brand-titanium py-2 px-4 fw-black rounded-pill shadow-sm" onclick="InventoryOperationsView.openStartShiftModal()">
+             <i class="bi bi-play-circle-fill me-2"></i> INICIAR TURNO (Mise en Place)
+           </button>` : `
+           <button class="btn btn-dark py-2 px-4 fw-black rounded-pill shadow-sm" onclick="InventoryOperationsView.openEndShiftModal()">
+             <i class="bi bi-stop-circle-fill me-2"></i> AUDITAR Y CERRAR TURNO
+           </button>`}
+        </div>
+      </div>
+      
+      ${isShiftOpen ? this.renderActiveShiftPanel() : `<div class="text-center p-5 mt-5 bg-light rounded-4 border border-dashed"><i class="bi bi-inboxes fs-1 text-muted"></i><h5 class="fw-bold mt-3 text-muted">No hay ningún turno activo.</h5><p class="small text-muted mb-0">Inicia un turno para cargar el stock inicial a la línea de cocina.</p></div>`}
+    `;
+  },
+
+  renderActiveShiftPanel: function() {
+      if (!this.currentShift) return '';
+      
+      let html = `<div class="row g-3 mb-4">`;
+      this.currentShift.items.forEach((item) => {
+          const ventasSimuladas = Math.floor(item.qty * 0.4); 
+          const stockTeorico = item.qty - ventasSimuladas;
+
+          html += `
+          <div class="col-md-6">
+              <div class="p-3 bg-white border shadow-sm rounded-4 position-relative">
+                  <h6 class="fw-black text-uppercase text-dark mb-3">${item.nombre}</h6>
+                  
+                  <div class="d-flex justify-content-between text-center small mb-3">
+                      <div class="p-2 bg-light rounded-3 flex-grow-1 me-1">
+                          <div class="text-muted fw-bold" style="font-size:9px">INICIAL</div>
+                          <div class="fw-black fs-6">${item.qty} <span class="fs-6 text-muted">${item.unit}</span></div>
+                      </div>
+                      <div class="p-2 bg-warning bg-opacity-10 rounded-3 flex-grow-1 mx-1 border border-warning border-opacity-50">
+                          <div class="text-warning fw-bold text-dark" style="font-size:9px">VENDIDO</div>
+                          <div class="fw-black fs-6 text-dark">-${ventasSimuladas}</div>
+                      </div>
+                      <div class="p-2 bg-light rounded-3 flex-grow-1 ms-1 border border-dashed">
+                          <div class="text-muted fw-bold" style="font-size:9px">FINAL REAL</div>
+                          <div class="fw-black fs-6 text-muted" title="Pendiente de pesaje en el cierre"> ? </div>
+                      </div>
+                  </div>
+                  
+                  <div class="p-2 bg-dark text-white rounded-3 d-flex justify-content-between align-items-center">
+                      <span class="small fw-bold text-white-50">STOCK TEÓRICO EN LÍNEA:</span>
+                      <span class="fw-black fs-5 text-brand">${stockTeorico} ${item.unit}</span>
+                  </div>
+              </div>
+          </div>`;
+          
+          item.ventas = ventasSimuladas;
+          item.teorico = stockTeorico;
+      });
+      html += `</div>`;
+      return html;
+  },
+
+  // 1. INICIAR TURNO (MISE EN PLACE)
+  openStartShiftModal: function() {
+      const catalog = this.catalogProducts || [];
+      // CORRECCIÓN: Buscamos p.unidad o p.unit, y si no hay, ponemos 'uds'
+      const optionsHtml = catalog.map(p => {
+          const pUnit = p.unidad || p.unit || 'uds';
+          const pName = (p.nombre || p.name || 'S/N').toUpperCase();
+          return `<option value="${p.id}" data-unit="${pUnit}">${pName}</option>`;
+      }).join('');
+
+      const bodyHtml = `
+          <div class="alert alert-light border shadow-sm small rounded-3 mb-4">
+             <i class="bi bi-info-circle me-1"></i> Declara la cantidad de producto que sacas del almacén a la línea de cocina para empezar a trabajar.
+          </div>
+          
+          <div class="mb-3">
+             <label class="small fw-bold text-muted mb-1" style="font-size:10px;">NOMBRE DEL TURNO</label>
+             <input type="text" class="form-control fw-bold shadow-sm border-dark" id="shift-name-input" value="Turno de Mañana" placeholder="Ej: Turno Mañana">
+          </div>
+
+          <label class="small fw-black text-dark mb-2 mt-3" style="font-size:11px;">📦 CARGA INICIAL A LÍNEA (Mise en Place)</label>
+          <div id="start-shift-items-container">
+             <div class="row g-2 mb-2 align-items-center shift-item-row">
+                <div class="col-6">
+                    <select class="form-select form-select-sm fw-bold shadow-sm p-select" onchange="InventoryOperationsView.updateStartUnit(this)">
+                       <option value="" disabled selected>Selecciona producto...</option>
+                       ${optionsHtml}
+                    </select>
+                </div>
+                <div class="col-4">
+                    <input type="number" step="any" class="form-control form-control-sm text-center fw-bold shadow-sm p-qty" placeholder="Cantidad">
+                </div>
+                <div class="col-2 text-center p-unit-label small fw-bold text-muted">---</div>
+             </div>
+          </div>
+          <button class="btn btn-sm btn-link text-brand fw-bold px-0 mt-2" onclick="InventoryOperationsView.addStartShiftRow()"><i class="bi bi-plus-circle"></i> Añadir otro producto</button>
+      `;
+
+      HandooApp.ui.createCustomModal("INICIAR SERVICIO", bodyHtml, async () => {
+          const name = document.getElementById('shift-name-input').value;
+          const items = [];
+          document.querySelectorAll('.shift-item-row').forEach(row => {
+              const sel = row.querySelector('.p-select');
+              const qty = parseFloat(row.querySelector('.p-qty').value);
+              if (sel.value && qty > 0) {
+                  const prodName = sel.options[sel.selectedIndex].text;
+                  let prodUnit = sel.options[sel.selectedIndex].dataset.unit;
+                  // Doble seguridad por si acaso
+                  if (!prodUnit || prodUnit === 'undefined') prodUnit = 'uds';
+                  
+                  items.push({ id: sel.value, nombre: prodName, qty: qty, unit: prodUnit });
+              }
+          });
+
+          if (items.length === 0) { HandooApp.ui.showToast("Añade al menos un producto con cantidad válida.", "warning"); return false; }
+
+          // Enviar a la API (Preservamos la lógica real de TITANIUM)
+          const res = await new Promise(resolve => {
+              google.script.run.withSuccessHandler(resolve).withFailureHandler(err => resolve({ok:false, msg: err.message}))
+              .TITANIUM_save_shift({ type: 'START', items: items, shift_type: name });
+          });
+
+          if(res && res.ok) {
+              this.currentShift = { id: res.data ? res.data.id : 'SHIFT_' + Date.now(), name: name, items: items };
+              HandooApp.ui.showToast("Turno iniciado. Stock en línea.", "success");
+              this.render();
+              return true; 
+          } else {
+              HandooApp.ui.showToast(res ? res.msg : "Error al iniciar turno", "danger");
+              return false;
+          }
+      }, "COMENZAR TURNO");
+  },
+
+  addStartShiftRow: function() {
+      const catalog = this.catalogProducts || [];
+      const optionsHtml = catalog.map(p => {
+          const pUnit = p.unidad || p.unit || 'uds';
+          const pName = (p.nombre || p.name || 'S/N').toUpperCase();
+          return `<option value="${p.id}" data-unit="${pUnit}">${pName}</option>`;
+      }).join('');
+      
+      const container = document.getElementById('start-shift-items-container');
+      const div = document.createElement('div');
+      div.className = "row g-2 mb-2 align-items-center shift-item-row animate-slide";
+      div.innerHTML = `
+          <div class="col-6">
+              <select class="form-select form-select-sm fw-bold shadow-sm p-select" onchange="InventoryOperationsView.updateStartUnit(this)">
+                  <option value="" disabled selected>Selecciona producto...</option>${optionsHtml}
+              </select>
+          </div>
+          <div class="col-4"><input type="number" step="any" class="form-control form-control-sm text-center fw-bold shadow-sm p-qty" placeholder="Cantidad"></div>
+          <div class="col-2 text-center p-unit-label small fw-bold text-muted">---</div>
+      `;
+      container.appendChild(div);
+  },
+
+  updateStartUnit: function(selectEl) {
+      let unit = selectEl.options[selectEl.selectedIndex].dataset.unit;
+      if (!unit || unit === 'undefined') unit = 'uds';
+      selectEl.closest('.row').querySelector('.p-unit-label').innerText = unit;
+  },
+
+  // 2. AUDITAR Y CERRAR TURNO (PESAJE CIEGO)
+  openEndShiftModal: function() {
+      if (!this.currentShift) return;
+
+      let rowsHtml = this.currentShift.items.map((item, index) => {
+          return `
+          <div class="p-3 bg-white border rounded-3 shadow-sm mb-2 end-shift-row" data-index="${index}">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div class="fw-black text-uppercase" style="font-size:12px;">${item.nombre}</div>
+                  <div class="small text-muted fw-bold">Unidad: ${item.unit}</div>
+              </div>
+              <div class="row g-2 align-items-center">
+                  <div class="col-8 text-muted small" style="font-size:10px; line-height:1.2;">
+                      Pesa la cantidad física que ha quedado en la línea de cocina al terminar el servicio (Pesaje Ciego).
+                  </div>
+                  <div class="col-4">
+                      <input type="number" step="any" class="form-control text-center fw-black border-dark shadow-sm end-qty" placeholder="0.00">
+                  </div>
+              </div>
+          </div>`;
+      }).join('');
+
+      const bodyHtml = `
+          <div class="alert alert-warning border-0 shadow-sm small rounded-3 mb-4 text-dark">
+             <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Auditoría de Cierre:</strong> Introduce el pesaje real. El sistema lo cruzará con las ventas del TPV para detectar descuadres.
+          </div>
+          ${rowsHtml}
+      `;
+
+      HandooApp.ui.createCustomModal("CIERRE DE TURNO Y AUDITORÍA", bodyHtml, async () => {
+          let hasErrors = false;
+          let shiftResults = []; 
+          let needsQuarantine = false;
+
+          document.querySelectorAll('.end-shift-row').forEach(row => {
+              const index = row.dataset.index;
+              const inputVal = row.querySelector('.end-qty').value;
+              
+              if (inputVal === "") { hasErrors = true; row.querySelector('.end-qty').classList.add('border-danger'); }
+              else {
+                  row.querySelector('.end-qty').classList.remove('border-danger');
+                  const realQty = parseFloat(inputVal);
+                  const item = this.currentShift.items[index];
+                  const desfase = realQty - item.teorico; 
+
+                  shiftResults.push({ ...item, real: realQty, desfase: desfase, motivo: '' });
+                  if (Math.abs(desfase) > 0.05) needsQuarantine = true;
+              }
+          });
+
+          if (hasErrors) {
+              HandooApp.ui.showToast("Debes introducir el pesaje final de todos los productos.", "error");
+              return false; 
+          }
+
+          if (needsQuarantine) {
+              const m = document.getElementById('handoo-custom-modal');
+              if(m) { const inst = bootstrap.Modal.getInstance(m); if(inst) inst.hide(); }
+              setTimeout(() => { this.openQuarantineModal(shiftResults); }, 400);
+              return false; 
+          }
+
+          const res = await new Promise(resolve => {
+              google.script.run.withSuccessHandler(resolve).withFailureHandler(err => resolve({ok:false, msg: err.message}))
+              .TITANIUM_save_shift({ type: 'END', items: shiftResults, id: this.currentShift.id });
+          });
+
+          if(res && res.ok) {
+              window.HandooClosedShifts.push({ name: this.currentShift.name, items: shiftResults, date: new Date() });
+              HandooApp.ui.showToast("¡Cuadre perfecto! Turno cerrado.", "success");
+              this.currentShift = null;
+              this.renderTabContent();
+              return true;
+          } else {
+              HandooApp.ui.showToast(res ? res.msg : "Error al cerrar turno", "danger");
+              return false;
+          }
+
+      }, "EJECUTAR AUDITORÍA");
+  },
+
+  // 3. EL EMBUDO DE CUARENTENA (JUSTIFICACIÓN)
+  openQuarantineModal: function(shiftResults) {
+      let rowsHtml = shiftResults.filter(d => Math.abs(d.desfase) > 0.05).map((d, i) => {
+          const isLoss = d.desfase < 0;
+          const absDesfase = Math.abs(d.desfase).toFixed(2);
+          
+          const options = isLoss 
+            ? `<option value="Merma no registrada">Merma no registrada en servicio</option>
+               <option value="Ración excesiva">Raciones muy grandes</option>
+               <option value="Error cocina / Quemado">Error cocina / Quemado</option>
+               <option value="Caducidad">Caducidad</option>`
+            : `<option value="Ración escasa">Raciones muy pequeñas (Alerta)</option>
+               <option value="Error pesaje inicial">Error en báscula inicial</option>
+               <option value="Entrada no registrada">Entrada no registrada</option>`;
+
+          return `
+          <div class="p-3 bg-white border ${isLoss ? 'border-danger' : 'border-success'} rounded-3 shadow-sm mb-3 quarantine-row" data-id="${d.id}">
+              <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                  <div class="fw-black text-uppercase text-dark" style="font-size:12px;">${d.nombre}</div>
+                  <div class="badge ${isLoss ? 'bg-danger text-white' : 'bg-success text-white'}">
+                      ${isLoss ? 'FALTA' : 'SOBRA'}: ${absDesfase} ${d.unit}
+                  </div>
+              </div>
+              <select class="form-select form-select-sm fw-bold shadow-sm border-dark q-reason">
+                  <option value="" disabled selected>Justificación obligatoria...</option>${options}
+              </select>
+          </div>`;
+      }).join('');
+
+      HandooApp.ui.createCustomModal("EMBUDO DE CUARENTENA", rowsHtml, async () => {
+          let allJustified = true;
+
+          document.querySelectorAll('.quarantine-row').forEach(row => {
+              const reasonSelect = row.querySelector('.q-reason');
+              if (reasonSelect.value === "") { allJustified = false; reasonSelect.classList.add('border-danger'); } 
+              else {
+                  reasonSelect.classList.remove('border-danger');
+                  const itemResult = shiftResults.find(r => r.id === row.dataset.id);
+                  if (itemResult) itemResult.motivo = reasonSelect.value;
+              }
+          });
+
+          if (!allJustified) { HandooApp.ui.showToast("Justifica todos los descuadres.", "error"); return false; }
+
+          const res = await new Promise(resolve => {
+              google.script.run.withSuccessHandler(resolve).withFailureHandler(err => resolve({ok:false, msg: err.message}))
+              .TITANIUM_save_shift({ type: 'END', items: shiftResults, id: this.currentShift.id });
+          });
+
+          if (res && res.ok) {
+              window.HandooClosedShifts.push({ name: this.currentShift.name, items: shiftResults, date: new Date() });
+              HandooApp.ui.showToast("Inventario cuadrado. Turno cerrado.", "success");
+              this.currentShift = null; 
+              this.renderTabContent();
+              return true; 
+          } else {
+              HandooApp.ui.showToast("Error al guardar cierre", "danger");
+              return false;
+          }
+      }, "CUADRAR INVENTARIO");
+  },
+
+  // --- BUSCADOR INTELIGENTE ---
+  renderProductSearch: function(products, selectedId = '', extraClass = '') {
+    return `<input list="catalog-list" class="form-control s-prod ${extraClass}" placeholder="Buscar producto..." value="${selectedId}" onchange="InventoryOperationsView.onProductSelect(this)">`;
+  },
+  
+  renderCatalogList: function(products) {
+    console.log("Datalist inyectando:", products.length);
+    return `<datalist id="catalog-list">
+        ${products.map(p => {
+            const label = (p.nombre || p.name || 'S/N').toUpperCase();
+            const unidad = p.unidad || p.unit || 'uds';
+            return `<option value="${p.id}" data-unit="${unidad}">${label}</option>`;
+        }).join('')}
+      </datalist>`;
+  },
+
+  onProductSelect: function(input) {
+    const row = input.closest('.shelf-row-item');
+    const unitSelect = row.querySelector('.p-unit');
+    const selectedOption = document.querySelector(`#catalog-list option[value="${input.value}"]`);
+    if (selectedOption) {
+        unitSelect.value = selectedOption.dataset.unit;
+    }
+  },
+
+  // --- CONFIGURACIÓN DE IDENTIFICADORES ---
+  renderConfig: function(container) {
+    container.innerHTML = `
+      <div class="row g-4">
+        <div class="col-md-6">
+          <h6 class="fw-black text-uppercase mb-3" style="font-size: 12px;">Identificadores de Envase</h6>
+          <div id="identifiers-list" class="d-flex flex-column gap-2 mb-3">
+            ${this.identifiers.map((id, i) => `
+              <div class="d-flex gap-2 align-items-center">
+                <input class="form-control form-control-sm" value="${id.icon}" style="width:50px" onchange="InventoryOperationsView.updateIdent(${i}, 'icon', this.value)">
+                <input class="form-control form-control-sm" value="${id.name}" onchange="InventoryOperationsView.updateIdent(${i}, 'name', this.value)">
+                <button class="btn btn-link text-danger p-0" onclick="InventoryOperationsView.removeIdent(${i})"><i class="bi bi-trash"></i></button>
+              </div>
+            `).join('')}
+          </div>
+          <button class="btn btn-dark btn-sm" onclick="InventoryOperationsView.addIdent()">+ AÑADIR IDENTIFICADOR</button>
+          <button class="btn btn-brand-titanium btn-sm ms-2" onclick="InventoryOperationsView.saveConfig()">GUARDAR MAPA</button>
+        </div>
+
+        <div class="col-md-6">
+          <div class="p-4 bg-light rounded-4 shadow-sm border">
+            <h6 class="fw-black text-uppercase mb-3" style="font-size: 12px;"><i class="bi bi-bell-fill me-2 text-warning"></i>Automatización de Alertas</h6>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="small fw-bold text-muted mb-1" style="font-size: 9px;">HORA CIERRE TURNO MAÑANA</label>
+                    <input type="time" id="alert-time-morning" class="form-control fw-bold form-control-sm" value="${HandooApp.settings?.alert_time_morning || '16:30'}">
+                </div>
+                <div class="col-md-6">
+                    <label class="small fw-bold text-muted mb-1" style="font-size: 9px;">HORA CIERRE TURNO NOCHE</label>
+                    <input type="time" id="alert-time-night" class="form-control fw-bold form-control-sm" value="${HandooApp.settings?.alert_time_night || '23:30'}">
+                </div>
+                <div class="col-12 mt-3">
+                    <div class="form-check form-switch bg-white p-3 rounded-3 shadow-sm border">
+                        <input class="form-check-input ms-0 me-2" type="checkbox" id="enable-calendar-staff" ${HandooApp.settings?.enable_calendar_staff ? 'checked' : ''}>
+                        <label class="form-check-label small fw-bold text-dark" for="enable-calendar-staff">NOTIFICAR AUTOCONSUMO A GOOGLE CALENDAR</label>
+                    </div>
+                </div>
+                <div class="col-12 text-end mt-3">
+                    <button class="btn btn-dark btn-sm fw-black" onclick="InventoryOperationsView.saveAlertConfig(this)">
+                        <i class="bi bi-calendar-check me-2"></i>GUARDAR ALERTAS
+                    </button>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  },
+
+  saveAlertConfig: async function(btn) {
+    const morning = document.getElementById('alert-time-morning').value;
+    const night = document.getElementById('alert-time-night').value;
+    const enableStaff = document.getElementById('enable-calendar-staff').checked;
+    
+    HandooApp.ui.setLoading(btn, true);
+    const res = await HandooApp.api('admin.save_settings', {
+        alert_time_morning: morning,
+        alert_time_night: night,
+        enable_calendar_staff: enableStaff
+    });
+    HandooApp.ui.setLoading(btn, false);
+    
+    if (res.ok) {
+        HandooApp.ui.showToast("Alertas configuradas correctamente.", "success");
+        HandooApp.settings = res.data; 
+    }
+  },
+
+  checkLicense: function(module) {
+    if (HandooApp.user && (HandooApp.user.role === 'ADMINISTRADOR' || HandooApp.user.role === 'OWNER')) return true;
+    const activeModules = (HandooApp.user && HandooApp.user.subscriptions) || [];
+    if (module === 'INVENTORY') return activeModules.some(m => m.startsWith('FEAT_INVENTORY_'));
+    return activeModules.includes(module);
+  },
+
+  saveMapConfig: async function() {
+    if (!this.checkLicense('INVENTORY')) return;
+    const zones = [];
+    document.querySelectorAll('#zones-container > .animate-slide').forEach(zoneEl => {
+      const zoneName = zoneEl.querySelector('.zone-title').value;
+      const shelves = [];
+      zoneEl.querySelectorAll('.shelf-block').forEach(shelfEl => {
+        const items = [];
+        shelfEl.querySelectorAll('.multi-items-container > div').forEach(itemEl => {
+          items.push({ id: itemEl.querySelector('.s-id').value, prodId: itemEl.querySelector('.s-prod').value, gram: itemEl.querySelector('.s-gram').value });
+        });
+        shelves.push({ name: shelfEl.querySelector('.s-name').value, items });
+      });
+      if(zoneName) zones.push({ name: zoneName, shelves });
+    });
+    const res = await HandooApp.api('inventory.save_map', { zones });
+    if(res.ok) HandooApp.ui.showToast("Mapa guardado.", "success");
+  },
+
+  startBurstScan: function() {
+    if (!this.checkLicense('INVENTORY_PRO')) return;
+    this.openModal("Auditoría Ráfaga", `
+        <select id="scan-zone" class="form-select mb-3">${this.zones.map(z => `<option value="${z.name}">${z.name}</option>`).join('')}</select>
+        <p class="small text-muted">Selecciona la zona y toma fotos de cada balda.</p>
+    `, async () => {
+        const zone = document.getElementById('scan-zone').value;
+        const imageQueue = [];
+        HandooScanner.open({ mode: 'BURST_SCAN', callback: async (res) => {
+            imageQueue.push({ shelf: res.shelf, image: res.image });
+            HandooApp.ui.showToast("Foto " + imageQueue.length + " capturada", "info");
+        }, onClose: async () => {
+            await HandooApp.api('inventory.upload_burst_images', { zone, images: imageQueue });
+            HandooApp.ui.showToast("Ráfaga subida", "success");
+        }});
+        return { ok: true };
+    }, "INICIAR RÁFAGA");
+  },
+
+  calculateNetMargin: async function(productId, channel) {
+    const products = await HandooCache.get();
+    const product = products.find(p => p.id === productId);
+    if (!product) return 0;
+    
+    let price = product['price_' + channel] || product.price;
+    let margin = price;
+    
+    if (channel === 'delivery') {
+        margin -= (price * 0.3);
+        const packagingCost = 0.5; 
+        margin -= packagingCost;
+    }
+    return margin;
+  },
+
+  openShiftModal: async function(type, specificShiftId = null) {
+    const btnEvent = window.event ? window.event.target.closest('button') : null;
+    const originalText = btnEvent ? btnEvent.innerHTML : '';
+    if(btnEvent) { btnEvent.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>...'; btnEvent.disabled = true; }
+    
+    const productos = window.HandooCatalogGlobal || [];
+    
+    // CONTROL DE CONCURRENCIA PARA CIERRE GENÉRICO
+    if (type === 'END' && !specificShiftId) {
+        const allRes = await new Promise(resolve => { google.script.run.withSuccessHandler(resolve).withFailureHandler(()=>resolve(null)).TITANIUM_get_all_shifts(); });
+        const openShifts = (allRes && allRes.ok ? allRes.data : []).filter(s => s.status === 'IN_PROGRESS');
+        if(btnEvent) { btnEvent.innerHTML = originalText; btnEvent.disabled = false; }
+        
+        if (openShifts.length > 1) {
+            HandooApp.ui.showToast("Múltiples turnos abiertos. Selecciona desde Auditoría.", "warning");
+            this.setTab('HISTORY');
+            return;
+        } else if (openShifts.length === 1) {
+            specificShiftId = openShifts[0].id;
+        } else {
+            HandooApp.ui.showToast("No hay turnos abiertos hoy.", "warning");
+            return;
+        }
+    }
+    if(btnEvent) { btnEvent.innerHTML = originalText; btnEvent.disabled = false; }
+
+    const isStart = type === 'START';
+    const isAdd = type === 'ADD_STOCK';
+    let bodyHtml = '';
+    
+    if (isStart || isAdd) {
+        // SEGURO ANTIFALLOS TITANIUM: Si la memoria caché está vacía, forzamos la descarga síncrona
+        if (!this.cachedShifts || this.cachedShifts.length === 0) {
+            const res = await new Promise(r => google.script.run.withSuccessHandler(r).withFailureHandler(()=>r(null)).TITANIUM_get_shift_types());
+            if (res && res.ok && res.data) {
+                this.cachedShifts = res.data;
+            }
+        }
+        
+        // 🚀 CERO LATENCIA (o Latencia Forzada si falló el pre-fetch)
+        let globalShifts = this.cachedShifts || [
+            {name: '☀️ TURNO DE MAÑANA', start: '08:00', end: '16:00'}, 
+            {name: '🌤️ TURNO DE TARDE', start: '16:00', end: '23:59'}
+        ];
+        
+        // Blindaje para strings viejos si los hubiera en caché
+        globalShifts = globalShifts.map(s => typeof s === 'string' ? {name: s, start: '', end: ''} : s);
+
+        let optionsHtml = globalShifts.map(st => {
+            let timeLabel = (st.start && st.end) ? ` (${st.start} a ${st.end})` : '';
+            return `<option value="${st.name}">${st.name}${timeLabel}</option>`;
+        }).join('');
+
+        let typeSelector = isStart ? `
+            <div class="mb-3">
+               <label class="h-label-refined text-muted">TIPO DE TURNO Y FRANJA</label>
+               <select id="s-shift-type" class="form-select fw-bold h-form-control border-2 shadow-sm text-uppercase">
+                  ${optionsHtml}
+               </select>
+            </div>` : '';
+        
+        bodyHtml = `
+            <div class="alert alert-info small border-0 rounded-4 mb-3">
+               <i class="bi bi-info-circle me-1"></i> ${isAdd ? 'Añade más productos a este turno que ya está en curso.' : 'Registra los artículos iniciales y el tipo de turno.'}
+            </div>
+            ${typeSelector}
+            <div id="s-product-list" class="mt-2">
+               <div class="row g-2 mb-2 text-center">
+                 <div class="col-5"><label style="text-align: center; font-size: 10px; font-weight: 800; display: block;">PRODUCTO</label></div>
+                 <div class="col-3"><label style="text-align: center; font-size: 10px; font-weight: 800; display: block;">CANT.</label></div>
+                 <div class="col-3"><label style="text-align: center; font-size: 10px; font-weight: 800; display: block;">UNIDAD</label></div>
+                 <div class="col-1"></div>
+               </div>
+            </div>
+            <button type="button" class="btn btn-outline-dark btn-sm w-100 mt-3 fw-bold border-dashed" onclick="InventoryOperationsView.addShiftRow()">+ AÑADIR PRODUCTO</button>`;
+        
+        let title = isStart ? "Inicio de Turno" : "Agregar Stock Adicional";
+        let btnConfirmText = isStart ? "COMENZAR TURNO" : "SUMAR AL TURNO";
+
+        this.openModal(title, bodyHtml, async () => {
+            const items = [];
+            document.querySelectorAll('#s-product-list .shift-row').forEach(row => {
+                const pId = row.querySelector('.p-name').value;
+                const pQty = parseFloat(row.querySelector('.p-qty').value);
+                if (pId && pQty > 0) {
+                   const prod = productos.find(p => String(p.id) === String(pId) || String(p.nombre) === String(pId) || String(p.name) === String(pId));
+                   items.push({ id: pId, nombre: prod ? (prod.nombre || prod.name || pId) : pId, qty: pQty, unit: row.querySelector('.p-unit').value });
+                }
+            });
+            if(items.length === 0) { HandooApp.ui.showToast("Añade al menos un producto.", "warning"); return {ok: false}; }
+            
+            const shiftType = isStart ? document.getElementById('s-shift-type').value : null;
+            return await new Promise(resolve => {
+                google.script.run.withSuccessHandler(res => {
+                    if(res && res.ok) HandooApp.ui.showToast(res.msg, "success");
+                    resolve(res);
+                }).withFailureHandler(err => resolve({ok: false, msg: err.message}))
+                .TITANIUM_save_shift({ type: type, items: items, shift_type: shiftType, shift_id: specificShiftId });
+            });
+        }, btnConfirmText);
+        setTimeout(() => this.addShiftRow(), 100);
+        
+    } else {
+        // END SHIFT UI
+        const resShift = await new Promise(resolve => {
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(()=>resolve(null)).TITANIUM_get_current_shift_items(specificShiftId);
+        });
+        const shiftItems = (resShift && resShift.ok) ? resShift.data : [];
+        
+        const rowsHtml = shiftItems.map(item => `
+            <tr>
+               <td class="fw-bold small text-uppercase">${item.nombre}</td>
+               <td class="text-center"><span class="badge bg-light text-dark border">${item.cantidad_inicial} ${item.unidad}</span></td>
+               <td><input type="number" class="form-control form-control-sm close-qty text-center" data-id="${item.id}" data-start="${item.cantidad_inicial}" placeholder="0" step="any"></td>
+            </tr>`).join('');
+
+        bodyHtml = `
+          <table class="table table-sm align-middle">
+            <thead><tr class="text-center">
+              <th><label style="text-align: center; font-size: 10px; font-weight: 800; display: block;">PRODUCTO</label></th>
+              <th><label style="text-align: center; font-size: 10px; font-weight: 800; display: block;">INICIADO</label></th>
+              <th style="width:130px"><label style="text-align: center; font-size: 10px; font-weight: 800; display: block;">QUEDA</label></th>
+            </tr></thead>
+            <tbody id="s-close-list">${rowsHtml}</tbody>
+          </table>`;
+
+        this.openModal("Cierre de Turno", bodyHtml, async () => {
+          const items = [];
+          document.querySelectorAll('.close-qty').forEach(input => {
+            const qty_end = parseFloat(input.value) || 0;
+            items.push({ id: input.dataset.id, qty_end: qty_end, diff: parseFloat(input.dataset.start) - qty_end });
+          });
+          return await new Promise(resolve => {
+              google.script.run.withSuccessHandler(res => {
+                  if(res && res.ok) {
+                      HandooApp.ui.showToast(res.msg, "success");
+                      // --- INYECCIÓN DE ALERTAS DE CALENDARIO ---
+                      if (HandooApp.settings?.enable_calendar_staff) {
+                          google.script.run.createHandooAlert(
+                              HandooApp.user.email,
+                              "⚠️ REPORTE DE AUTOCONSUMO",
+                              "Se ha cerrado un turno con descuadres potenciales. Por favor, revisa si hay tickets de personal sin picar.",
+                              new Date()
+                          );
+                      }
+                  }
+                  resolve(res);
+              }).withFailureHandler(err => resolve({ok: false, msg: err.message}))
+              .TITANIUM_save_shift({ type: 'END', items, shift_id: specificShiftId });
+          });
+        }, "FINALIZAR SERVICIO");
+    }
+  },
+
+  addShiftRow: function(nombre = '', cant = '', unidad = 'uds') {
+    const productos = window.HandooCatalogGlobal || [];
+    const row = document.createElement('div');
+    row.className = 'row g-2 mb-2 animate-slide shift-row align-items-center text-center';
+    row.innerHTML = `
+      <div class="col-5">
+        <select class="form-select form-select-sm p-name" onchange="InventoryOperationsView.updateUnit(this)">
+          <option value="" selected disabled>Seleccionar producto...</option>
+          ${productos.map(p => {
+            const label = (p.nombre || p.name || 'S/N').toUpperCase();
+            const pUnidad = p.unidad || p.unit || 'uds';
+            return `<option value="${p.name}" data-unit="${pUnidad}" ${p.name === nombre ? 'selected' : ''}>${label}</option>`;
+          }).join('')}
+        </select>
+      </div>
+      <div class="col-3"><input type="number" class="form-control form-control-sm p-qty text-center" placeholder="0" value="${cant}"></div>
+      <div class="col-3"><select class="form-select form-select-sm p-unit text-center">
+        <option value="uds" ${unidad==='uds'?'selected':''}>uds</option><option value="g" ${unidad==='g'?'selected':''}>g</option>
+        <option value="kg" ${unidad==='kg'?'selected':''}>kg</option><option value="ml" ${unidad==='ml'?'selected':''}>ml</option>
+      </select></div>
+      <div class="col-1">
+        <button class="btn btn-link text-danger p-0" onclick="this.closest('.shift-row').remove()">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>`;
+    document.getElementById('s-product-list').appendChild(row);
+  },
+
+  deleteShift: async function(shiftId) {
+      if(await HandooApp.ui.confirm("¿ELIMINAR ESTE TURNO?", "Esta acción borrará el registro permanentemente de la base de datos, sin importar su estado.")) {
+          HandooApp.ui.setLoading(window.event ? window.event.target.closest('button') : null, true);
+          HandooApp.ui.showToast("Purgando registro...", "info");
+          
+          google.script.run.withSuccessHandler(res => {
+              if (res && res.ok) {
+                  HandooApp.ui.showToast(res.msg, "success");
+                  this.renderTabContent();
+              } else {
+                  HandooApp.ui.showToast(res ? res.msg : "Error al borrar", "error");
+                  this.renderTabContent(); // Recargamos para quitar el estado de carga visual
+              }
+          }).withFailureHandler(err => {
+              HandooApp.ui.showToast(err.message, "error");
+              this.renderTabContent();
+          }).TITANIUM_delete_shift_force(shiftId);
+      }
+  },
+
+  updateUnit: function(selectEl) {
+      const unit = selectEl.options[selectEl.selectedIndex].dataset.unit;
+      const row = selectEl.closest('.shift-row');
+      const unitSelect = row.querySelector('.p-unit');
+      if (unit) unitSelect.value = unit;
+  },
+
+  openWasteQuarantine: async function(discrepancies) {
+    const bodyHtml = `
+      <div class="alert alert-warning small border-0 rounded-4">Se han detectado descuadres. Debes justificarlos.</div>
+      <table class="table table-sm align-middle">
+        <thead><tr class="h-label-refined"><th>Producto</th><th>Faltante</th><th>Motivo</th></tr></thead>
+        <tbody>${discrepancies.map((d, i) => `<tr><td class="fw-bold">${d.nombre}</td><td>${d.diff} ${d.unit}</td><td><select id="q-reason-${i}" class="form-select form-select-sm q-reason" required><option value="">Seleccionar...</option><option value="ROTURA">Rotura</option><option value="CADUCIDAD">Caducidad</option><option value="PESAJE">Error de pesaje</option></select></td></tr>`).join('')}</tbody>
+      </table>
+      <textarea id="q-notes" class="form-control mt-2 small" placeholder="Notas..."></textarea>`;
+    this.openModal("Embudo de Cuarentena", bodyHtml, async () => {
+      const justifications = [];
+      for(let i=0; i<discrepancies.length; i++) {
+          const reason = document.getElementById('q-reason-' + i).value;
+          if (!reason) { HandooApp.ui.showToast("Justificación obligatoria", "error"); return { ok: false }; }
+          justifications.push({ id: discrepancies[i].id, qty: discrepancies[i].diff, reason });
+      }
+      const res = await HandooApp.api('inventory.finalize_with_quarantine', { justifications, notes: document.getElementById('q-notes').value, shift_id: this.currentShiftId });
+      if (res.ok && HandooApp.settings?.enable_calendar_staff) {
+          google.script.run.createHandooAlert(
+              HandooApp.user.email,
+              "⚠️ AUDITORÍA DE DESCUADRES",
+              "Se han registrado mermas extraordinarias en el cierre. Justificaciones enviadas al sistema central.",
+              new Date()
+          );
+      }
+      return res;
+    }, "FINALIZAR Y AJUSTAR GASTO");
+    
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    confirmBtn.disabled = true;
+    document.querySelectorAll('.q-reason').forEach(select => {
+        select.onchange = () => {
+            const allSelected = Array.from(document.querySelectorAll('.q-reason')).every(s => s.value !== "");
+            confirmBtn.disabled = !allSelected;
+        };
+    });
+  },
+
+  saveShift: async function(type) {
+    if (type === 'END') {
+      const res = await HandooApp.api('inventory.check_discrepancies', { items: this.shiftItems });
+      if (res.ok && res.data.discrepancies.length > 0) {
+        document.querySelector('.h-modal-overlay').remove();
+        this.openWasteQuarantine(res.data.discrepancies);
+        return { ok: false };
+      }
+    }
+    return await HandooApp.api('inventory.save_shift', { type, items: this.shiftItems });
+  },
+
+  getSmartForecast: async function() {
+    if (!this.checkLicense('INVENTORY_PRO')) return;
+    const res = await HandooApp.api('inventory.get_forecast_logic');
+    if (res.ok) {
+      document.getElementById('shift-summary-table').innerHTML = `
+        <div class="block-dark mb-4">
+          <div class="d-flex justify-content-between"><h6 class="h-label text-white-50">Predicción Santander</h6><span class="badge bg-brand text-dark">${res.data.clima.temp}°C</span></div>
+          <div class="mt-2 small">${res.data.racing_match ? '<div class="text-brand fw-bold mb-1">⚽ Hoy juega el Racing</div>' : ''}
+            <ul class="mb-0">${res.data.suggestions.map(s => `<li>Prep: ${s.qty} ${s.name}</li>`).join('')}</ul>
+          </div>
+        </div>`;
+    }
+  },
+
+  loadData: async function() {
+    // 0. PRE-FETCH SILENCIOSO DE FRANJAS HORARIAS (0ms Latencia posterior)
+    google.script.run.withSuccessHandler(res => {
+        if(res && res.ok && res.data) this.cachedShifts = res.data;
+    }).TITANIUM_get_shift_types();
+    
+    // 1. CARGA OBLIGATORIA DEL CATÁLOGO
+    const resCat = await HandooApp.api('inventory.get_catalog');
+    if (resCat.ok && resCat.data) {
+        this.catalogProducts = [
+            ...(resCat.data.products || []),
+            ...(resCat.data.raw || []),
+            ...(resCat.data.final_products || [])
+        ];
+        window.HandooCatalogGlobal = this.catalogProducts;
+        if (typeof HandooCache !== 'undefined') HandooCache.save(this.catalogProducts);
+    } else {
+        this.catalogProducts = window.HandooCatalogGlobal || [];
+    }
+
+    // 2. BUSCAR TURNO ACTIVO PARA EL MONITOR
+    const allRes = await new Promise(resolve => { 
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(()=>resolve(null)).TITANIUM_get_all_shifts(); 
+    });
+    const openShifts = (allRes && allRes.ok ? allRes.data : []).filter(s => s.status === 'IN_PROGRESS');
+    if (openShifts.length > 0) {
+        const s = openShifts[0];
+        // Mapeamos los items iniciados para el monitor
+        this.currentShift = {
+            id: s.id,
+            name: s.shift_type || 'Turno Activo',
+            items: (s.start_items || []).map(i => ({
+                id: i.id,
+                nombre: i.nombre,
+                qty: i.qty,
+                unit: (i.unit && i.unit !== 'undefined') ? i.unit : 'uds'
+            }))
+        };
+    } else {
+        this.currentShift = null;
+    }
+
+    // 3. FLUJO DE DATOS ESPECÍFICO POR PESTAÑA (Enrutamiento estricto)
+    if (this.activeTab === 'OPERATIONS') {
+        const res = await HandooApp.api('inventory.get_shift_data');
+        if(res.ok) this.renderTable(res.data);
+        this.getSmartForecast();
+    } else if (this.activeTab === 'MAP') {
+        if (this.zones.length === 0) {
+            const res = await HandooApp.api('inventory.get_map');
+            if(res.ok) this.zones = res.data;
+        }
+        this.renderMapConfig(document.getElementById('op-content-area'));
+    }
+    // Las pestañas HISTORY y CONFIG se autogestionan en renderTabContent(), no necesitan recarga secundaria aquí.
+  },
+
+  renderTable: function(data) {
+    document.getElementById('reconcile-table-body').innerHTML = data.length ? data.map(item => `
+        <tr><td>${item.nombre}</td><td>${item.real}</td><td>${item.teorico}</td><td class="${item.desfase > 0 ? 'text-danger fw-bold' : ''}">${item.desfase} €</td></tr>
+    `).join('') : '<tr><td colspan="4" class="text-center p-4">Sin datos.</td></tr>';
+  },
+
+  openModal: async function(title, bodyHtml, onConfirm, confirmText = "CONFIRMAR") {
+  const overlay = document.createElement('div');
+  overlay.className = 'h-modal-overlay animate-slide';
+  overlay.innerHTML = `
+    <div class="h-modal shadow-lg" style="width: 600px">
+       <div class="h-modal-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <h5 class="m-0 fw-black text-uppercase small text-truncate">${title}</h5>
+          <button class="btn btn-link text-white p-0" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x-lg"></i></button>
+       </div>
+       <div class="h-modal-body bg-light">${bodyHtml}</div>
+       <div class="h-modal-footer gap-2">
+          <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+          <button class="btn btn-dark fw-black flex-grow-1" id="modal-confirm-btn">${confirmText}</button>
+       </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const btn = overlay.querySelector('#modal-confirm-btn');
+  btn.onclick = async () => {
+      const originalText = btn.innerText;
+      btn.innerText = "PROCESANDO...";
+      btn.disabled = true;
+      try {
+          const res = await onConfirm();
+          if(res && res.ok) { 
+              overlay.remove(); 
+              this.loadData(); 
+          } else if (res && !res.ok) {
+              HandooApp.ui.showToast(res.msg || "Error en la operación", "error");
+          }
+      } catch (e) {
+          HandooApp.ui.showToast(e.message, "error");
+      } finally {
+          btn.innerText = originalText;
+          btn.disabled = false;
+      }
+  };
+},
+
+  renderMapConfig: async function(container) {
+    if (!container) {
+        console.error("renderMapConfig called with null container");
+        return;
+    }
+    const products = await HandooCache.get();
+    container.innerHTML = `
+      ${this.renderCatalogList(products)}
+      <div class="row g-4">
+        <div class="col-md-5">
+          <div class="inv-op-card bg-white p-4 shadow-sm border-0 h-100">
+             <h6 class="h-label mb-4">Estructura de Almacenamiento</h6>
+             <div id="zones-container" class="d-flex flex-column gap-3"></div>
+             <button class="btn btn-outline-dark w-100 mt-4 fw-black border-dashed py-3" onclick="InventoryOperationsView.addZone()">
+               <i class="bi bi-plus-circle me-2"></i> AÑADIR NUEVA ZONA / NEVERA
+             </button>
+             <button class="btn btn-brand-titanium w-100 mt-3 py-3 fw-black shadow-sm" onclick="InventoryOperationsView.saveMapConfig()">
+               <i class="bi bi-cloud-check-fill me-2"></i> GUARDAR MAPA GLOBAL
+             </button>
+          </div>
+        </div>
+        <div class="col-md-7">
+           <div id="visual-map-preview" class="row g-3"></div>
+        </div>
+      </div>`;
+    if(this.zones.length) this.zones.forEach(z => this.addZone(z.name, z.shelves));
+    this.updateVisualMap();
+  },
+
+  updateVisualMap: function() {
+    const preview = document.getElementById('visual-map-preview');
+    if(!preview) return;
+    const zones = [];
+    document.querySelectorAll('.animate-slide.border').forEach(zoneEl => {
+        const name = zoneEl.querySelector('.zone-title').value;
+        const isLinked = zoneEl.dataset.isLinked === 'true';
+        const assetStatus = zoneEl.dataset.assetStatus;
+        const shelves = [];
+        zoneEl.querySelectorAll('.shelf-block').forEach(sEl => {
+            const items = [];
+            sEl.querySelectorAll('.multi-items-container > div').forEach(iEl => {
+                const idName = iEl.querySelector('.s-id').value;
+                const idObj = this.identifiers.find(id => id.name === idName);
+                items.push({ 
+                    icon: idObj ? idObj.icon : '❓', 
+                    gram: iEl.querySelector('.s-gram').value || '0'
+                });
+            });
+            shelves.push({ name: sEl.querySelector('.s-name').value, items });
+        });
+        zones.push({ name, shelves, isLinked, assetStatus });
+    });
+
+    preview.innerHTML = zones.map(z => `
+      <div class="col-md-6 mb-4">
+        <div class="block-dark p-3 shadow-lg rounded-4 border-bottom border-brand border-3 ${z.assetStatus === 'BAJA' || z.assetStatus === 'VENDIDO' ? 'opacity-50' : ''}">
+          <div class="fw-black text-uppercase small text-brand mb-3 border-bottom border-secondary pb-2 d-flex justify-content-between">
+             <span><i class="bi bi-door-closed-fill"></i> ${z.name || 'ZONA'} ${z.isLinked ? '<i class="bi bi-link ms-2"></i>' : ''}</span>
+             ${z.assetStatus === 'BAJA' || z.assetStatus === 'VENDIDO' ? '<span class="badge bg-danger">NO DISPONIBLE</span>' : ''}
+          </div>
+          ${z.shelves.map(s => `
+            <div class="mb-2 p-2 rounded bg-secondary bg-opacity-10 border-start border-2 border-white-50">
+              <div class="small fw-bold text-white-50 mb-1">${s.name || 'Balda'}</div>
+              <div class="d-flex flex-wrap gap-2">
+                ${s.items.map(i => `<span class="badge bg-dark border border-secondary">${i.icon} ${i.gram}g</span>`).join('')}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  },
+
+  addZone: function(name = '', shelves = [], isLinked = false, assetStatus = 'OPERATIVO') {
+    const container = document.getElementById('zones-container');
+    const el = document.createElement('div');
+    el.className = 'p-3 rounded-4 border bg-white shadow-sm animate-slide';
+    el.dataset.isLinked = isLinked;
+    el.dataset.assetStatus = assetStatus;
+    el.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <input type="text" class="form-control fw-black border-0 p-0 text-uppercase zone-title" placeholder="Nombre (Nevera 1)" value="${name}" ${isLinked ? 'readonly' : ''} oninput="InventoryOperationsView.updateVisualMap()">
+        ${!isLinked ? '<button class="btn btn-link text-danger p-0" onclick="this.closest(\'.animate-slide\').remove(); InventoryOperationsView.updateVisualMap()"><i class="bi bi-trash3-fill"></i></button>' : ''}
+      </div>
+      <div class="shelves-list d-flex flex-column gap-2"></div>
+      <button class="btn btn-link btn-sm p-0 text-brand fw-bold mt-2" onclick="InventoryOperationsView.addShelf(this)">+ Añadir Balda</button>`;
+    container.appendChild(el);
+    if(shelves.length) shelves.forEach(s => this.addShelf(el.querySelector('.btn-link'), s));
+    this.updateVisualMap();
+  },
+
+  addShelf: async function(btn, data = null) {
+    console.log("addShelf called, this:", this);
+    try {
+        const products = await HandooCache.get();
+        console.log("Products fetched", products);
+        const el = document.createElement('div');
+        el.className = 'p-3 bg-light rounded-4 shelf-block border-start border-4 border-brand';
+        el.innerHTML = `
+          <div class="d-flex justify-content-between mb-2">
+            <input type="text" class="form-control form-control-sm fw-black border-0 bg-transparent s-name" placeholder="Nombre Balda" value="${data ? data.name : ''}" oninput="InventoryOperationsView.updateVisualMap()">
+            <button class="btn btn-link text-danger p-0" onclick="this.closest('.shelf-block').remove(); InventoryOperationsView.updateVisualMap()"><i class="bi bi-trash3"></i></button>
+          </div>
+          <div class="multi-items-container"></div>
+          <button class="btn btn-link btn-sm p-0 text-dark opacity-50 fw-bold" onclick="InventoryOperationsView.addItemToShelf(this.previousElementSibling)">+ Añadir Producto/Identificador</button>`;
+        
+        console.log("btn.parentElement:", btn.parentElement);
+        const shelvesList = btn.parentElement.querySelector('.shelves-list');
+        if (!shelvesList) {
+            console.error("Could not find .shelves-list in btn.parentElement");
+            return;
+        }
+        shelvesList.appendChild(el);
+        const itemsCont = el.querySelector('.multi-items-container');
+        if(data && data.items) data.items.forEach(it => this.addItemToShelf(itemsCont, it));
+        else this.addItemToShelf(itemsCont, null);
+        this.updateVisualMap();
+        console.log("addShelf finished");
+    } catch (e) {
+        console.error("Error in addShelf:", e);
+    }
+  },
+
+  addItemToShelf: function(container, itemData = null) {
+    console.log("addItemToShelf called, this:", this);
+    const row = document.createElement('div');
+    row.className = 'bg-white p-2 rounded-3 shadow-sm mb-2 shelf-row-item border';
+    
+    console.log("this.catalogProducts:", this.catalogProducts);
+    const productOptions = (this.catalogProducts || []).map(p => {
+      return `<option value="${p.id}" ${itemData && itemData.prodId === p.id ? 'selected' : ''}>${(p.nombre || p.name || 'S/N').toUpperCase()}</option>`;
+    }).join('');
+
+    console.log("this.identifiers:", this.identifiers);
+    row.innerHTML = `
+      <div class="mb-2">
+         <select class="form-select form-select-sm border-0 bg-light shadow-none fw-bold s-prod" style="border-radius: 8px;" onchange="InventoryOperationsView.updateVisualMap()">
+            <option value="" selected disabled>Seleccionar producto...</option>
+            ${productOptions}
+         </select>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+         <select class="form-select form-select-sm border-0 bg-light shadow-none s-id" style="border-radius: 8px; width: 45%" onchange="InventoryOperationsView.updateVisualMap()">
+            ${this.identifiers.map(id => `<option value="${id.name}" ${itemData && itemData.id === id.name ? 'selected' : ''}>${id.icon} ${id.name}</option>`).join('')}
+         </select>
+         <input type="number" class="form-control form-control-sm border-0 bg-light shadow-none s-gram text-center" style="border-radius: 8px; width: 40%" placeholder="Gramos" value="${itemData ? itemData.gram : ''}" oninput="InventoryOperationsView.updateVisualMap()">
+         <button type="button" class="btn btn-link text-danger p-0 m-0" style="width: 15%" onclick="this.closest('.shelf-row-item').remove(); InventoryOperationsView.updateVisualMap()">
+            <i class="bi bi-trash3-fill fs-6"></i>
+         </button>
+      </div>`;
+    container.appendChild(row);
+    this.updateVisualMap();
+  },
+  
+  // Métodos de gestión de Identificadores (necesarios para la config)
+  addIdent: function() {
+    this.identifiers.push({ name: 'Nuevo', icon: '🏷️' });
+    this.render();
+  },
+  updateIdent: function(index, field, value) {
+    this.identifiers[index][field] = value;
+  },
+  removeIdent: function(index) {
+    this.identifiers.splice(index, 1);
+    this.render();
+  },
+  saveConfig: async function() {
+    const res = await HandooApp.api('inventory.save_config', { identifiers: this.identifiers });
+    if(res.ok) HandooApp.ui.showToast("Configuración guardada.", "success");
+  }
+};
+
+// --- GESTOR CENTRAL DE MERMAS (OMNI-WASTE) Y LIMPIADOR DE SOMBRAS ---
+if (!window.HandooApp) window.HandooApp = {};
+
+// --- GESTOR CENTRAL DE MERMAS (OMNI-WASTE) CON CONTROL DE PERSONAL ---
+if (!window.HandooApp) window.HandooApp = {};
+
+HandooApp.WasteManager = {
+    open: function() {
+        if (document.activeElement) document.activeElement.blur();
+        const modals = document.querySelectorAll('#modal-omni-waste');
+        if (modals.length === 0) return HandooApp.ui.showToast("No se encuentra el modal", "error");
+        
+        const m = modals[modals.length - 1];
+        modals.forEach(mod => { if (mod !== m) mod.remove(); });
+        if (m.parentNode !== document.body) document.body.appendChild(m);
+
+        const searchInput = document.getElementById('omni-waste-product-search');
+        const qtyInput = document.getElementById('omni-waste-qty');
+        const resultsDiv = document.getElementById('omni-waste-results');
+        
+        if (searchInput) searchInput.value = '';
+        if (qtyInput) qtyInput.value = '';
+        if (resultsDiv) resultsDiv.style.display = 'none';
+        
+        // Resetear la vista por si se quedó en "STAFF" la última vez
+        document.getElementById('omni-waste-type').value = 'INVENTARIO';
+        this.updateUI();
+        
+        const modalInstance = bootstrap.Modal.getInstance(m) || new bootstrap.Modal(m, { backdrop: 'static', keyboard: true });
+        modalInstance.show();
+    },
+
+    filterProducts: function() {
+        const input = document.getElementById('omni-waste-product-search').value.toLowerCase();
+        const resultsDiv = document.getElementById('omni-waste-results');
+        const catalog = window.HandooCatalogGlobal || [];
+
+        if (input.length === 0) { resultsDiv.style.display = 'none'; return; }
+
+        const filtered = catalog.filter(p => { const name = (p.nombre || p.name || '').toLowerCase(); return name.includes(input); });
+
+        if (filtered.length === 0) {
+            resultsDiv.innerHTML = '<div class="list-group-item border-0 text-muted small fw-bold">No se encontraron productos</div>';
+        } else {
+            resultsDiv.innerHTML = filtered.slice(0, 20).map(p => {
+                const name = (p.nombre || p.name || 'S/N').toUpperCase();
+                const safeName = name.replace(/'/g, "\\'");
+                return `<button type="button" class="list-group-item list-group-item-action border-0 border-bottom fw-bold" style="font-size: 11px;" onclick="HandooApp.WasteManager.selectProduct('${safeName}')">${name}</button>`;
+            }).join('');
+        }
+        resultsDiv.style.display = 'block';
+    },
+
+    selectProduct: function(name) {
+        document.getElementById('omni-waste-product-search').value = name;
+        document.getElementById('omni-waste-results').style.display = 'none';
+    },
+
+    updateUI: function() {
+        const type = document.getElementById('omni-waste-type').value;
+        const reasonSelect = document.getElementById('omni-waste-reason');
+        
+        if (!reasonSelect) return;
+        
+        if (type === 'PLATO') {
+            reasonSelect.innerHTML = '<option value="SOBRA_CLIENTE">Sobra en plato</option><option value="QUEJA">Queja del cliente</option>';
+        } else if (type === 'ARRASTRE') {
+            reasonSelect.innerHTML = '<option value="CADUCADO">Caducidad / Fin de vida</option><option value="MAL_ESTADO">Mal estado general</option>';
+        } else {
+            reasonSelect.innerHTML = '<option value="ERROR_COCINA">Error de cocina / Quemado</option><option value="MAL_ESTADO">Mal estado / Contaminado</option><option value="CADUCADO">Caducidad</option>';
+        }
+    },
+
+    save: async function() {
+        const btn = document.querySelector('#modal-omni-waste .btn-danger');
+        const type = document.getElementById('omni-waste-type').value;
+        const qty = document.getElementById('omni-waste-qty').value;
+        const reason = document.getElementById('omni-waste-reason').value;
+        const rawProductName = document.getElementById('omni-waste-product-search').value;
+        
+        if (!qty || qty <= 0 || !rawProductName) {
+            return HandooApp.ui.showToast("Por favor, indica el producto y la cantidad", "warning");
+        }
+
+        const catalog = window.HandooCatalogGlobal || [];
+        const prod = catalog.find(p => (p.nombre || p.name || '').toUpperCase() === rawProductName.toUpperCase());
+        const productId = prod ? prod.id : rawProductName;
+
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i> PROCESANDO...'; }
+
+        // Aquí se enviaría a tu API real
+        console.log("Enviando a API:", { producto_id: productId, tipo: type, cantidad: qty, motivo: reason });
+
+        HandooApp.ui.showToast("Merma registrada correctamente.", "success");
+        
+        const m = document.getElementById('modal-omni-waste');
+        if (m) { const inst = bootstrap.Modal.getInstance(m); if(inst) inst.hide(); }
+        
+        this.cleanShadows();
+
+        if (btn) { btn.disabled = false; btn.innerHTML = 'REGISTRAR PÉRDIDA'; }
+    },
+
+    cleanShadows: function() {
+        setTimeout(() => {
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        }, 350); 
+    }
+};
+
+// Truco extra: Ocultar el desplegable si el usuario hace clic fuera de él
+document.addEventListener('click', function(event) {
+    const searchInput = document.getElementById('omni-waste-product-search');
+    const resultsDiv = document.getElementById('omni-waste-results');
+    if (searchInput && resultsDiv && !searchInput.contains(event.target) && !resultsDiv.contains(event.target)) {
+        resultsDiv.style.display = 'none';
+    }
+});
+</script>

@@ -1,0 +1,183 @@
+<style>
+  .ledger-shell { background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 800px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .table-ledger { font-size: 11px !important; }
+  .table-ledger th { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #f1f5f9; }
+  .table-ledger td { padding: 12px 15px !important; vertical-align: middle; border-bottom: 1px solid #f8fafc; }
+  
+  .balance-badge { padding: 8px 15px; border-radius: 10px; font-weight: 900; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .balance-positive { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .balance-negative { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+  .movement-origin { font-size: 9px; font-weight: 900; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; }
+  .origin-manual { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+  .origin-invoice { background: #fffdf5; color: #92400e; border-color: #fde68a; }
+  .origin-expense { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+</style>
+
+<script>
+window.MovementsView = {
+  settings: null,
+  filters: { cuenta: '', start: '', end: '' },
+  ledgerData: { movements: [], initial_balance: 0 },
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">AUDITORÍA DE CAJA Y BANCO</h6><h2 class="fw-black m-0 text-uppercase">Movimientos Bancarios</h2></div>
+         <div class="d-flex gap-2">
+            <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="MovementsView.render()"><i class="bi bi-arrow-clockwise me-2"></i> REFRESCAR</button>
+         </div>
+      </div>
+      <div class="p-5 animate-slide">
+         <div id="movements-filters-area"></div>
+         <div class="ledger-shell mt-4" id="ledger-content">
+            <div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="mt-3 small fw-bold text-muted">Cargando Mayor...</p></div>
+         </div>
+      </div>`;
+    await this.load();
+  },
+
+  load: async function() {
+    const resSet = await HandooApp.api('admin.get_settings');
+    if(resSet.ok) {
+       this.settings = resSet.data;
+       // Inicializar con la primera cuenta disponible (Caja por defecto)
+       if(!this.filters.cuenta) this.filters.cuenta = '570000001';
+       if(!this.filters.start) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - 1);
+          this.filters.start = d.toISOString().split('T')[0];
+          this.filters.end = new Date().toISOString().split('T')[0];
+       }
+       this.renderFilters();
+       await this.fetchLedger();
+    }
+  },
+
+  renderFilters: function() {
+    const banks = (this.settings?.masters?.bank_accounts || []);
+    const creditLines = (this.settings?.masters?.bank_accounts || []).filter(b => b.is_credit_line === true);
+    
+    document.getElementById('movements-filters-area').innerHTML = `
+      <div class="unified-block block-dark mt-0">
+         <div class="row align-items-center mb-4">
+            <div class="col-md-1 text-center"><i class="bi bi-funnel fs-2 text-brand"></i></div>
+            <div class="col-md-11 ps-4"><h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Filtros de Búsqueda</h6><p class="small text-muted m-0">Seleccione la fuente de fondos y el periodo de análisis.</p></div>
+         </div>
+         <div class="row g-3">
+            <div class="col-md-4">
+               <label class="h-label-refined text-white-50">CUENTA ORIGEN / DESTINO</label>
+               <select id="f-ledger-acc" class="form-select h-form-control fw-black" onchange="MovementsView.updateFilters()">
+                  <option value="570000001" ${this.filters.cuenta==='570000001'?'selected':''}>📦 CAJA CENTRAL (570.000.001)</option>
+                  <optgroup label="CUENTAS BANCARIAS">
+                     ${banks.filter(b => !b.is_credit_line).map(b => `<option value="${b.ref_contable}" ${this.filters.cuenta===b.ref_contable?'selected':''}>🏦 ${b.nombre} (${b.iban.slice(-4)})</option>`).join('')}
+                  </optgroup>
+                  <optgroup label="LÍNEAS DE CRÉDITO / CIRCULANTE">
+                     ${banks.filter(b => b.is_credit_line).map(b => `<option value="${b.ref_contable}" ${this.filters.cuenta===b.ref_contable?'selected':''}>💳 ${b.nombre} (Póliza)</option>`).join('')}
+                  </optgroup>
+               </select>
+            </div>
+            <div class="col-md-3">
+               <label class="h-label-refined text-white-50">FECHA INICIO</label>
+               <input type="date" id="f-ledger-start" class="form-control h-form-control fw-black" value="${this.filters.start}" onchange="MovementsView.updateFilters()">
+            </div>
+            <div class="col-md-3">
+               <label class="h-label-refined text-white-50">FECHA FIN</label>
+               <input type="date" id="f-ledger-end" class="form-control h-form-control fw-black" value="${this.filters.end}" onchange="MovementsView.updateFilters()">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+               <button class="btn btn-warning w-100 py-2 fw-black text-dark shadow" onclick="MovementsView.fetchLedger()">EJECUTAR QUERY</button>
+            </div>
+         </div>
+      </div>`;
+  },
+
+  updateFilters: function() {
+    this.filters.cuenta = document.getElementById('f-ledger-acc').value;
+    this.filters.start = document.getElementById('f-ledger-start').value;
+    this.filters.end = document.getElementById('f-ledger-end').value;
+  },
+
+  fetchLedger: async function() {
+    const content = document.getElementById('ledger-content');
+    content.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="mt-3 small fw-bold text-muted">Recuperando movimientos...</p></div>`;
+    
+    const res = await HandooApp.api('treasury.get_ledger', this.filters);
+    if(res.ok) {
+       this.ledgerData = res.data;
+       this.renderLedger();
+    } else {
+       content.innerHTML = `<div class="p-5 text-center text-danger fw-black">${res.msg}</div>`;
+    }
+  },
+
+  renderLedger: function() {
+    const { movements, initial_balance } = this.ledgerData;
+    const content = document.getElementById('ledger-content');
+    
+    content.innerHTML = `
+      <div class="p-4 bg-light border-bottom d-flex justify-content-between align-items-center">
+         <div>
+            <h6 class="fw-black text-uppercase m-0" style="font-size:11px">Extracto de Movimientos Realizados</h6>
+            <p class="small text-muted m-0">Periodo: ${new Date(this.filters.start).toLocaleDateString()} al ${new Date(this.filters.end).toLocaleDateString()}</p>
+         </div>
+         <div class="balance-badge ${initial_balance >= 0 ? 'balance-positive' : 'balance-negative'}">
+            <span class="small fw-bold" style="font-size:10px">SALDO INICIAL PERIODO:</span>
+            <span>${initial_balance.toLocaleString('es-ES', {minimumFractionDigits: 2})} €</span>
+         </div>
+      </div>
+      <div class="table-responsive">
+         <table class="table table-hover m-0 align-middle table-ledger">
+            <thead class="bg-light sticky-top">
+               <tr>
+                  <th class="ps-4">FECHA</th>
+                  <th>CONCEPTO / DESCRIPCIÓN</th>
+                  <th class="text-center">ORIGEN</th>
+                  <th class="text-end">CARGO (SALIDA)</th>
+                  <th class="text-end">ABONO (ENTRADA)</th>
+                  <th class="text-end pe-4">SALDO ACUM.</th>
+               </tr>
+            </thead>
+            <tbody>
+               ${movements.map(m => `
+                  <tr onclick="MovementsView.goToOrigin('${m.ref_id}', '${m.origin}')" style="cursor:pointer" title="Ver documento de origen">
+                     <td class="ps-4 font-monospace small text-muted">${new Date(m.fecha).toLocaleDateString()}</td>
+                     <td>
+                        <div class="fw-bold text-dark text-uppercase" style="font-size:11px">${escapeHTML(m.concepto)}</div>
+                        <div class="small text-muted font-monospace" style="font-size:9px">Ref: ${m.ref_id}</div>
+                     </td>
+                     <td class="text-center">
+                        <span class="movement-origin ${m.origin==='MANUAL'?'origin-manual':(m.origin==='INVOICE'?'origin-invoice':'origin-expense')}">
+                           ${m.origin}
+                        </span>
+                     </td>
+                     <td class="text-end fw-bold text-danger">${m.cargo > 0 ? '-' + m.cargo.toLocaleString('es-ES', {minimumFractionDigits: 2}) + ' €' : ''}</td>
+                     <td class="text-end fw-bold text-success">${m.abono > 0 ? '+' + m.abono.toLocaleString('es-ES', {minimumFractionDigits: 2}) + ' €' : ''}</td>
+                     <td class="text-end fw-black pe-4 ${m.saldo < 0 ? 'text-danger' : 'text-dark'}" style="font-size:12px">
+                        ${m.saldo.toLocaleString('es-ES', {minimumFractionDigits: 2})} €
+                     </td>
+                  </tr>
+               `).join('') || '<tr><td colspan="6" class="p-5 text-center opacity-25 fw-black text-uppercase">SIN MOVIMIENTOS EN EL PERIODO</td></tr>'}
+            </tbody>
+         </table>
+      </div>
+    `;
+  },
+
+  goToOrigin: async function(refId, origin) {
+    if(origin === 'MANUAL') {
+       HandooApp.ui.showToast("Movimiento de ajuste interno.", "info");
+       return;
+    }
+    
+    if(origin === 'INVOICE') {
+       HandooApp.ui.showToast("Localizando factura...", "info");
+       await InvoicesView.openManualModal(refId);
+    } else if(origin === 'EXPENSE') {
+       HandooApp.ui.showToast("Localizando gasto...", "info");
+       await ExpensesView.openExpenseModal(refId);
+    }
+  }
+};
+</script>

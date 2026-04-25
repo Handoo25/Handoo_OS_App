@@ -1,0 +1,29 @@
+window.ScannerBurstView = {
+    images: [],
+    video: null,
+    init: async function() {
+        this.video = document.getElementById('scanner-video');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            this.video.srcObject = stream;
+        } catch (err) { console.error("Error:", err); }
+    },
+    capture: function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = this.video.videoWidth;
+        canvas.height = this.video.videoHeight;
+        canvas.getContext('2d').drawImage(this.video, 0, 0);
+        this.images.push(canvas.toDataURL('image/jpeg'));
+        this.updateReel();
+    },
+    updateReel: function() {
+        const reel = document.getElementById('thumbnail-reel');
+        reel.innerHTML = this.images.map(img => `<img src="${img}" class="h-full w-auto object-cover rounded">`).join('');
+    },
+    finish: async function() {
+        try {
+            await HandooApp.api('autopilot.process_burst_batch', { images: this.images });
+        } catch (err) { console.error("Error:", err); }
+    }
+};
+ScannerBurstView.init();

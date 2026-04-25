@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <script>
+      window.escapeHTML = function(str) {
+        if (!str) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      };
+      window.onerror = function(msg, url, line, col, error) {
+        console.error("GLOBAL ERROR:", msg, "at", url, ":", line, ":", col, error);
+        return false;
+      };
+    </script>
+    <base target="_top">
+    <meta charset="utf-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+      #view-app { display: none !important; transition: opacity 0.5s ease; opacity: 0; }
+      #view-login { display: none !important; opacity: 0; }
+      #view-app.visible { display: block !important; opacity: 1; }
+      #view-login.visible { display: flex !important; align-items: center; justify-content: center; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; background: #f8fafc; opacity: 1; z-index: 20000; }
+      .text-brand { color: var(--brand); }
+      .brand-subtitle { 
+        font-size: 9px; 
+        font-weight: 700; 
+        color: #94a3b8; 
+        letter-spacing: 0.3em; 
+        text-transform: uppercase; 
+        margin-top: -5px;
+      }
+      .nav-header {
+        font-size: 10px;
+        font-weight: 900;
+        color: #94a3b8;
+        padding: 25px 16px 10px 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .nav-header::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: #e2e8f0;
+      }
+      
+      #omni-search-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:20000; background:rgba(15,23,42,0.4); backdrop-filter:blur(8px); }
+      .omni-box { width:650px; margin: 100px auto; background:white; border-radius:20px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); overflow:hidden; border: 1px solid var(--border); }
+      .omni-input { width:100%; border:none; padding:25px; font-size:18px; font-weight:700; border-bottom:1px solid #f1f5f9; outline:none; }
+      .omni-results { max-height:450px; overflow-y:auto; padding:10px; }
+      .omni-item { padding:12px 20px; border-radius:12px; cursor:pointer; transition:0.2s; display:flex; align-items:center; gap:15px; margin-bottom:4px; }
+      .omni-item:hover { background:#f8fafc; transform:translateX(5px); }
+      .omni-item i { font-size:1.2rem; color:#94a3b8; }
+      .omni-shortcut { font-size:10px; color:#94a3b8; border:1px solid #e2e8f0; padding:2px 6px; border-radius:4px; font-family:monospace; }
+      
+      #system-drawer { position:fixed; top:0; right:-400px; width:380px; height:100%; background:white; z-index:15000; box-shadow:-10px 0 30px rgba(0,0,0,0.1); transition:0.4s cubic-bezier(0.16, 1, 0.3, 1); border-left:1px solid var(--border); }
+      #system-drawer.open { right:0; }
+      .drawer-header { background:var(--dark); color:white; padding:30px; }
+      .drawer-body { padding:20px; overflow-y:auto; height:calc(100% - 100px); }
+      .log-item { padding:15px; border-bottom:1px solid #f1f5f9; position:relative; }
+      .log-dot { position:absolute; left:0; top:20px; width:4px; height:20px; border-radius:0 4px 4px 0; }
+
+      .ai-fab { position:fixed; bottom:30px; right:30px; width:65px; height:65px; background:var(--dark); border-radius:50%; border:3px solid var(--brand); color:white; display:grid; place-items:center; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,0.3); z-index:16000; transition:0.3s; }
+      .ai-fab:hover { transform:scale(1.1) rotate(5deg); }
+      
+      #ai-chat-window { 
+        position:fixed; 
+        bottom:110px; 
+        right:30px; 
+        width:400px; 
+        height: 70vh;
+        max-height: 600px;
+        min-height: 450px;
+        background:white; 
+        border-radius:24px; 
+        box-shadow:0 20px 60px rgba(0,0,0,0.2); 
+        z-index:16000; 
+        display:none; 
+        flex-direction:column; 
+        overflow:hidden; 
+        border:1px solid var(--border); 
+      }
+      .ai-chat-header { background:var(--dark); color:white; padding:20px; display:flex; justify-content:space-between; align-items:center; flex-shrink: 0; }
+      .ai-chat-body { flex-grow:1; overflow-y:auto; padding:20px; background:#f8fafc; display:flex; flex-direction:column; gap:12px; }
+      .ai-bubble { padding:12px 16px; border-radius:16px; font-size:13px; line-height:1.5; max-width:85%; word-break: break-word; }
+      .ai-bubble-bot { background:white; color:var(--dark); border:1px solid var(--border); align-self:flex-start; border-bottom-left-radius:4px; }
+      .ai-bubble-user { background:var(--dark); color:white; align-self:flex-end; border-bottom-right-radius:4px; }
+      .ai-chat-footer { padding:15px; background:white; border-top:1px solid var(--border); display:flex; gap:10px; flex-shrink: 0; }
+      .ai-input { flex-grow:1; border:none; background:#f1f5f9; border-radius:10px; padding:10px 15px; font-size:13px; outline:none; }
+      
+      .ai-fab-pulse { animation: h-pulse-brand 2s infinite; }
+      @keyframes h-pulse-brand { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
+
+      /* TITANIUM SYNC LED INDICATOR */
+      .sync-led { width: 8px; height: 8px; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px rgba(0,0,0,0.2); transition: 0.5s; }
+      .led-green { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+      .led-orange { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; animation: led-pulse 1s infinite; }
+      .led-red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+      @keyframes led-pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+
+      /* SELECTOR DE EJERCICIO GLOBAL */
+      .fiscal-selector-wrapper {
+        background: rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 4px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid rgba(255,255,255,0.2);
+        margin-right: 15px;
+      }
+      .fiscal-selector-wrapper select {
+        background: transparent;
+        border: none;
+        color: white;
+        font-weight: 900;
+        font-size: 11px;
+        text-transform: uppercase;
+        cursor: pointer;
+        outline: none;
+      }
+      .fiscal-selector-wrapper select option {
+        background: var(--dark);
+        color: white;
+      }
+    </style>
+
+    <script>
+  const im = document.createElement('script');
+  im.type = 'importmap';
+  im.textContent = JSON.stringify({"imports":{"@google/genai":"https://esm.sh/@google/genai@^1.39.0"}});
+  document.head.appendChild(im);
+</script>
+
+    <script>
+      if (typeof window.btoaPatched === 'undefined') {
+        window.oldBtoa = window.btoa; 
+        window.btoa = function(s){ 
+          try { return window.oldBtoa(s); }
+          catch(e) { return window.oldBtoa(unescape(encodeURIComponent(s))); } 
+        };
+        window.btoaPatched = true;
+      }
+    </script>
+</head>
+<body>
+    <div id="toast-container"></div>
+
+    <div id="omni-search-modal" onclick="if(event.target===this) HandooApp.ui.toggleOmni(false)">
+       <div class="omni-box animate-slide">
+          <div class="d-flex align-items-center bg-white">
+             <i class="bi bi-search ms-4 text-muted fs-4"></i>
+             <input type="text" id="omni-input" class="omni-input" placeholder="Buscar cliente, factura, proveedor..." onkeyup="HandooApp.ui.executeOmniSearch(this.value)">
+             <div class="me-4"><span class="omni-shortcut">ESC</span></div>
+          </div>
+          <div id="omni-results" class="omni-results">
+             <div class="p-5 text-center opacity-50 small fw-bold">COMIENCE A ESCRIBIR PARA INDEXAR EL KERNEL...</div>
+          </div>
+          <div class="bg-light p-3 border-top d-flex justify-content-between">
+             <span class="small text-muted fw-bold" style="font-size:9px">HANDOO COMMAND BAR V1.0</span>
+             <span class="small text-muted" style="font-size:9px">↑↓ PARA NAVEGAR • ENTER PARA SELECCIONAR</span>
+          </div>
+       </div>
+    </div>
+
+    <div class="ai-fab ai-fab-pulse" id="ai-trigger" onclick="HandooApp.ui.toggleAIChat()">
+       <i class="bi bi-lightning-charge-fill fs-3 text-brand"></i>
+    </div>
+
+    <script>
+    window.addEventListener('load', () => {
+      const oldMic = document.getElementById('btn-oido-universal');
+      if(oldMic) oldMic.remove();
+    });
+    window.startUniversalListening = function() {
+      HandooApp.ui.toggleAIChat(true);
+    };
+    </script>
+
+    <div id="system-drawer">
+       <div class="drawer-header">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+             <h6 class="m-0 fw-black text-uppercase letter-spacing-1" style="font-size:11px">Centro de Control</h6>
+             <button class="btn btn-link text-white p-0" onclick="HandooApp.ui.toggleDrawer(false)"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <h2 class="fw-black m-0">EVENTOS</h2>
+       </div>
+       <div class="drawer-body" id="drawer-logs">
+          <div class="text-center p-5 opacity-25 fw-bold">SIN ALERTAS RECIENTES</div>
+       </div>
+    </div>
+
+    <div id="view-login" class="v-full-center">
+       <div class="auth-container animate-slide">
+          <div class="auth-logo mb-5 text-center">
+             <div class="brand mb-2">
+                <span class="fw-black text-dark">han</span><span class="fw-black text-brand">doo</span><span class="text-muted fw-light">/OS</span>
+             </div>
+             <div class="brand-subtitle">Sistema Operativo Financiero</div>
+          </div>
+          
+          <div class="auth-form card-industrial p-5 border-0 shadow-lg" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(10px);">
+             <div class="text-center mb-4">
+                <h5 class="login-welcome m-0">Inicia sesión</h5>
+             </div>
+             
+             <div class="mb-4">
+                <input type="password" id="input-pin" class="pin-input mb-3 text-center" maxlength="4" placeholder="••••" onkeyup="if(event.key==='Enter') HandooApp.auth()">
+                <button id="btn-login" class="h-btn h-btn-dark w-100 py-3 shadow-sm" onclick="HandooApp.auth()">
+                   ACCEDER AL SISTEMA
+                </button>
+             </div>
+          </div>
+       </div>
+    </div>
+
+    <div id="view-app" style="display:none;">
+       <div class="h-shell">
+          <aside class="h-sidebar">
+             <div class="brand-side mb-4 d-flex justify-content-between align-items-center">
+                <div><span class="fw-black text-dark">han</span><span class="fw-black text-brand">doo</span><span class="text-muted fw-light">/OS</span></div>
+                <div class="d-flex gap-2">
+                   <button class="btn btn-link text-dark p-0" onclick="HandooApp.navTo('Scanner')" title="Escanear Documento"><i class="bi bi-qr-code-scan"></i></button>
+                   <button class="btn btn-link text-dark p-0" onclick="HandooApp.ui.toggleDrawer(true)"><i class="bi bi-bell-fill" id="bell-icon"></i></button>
+                </div>
+             </div>
+             <nav id="sidebar-nav" style="overflow-y: auto; flex-grow: 1;"></nav>
+             <button class="btn btn-sm btn-outline-secondary w-100 mt-3" onclick="TitaniumDB.clearAll(); HandooApp.ui.showToast('Caché sincronizada. Memoria limpia.', 'success'); setTimeout(()=>location.reload(), 1000);">
+                 <i class="bi bi-arrow-clockwise"></i> Sincronizar Kernel
+             </button>
+             <div class="mt-auto sidebar-footer">
+                <div class="user-pill mb-3">
+                   <div class="avatar">AD</div>
+                   <div class="info">
+                      <div class="name">ADMINISTRADOR</div>
+                      <div class="status d-flex align-items-center gap-1">
+                         <div id="sync-led" class="sync-led led-green"></div>
+                         <span id="sync-text">Kernel Activo</span>
+                      </div>
+                   </div>
+                </div>
+                <button class="nav-item text-danger w-100 border-0 bg-transparent" onclick="HandooApp.logout()">
+                   <i class="bi bi-power"></i> FINALIZAR SESIÓN
+                </button>
+             </div>
+          </aside>
+          <div class="flex-grow-1 d-flex flex-column">
+             <main id="main-stage" class="h-stage flex-grow-1"></main>
+          </div>
+       </div>
+       <!-- INPUT GLOBAL DE RÁFAGA OCR -->
+       <input type="file" id="global-ocr-input" multiple accept="image/*,application/pdf" style="display:none" onchange="ExpensesView.handleOCR(this)">
+    </div>
+
+    <script>
+      function escapeHTML(str) {
+        if (!str) return "";
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      window.HandooEvents = {
+        listeners: {},
+        on(event, callback) {
+          if (!this.listeners[event]) this.listeners[event] = [];
+          this.listeners[event].push(callback);
+        },
+        emit(event, data) {
+          if (this.listeners[event]) this.listeners[event].forEach(cb => cb(data));
+        }
+      };
+
+      window.HandooApp = {
+        brandName: "HANDOO OS",
+        fiscalYear: new Date().getFullYear(),
+        currentView: 'Dashboard',
+        isInitializing: false,
+        isNavigating: false,
+        api: (route, payload = {}) => {
+          console.log("HandooApp.api: Llamando a", route, payload);
+          return new Promise((resolve) => {
+            google.script.run
+              .withSuccessHandler(res => {
+                console.log("HandooApp.api: Respuesta de", route, res);
+                resolve(res);
+              })
+              .withFailureHandler(err => {
+                console.error("HandooApp.api: Error en", route, err);
+                resolve({ ok: false, msg: err.toString() });
+              })
+              .api(route, payload);
+          });
+        },
+
+        ui: {
+          stats: null,
+          showToast: (msg, type = 'info') => {
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `h-toast h-toast-${type}`;
+            t.innerHTML = `<i class="bi ${type==='error'?'bi-exclamation-triangle-fill':'bi-info-circle-fill'} me-2"></i> ${msg}`;
+            container.appendChild(t);
+            HandooApp.ui.logToDrawer(msg, type);
+            setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(100%)'; setTimeout(() => t.remove(), 500); }, 5000);
+          },
+          confirm: (msg, detail = "") => {
+            return new Promise((resolve) => {
+              const overlay = document.createElement('div');
+              overlay.className = 'h-modal-overlay';
+              overlay.innerHTML = `
+                <div class="h-modal h-modal-confirm animate-slide">
+                  <div class="h-modal-header h-modal-header-danger text-center justify-content-center">
+                    <h6 class="m-0 text-uppercase fw-black letter-spacing-1">Confirmación</h6>
+                  </div>
+                  <div class="h-modal-body text-center py-5 px-4">
+                    <h5 class="fw-black text-uppercase mb-2">${msg}</h5>
+                    <p class="small text-muted mt-2 mb-0">${detail}</p>
+                  </div>
+                  <div class="h-modal-footer">
+                    <button class="h-btn btn btn-light border flex-grow-1 py-3 fw-bold btn-cancel">CANCELAR</button>
+                    <button class="h-btn btn-confirm-ok flex-grow-1 py-3 fw-black shadow">PROCEDER</button>
+                  </div>
+                </div>`;
+              document.body.appendChild(overlay);
+              overlay.querySelector('.btn-cancel').onclick = () => { overlay.remove(); resolve(false); };
+              overlay.querySelector('.btn-confirm-ok').onclick = () => { overlay.remove(); resolve(true); };
+            });
+          },
+          setLoading: (id, isLoading, text = "SINCRONIZANDO...") => {
+            const el = document.getElementById(id);
+            if(el) {
+              el.disabled = isLoading;
+              if(isLoading) {
+                el.dataset.oldHtml = el.innerHTML;
+                el.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> ${text}`;
+              } else {
+                el.innerHTML = el.dataset.oldHtml;
+              }
+            }
+          },
+          
+          toggleOmni: function(show) {
+            const modal = document.getElementById('omni-search-modal');
+            modal.style.display = show ? 'block' : 'none';
+            if(show) {
+              const input = document.getElementById('omni-input');
+              input.value = '';
+              input.focus();
+            }
+          },
+          executeOmniSearch: async function(q) {
+            if(q.length < 2) return;
+            const res = await HandooApp.api('admin.omni_search', { query: q });
+            if(res.ok) {
+              const results = res.data;
+              document.getElementById('omni-results').innerHTML = results.map(r => `
+                <div class="omni-item" onclick="HandooApp.ui.omniNavigate('${r.view}', '${r.id}')">
+                   <i class="bi ${r.icon} fs-4"></i>
+                   <div class="flex-grow-1">
+                      <div class="fw-black text-uppercase" style="font-size:12px">${escapeHTML(r.title)}</div>
+                      <div class="small text-muted" style="font-size:10px">${r.subtitle}</div>
+                   </div>
+                   <span class="badge bg-light text-dark text-uppercase" style="font-size:8px">${r.type}</span>
+                </div>
+              `).join('') || '<div class="p-5 text-center opacity-25 fw-bold">SIN COINCIDENCIAS</div>';
+            }
+          },
+          omniNavigate: async function(view, id) {
+            this.toggleOmni(false);
+            await HandooApp.navTo(view);
+            const targetView = window[view + 'View'];
+            if(targetView && targetView.openForm) targetView.openForm(id);
+            else if(targetView && targetView.openExpenseModal) targetView.openExpenseModal(id);
+            else if(targetView && targetView.openManualModal) targetView.openManualModal(id);
+          },
+
+          toggleDrawer: function(show) {
+             document.getElementById('system-drawer').classList.toggle('open', show);
+          },
+          logToDrawer: function(msg, type = 'info') {
+             const container = document.getElementById('drawer-logs');
+             if(!container) return;
+             if(container.innerText.includes('SIN ALERTAS')) container.innerHTML = '';
+             const color = type === 'error' ? '#ef4444' : (type === 'success' ? '#22c55e' : '#f59e0b');
+             const log = document.createElement('div');
+             log.className = 'log-item animate-slide';
+             log.innerHTML = `
+                <div class="log-dot" style="background:${color}"></div>
+                <div class="small fw-black text-uppercase text-muted" style="font-size:8px">${new Date().toLocaleTimeString()}</div>
+                <div class="fw-bold small mt-1">${msg}</div>
+             `;
+             container.prepend(log);
+          },
+
+          toggleAIChat: function(show = null) {
+             const win = document.getElementById('ai-chat-window');
+             if(show === null) show = win.style.display !== 'flex';
+             win.style.display = show ? 'flex' : 'none';
+             if(show) document.getElementById('ai-trigger').classList.remove('ai-fab-pulse');
+          },
+          triggerAIBriefing: function() {
+             this.sendAIQuestion("Haz un análisis completo de mi salud financiera actual. ¿Ves algún riesgo en mi caja, IVA o MRR?");
+          },
+          sendAIQuestion: async function(promptOverride = null) {
+             const input = document.getElementById('ai-user-prompt');
+             const history = document.getElementById('ai-chat-history');
+             const q = promptOverride || input.value.trim();
+             if(!q) return;
+
+             const uBub = document.createElement('div');
+             uBub.className = 'ai-bubble ai-bubble-user';
+             uBub.innerText = q;
+             history.appendChild(uBub);
+             if(!promptOverride) input.value = '';
+             history.scrollTop = history.scrollHeight;
+
+             const lBub = document.createElement('div');
+             lBub.className = 'ai-bubble ai-bubble-bot italic opacity-50';
+             lBub.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> ${HandooApp.brandName} está analizando el Kernel...`;
+             history.appendChild(lBub); history.scrollTop = history.scrollHeight;
+
+             try {
+                const contextRes = await HandooApp.api('ai.get_ai_context');
+                if(!contextRes.ok) throw new Error(contextRes.msg);
+
+                const aiRes = await HandooApp.api('ai.parse_voice_order', { text: q });
+                lBub.remove();
+                const botBub = document.createElement('div');
+                botBub.className = 'ai-bubble ai-bubble-bot';
+                botBub.innerText = aiRes.reply || "Oído Chef, procesado.";
+                history.appendChild(botBub);
+             } catch(e) {
+                lBub.remove();
+                const errBlock = document.createElement('div');
+                errBlock.className = 'unified-block block-dark mt-2 border-danger p-3';
+                errBlock.innerHTML = `
+                  <div class="row align-items-center">
+                    <div class="col-1 text-center"><i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i></div>
+                    <div class="col-11 ps-3">
+                      <h6 class="fw-black text-uppercase m-0" style="font-size:10px; color:#fff !important;">Anomalía Neural Detectada</h6>
+                      <p class="small text-muted m-0" style="font-size:9px">${e.message}</p>
+                    </div>
+                  </div>`;
+                history.appendChild(errBlock);
+             }
+             history.scrollTop = history.scrollHeight;
+          },
+          showApiKeyModal: function() {
+            const overlay = document.createElement('div');
+            overlay.className = 'h-modal-overlay animate-slide';
+            overlay.innerHTML = `
+              <div class="h-modal shadow-lg" style="width: 500px">
+                <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">NÚCLEO NEURAL ${HandooApp.brandName}</h5></div>
+                <div class="h-modal-body bg-light">
+                  <div class="p-4 rounded-4 shadow-sm mt-0 block-dark row align-items-center">
+                    <div class="col-md-2 text-center"><i class="bi bi-key fs-2 text-brand"></i></div>
+                    <div class="col-md-10"><h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Activación de Inteligencia</h6><p class="small text-muted m-0">Handoo AI requiere una clave de API válida para operar.</p></div>
+                    <div class="col-12 mt-4">
+                      <p class="small text-white-50">Es necesario disponer de un proyecto con facturación activa en Google Cloud para modelos Pro.</p>
+                      <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" class="small text-brand fw-bold text-decoration-none">DOCUMENTACIÓN DE FACTURACIÓN <i class="bi bi-box-arrow-up-right ms-1"></i></a>
+                    </div>
+                  </div>
+                </div>
+                <div class="h-modal-footer">
+                  <button class="btn btn-dark w-100 py-3 fw-black shadow" onclick="HandooApp.requestApiKey()">VINCULAR CUENTA DE API</button>
+                </div>
+              </div>`;
+            document.body.appendChild(overlay);
+          }
+        },
+
+        requestApiKey: async function() {
+          await window.aistudio.openSelectKey();
+          if (document.querySelector('.h-modal-overlay')) {
+             document.querySelector('.h-modal-overlay').remove();
+          }
+          this.init();
+        },
+
+        changeFiscalYear: function(y) {
+           this.fiscalYear = parseInt(y);
+           this.ui.showToast(`EJERCICIO FISCAL: ${this.fiscalYear}`, "info");
+           this.navTo(this.currentView); 
+        },
+
+        auth: async function() {
+          const pin = document.getElementById('input-pin').value;
+          this.ui.setLoading('btn-login', true, "ACCEDIENDO...");
+          const res = await this.api('auth.login', { pin });
+          this.ui.setLoading('btn-login', false);
+          if(res.ok) {
+            const now = Date.now();
+            localStorage.setItem('handoo_session', JSON.stringify({
+                session_start: now,
+                last_interaction: now
+            }));
+            document.getElementById('view-login').classList.remove('visible');
+            document.getElementById('view-app').classList.add('visible');
+            this.init();
+          } else {
+            this.ui.showToast(res.msg, 'error');
+            document.getElementById('input-pin').value = '';
+          }
+        },
+
+        logout: () => { 
+           localStorage.removeItem('handoo_session');
+           window.location.reload(); 
+        },
+
+        init: async function(forceRefresh = false) {
+          if(this.isInitializing && !forceRefresh) return;
+          this.isInitializing = true;
+          
+          if (forceRefresh) {
+            localStorage.removeItem('HANDOO_TITANIUM_STATE');
+            this.ui.stats = null;
+          }
+          
+          if (typeof window.aistudio !== 'undefined' && !(await window.aistudio.hasSelectedApiKey())) {
+             this.ui.showApiKeyModal();
+             this.isInitializing = false;
+             return;
+          }
+          
+          if(!this.ui.stats || forceRefresh) {
+            const res = await this.api('admin.get_stats');
+            if(res.ok) {
+              this.ui.stats = res.data;
+            }
+          }
+
+          if(!this.settings || forceRefresh) {
+            const resS = await this.api('admin.get_settings');
+            if(resS.ok) this.settings = resS.data;
+          }
+
+          if(!this.user || forceRefresh) {
+            const resU = await this.api('admin.get_profile');
+            if(resU.ok) this.user = resU.data;
+            else this.user = { email: "admin@handoo.app" }; // Fallback
+          }
+          
+          this.renderSidebar();
+          
+          if(this.currentView === 'Dashboard') {
+            await this.navTo('Dashboard');
+          }
+          
+          this.setupKeyboardShortcuts();
+          this.injectGlobalYearSelector();
+
+          if (window.TitaniumStateSync) {
+            window.TitaniumStateSync.hydrate();
+          }
+          this.isInitializing = false;
+        },
+
+        injectGlobalYearSelector: function() {
+          const header = document.querySelector('#view-app main .sticky-top');
+          if(header && !document.getElementById('global-fiscal-year-container')) {
+             const div = document.createElement('div');
+             div.id = 'global-fiscal-year-container';
+             div.className = 'fiscal-selector-wrapper';
+             div.innerHTML = `
+                <i class="bi bi-calendar3 text-brand"></i>
+                <select onchange="HandooApp.changeFiscalYear(this.value)">
+                   ${[0,1,2,3].map(i => `<option value="${new Date().getFullYear()-i}" ${this.fiscalYear === (new Date().getFullYear()-i) ? 'selected' : ''}>AÑO ${new Date().getFullYear()-i}</option>`).join('')}
+                </select>`;
+             header.querySelector('.d-flex.gap-2')?.prepend(div);
+          }
+        },
+
+        setupKeyboardShortcuts: function() {
+          document.addEventListener('keydown', (e) => {
+            if((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); this.ui.toggleOmni(true); }
+            if(e.key === 'Escape') { 
+              this.ui.toggleOmni(false); 
+              this.ui.toggleDrawer(false);
+              this.ui.toggleAIChat(false);
+            }
+          });
+        },
+
+        renderSidebar: function() {
+          let activeModules = (this.ui.stats && this.ui.stats.active_modules) || [];
+          
+          const menu = [
+            { type: 'header', label: 'Estrategia' },
+            { id: 'Dashboard', icon: 'bi-grid-fill', label: 'Dashboard', license: 'FEAT_CORE_DASHBOARD' },
+            { id: 'chemin', icon: 'bi-cpu-fill', label: 'CHEMIN AI' },
+            { id: 'Strategy', icon: 'bi-lightning-charge-fill', label: 'Estrategia', license: 'FEAT_STRATEGY' },
+            { id: 'Performance', icon: 'bi-bar-chart-steps', label: 'Rentabilidad', license: 'FEAT_PERFORMANCE' },
+            
+            { type: 'header', label: 'Ventas' },
+            { id: 'Clients', icon: 'bi-people-fill', label: 'Clientes', license: 'FEAT_CORE_CLIENTS' },
+            { id: 'Invoices', icon: 'bi-receipt', label: 'Facturación', license: 'FEAT_CORE_INVOICING' },
+            { id: 'Subscriptions', icon: 'bi-stars', label: 'Suscripciones', license: 'FEAT_SUBSCRIPTIONS' },
+            
+            { type: 'header', label: 'Gastos' },
+            { id: 'Vendors', icon: 'bi-truck', label: 'Proveedores', license: 'FEAT_CORE_CLIENTS' },
+            { id: 'Expenses', icon: 'bi-cart-check-fill', label: 'Gastos' },
+            { id: 'SmartOrders', icon: 'bi-cpu-fill', label: 'Pedidos Inteligentes', color: 'text-warning' },
+            
+            { type: 'header', label: 'Recursos Humanos' },
+            { id: 'Team', icon: 'bi-people-fill', label: 'Gestión de Equipo' },
+            
+            { type: 'header', label: 'Producción' },
+            { id: 'MiseEnPlace', icon: 'bi-list-task', label: 'Hoja de Ruta Diaria' },
+            { id: 'Inventory', icon: 'bi-box-seam-fill', label: 'Catálogo' },
+            { id: 'Allergens', icon: 'bi-shield-exclamation', label: 'Tabla de Alérgenos' },
+            { id: 'StockMovements', icon: 'bi-journal-text', label: 'Kárdex de Stock', license: 'FEAT_INVENTORY_ADVANCED' },
+            { id: 'InventoryOperations', icon: 'bi-clipboard-check', label: 'Operaciones de Inventario' },
+            { id: 'Formulas', icon: 'bi-calculator', label: 'Fórmulas' },
+            { id: 'Production', icon: 'bi-gear-wide-connected', label: 'Producción' },
+            { id: 'ProductionSettings', icon: 'bi-gear', label: 'Ajustes de Producción' },
+            
+            { type: 'header', label: 'Activos' },
+            { id: 'FixedAssets', icon: 'bi-building-gear', label: 'Inmovilizado', license: 'FEAT_FIXED_ASSETS' },
+            { id: 'OperationalTools', icon: 'bi-tools', label: 'Utillaje', license: 'FEAT_OPERATIONAL_TOOLS' },
+            
+            { type: 'header', label: 'Finanzas' },
+            { id: 'Treasury', icon: 'bi-bank', label: 'Tesorería y Caja' },
+            { id: 'Movements', icon: 'bi-journal-text', label: 'Movimientos Bancarios', license: 'FEAT_LIBRO_MAYOR' },
+            { id: 'Taxes', icon: 'bi-percent', label: 'Impuestos', license: 'FEAT_TAXES' },
+            { id: 'DataBridge', icon: 'bi-terminal-split', label: 'Conector Bridge', license: 'FEAT_BRIDGE' },
+            
+            { type: 'header', label: 'Kernel' },
+            { id: 'Settings', icon: 'bi-gear-fill', label: 'Ajustes' },
+            { id: 'Trash', icon: 'bi-trash3-fill', label: 'Papelera' },
+            { id: 'LicenseControl', icon: 'bi-shield-lock-fill', label: 'Licencias' }
+          ];
+
+          const filteredMenu = menu.filter(m => {
+            if (m.license && !activeModules.includes(m.license)) return false;
+            return true;
+          });
+
+          const finalMenuHtml = [];
+          for (let i = 0; i < filteredMenu.length; i++) {
+            const m = filteredMenu[i];
+            if (m.type === 'header') {
+              let hasItems = false;
+              for (let j = i + 1; j < filteredMenu.length; j++) {
+                if (filteredMenu[j].type === 'header') break;
+                hasItems = true;
+                break;
+              }
+              if (hasItems) {
+                finalMenuHtml.push(`<div class="nav-header">${m.label}</div>`);
+              }
+            } else {
+              finalMenuHtml.push(`
+                <button id="nav-${m.id.toLowerCase()}" class="nav-item w-100 position-relative" onclick="HandooApp.navTo('${m.id}')">
+                  <i class="${m.icon} ${m.color || ''}"></i> ${m.label}
+                </button>`);
+            }
+          }
+
+          document.getElementById('sidebar-nav').innerHTML = finalMenuHtml.join('');
+        },
+
+        navTo: async function(id, params = {}) {
+          if (this.isNavigating) return;
+          this.isNavigating = true;
+          
+          // 🔥 LIMPIEZA DE MODALES HUÉRFANOS (Evita que la pantalla se quede oscura)
+          document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+          document.body.classList.remove('modal-open');
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
+
+          // Mapeo real de tus archivos:
+          const viewMap = {
+            'Clients': 'ClientsView',
+            'Platform': 'ClientsView',
+            'Expenses': 'ExpensesView',
+            'Treasury': 'TreasuryView',
+            'SmartOrders': 'SmartOrdersView',
+            'Dashboard': 'DashboardView',
+            'MiseEnPlace': 'MiseEnPlaceView',
+            'chemin': 'CheminView',
+            'Scanner': 'ScannerView',
+            'Formulas': 'FormulasView',
+            'Production': 'ProductionView',
+            'ProductionSettings': 'ProductionSettingsView',
+            'Inventory': 'InventoryView',
+            'Allergens': 'AllergensView',
+            'StockMovements': 'KardexView',
+            'InventoryOperations': 'InventoryOperationsView',
+            'Team': 'TeamView'
+          };
+
+          const targetName = viewMap[id] || id + 'View';
+          console.log(`[NAV] ID: ${id}, Target: ${targetName}`);
+          let view = window[targetName];
+          
+          let attempts = 0;
+          const maxAttempts = 12; // 12 x 250ms = 3 segundos de gracia
+          while (!view && attempts < maxAttempts) {
+              console.warn(`⚠️ Módulo ${id} [${targetName}] no encontrado. Reintento ${attempts + 1}/${maxAttempts}...`);
+              await new Promise(r => setTimeout(r, 250)); 
+              view = window[targetName];
+              attempts++;
+          }
+
+          // Gestión visual de botones
+          document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+          const btn = document.getElementById(`nav-${id.toLowerCase()}`);
+          if(btn) btn.classList.add('active');
+
+          if(view && typeof view.render === 'function') {
+              console.log(`🚀 Cargando vista [${id}] con objeto [${targetName}]. Render es tipo: ${typeof view.render}`);
+              document.getElementById('main-stage').innerHTML = `<div class="p-5 text-center"><div class="spinner-border text-brand"></div></div>`;
+              try {
+                  await view.render(params);
+                  this.currentView = id;
+              } catch(e) {
+                  console.error("Error en render de:", targetName, e);
+                  HandooApp.ui.showToast("Fallo al cargar vista", "error");
+              }
+          } else {
+              console.error(`❌ ERROR: No se encontró el objeto funcional [${targetName}]. Tipo actual: ${typeof view}`);
+              if (view) console.error("Contenido del objeto:", Object.keys(view));
+              HandooApp.ui.showToast("Módulo " + id + " no disponible", "warning");
+          }
+          this.isNavigating = false;
+        }
+      };
+
+      window.TitaniumStateSync = {
+        state: JSON.parse(localStorage.getItem('HANDOO_TITANIUM_STATE')) || {},
+        
+        init: async function() {
+          await HandooApp.init();
+        },
+
+        hydrate: async function() {
+           this.setLED('led-orange', 'Sincronizando...');
+           const res = await google.script.run
+              .withSuccessHandler(res => {
+                 if(res.ok) {
+                    this.state = res.data;
+                    localStorage.setItem('HANDOO_TITANIUM_STATE', JSON.stringify(res.data));
+                    this.setLED('led-green', 'Kernel Activo');
+                 } else {
+                    this.setLED('led-red', 'Fallo de Red');
+                 }
+              })
+              .withFailureHandler(() => this.setLED('led-red', 'Offline'))
+              .api('admin.get_full_state', {});
+        },
+
+        updateCache: function(key, data) {
+           this.state[key] = data;
+           localStorage.setItem('HANDOO_TITANIUM_STATE', JSON.stringify(this.state));
+        },
+
+        setLED: function(colorClass, text) {
+           const led = document.getElementById('sync-led');
+           const txt = document.getElementById('sync-text');
+           if(led) {
+              led.className = 'sync-led ' + colorClass;
+           }
+           if(txt) txt.innerText = text;
+        }
+      };
+    </script>
+
+    <div style="display: none !important;" id="handoo-templates">
+        <?!= include('Firebase_Setup'); ?>
+        <?!= include('Views_Home'); ?>
+        <!-- MODAL OMNI WASTE -->
+        <div class="modal fade" id="modal-omni-waste" tabindex="-1">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+              <div class="modal-header p-3 border-0 bg-dark text-white">
+                <h6 class="modal-title fw-black text-uppercase mb-0" style="font-size: 13px;">
+                  <i class="bi bi-recycle me-2 text-warning"></i>Registro Central de Mermas
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body p-4 bg-light">
+                
+                <div class="alert alert-dark border-0 shadow-sm mb-4" style="font-size: 10px;">
+                   <i class="bi bi-robot me-1 text-brand"></i> <strong>Chemin AI:</strong> Clasifica el origen para ajustar el inventario y la previsión de mañana.
+                </div>
+
+                <div class="mb-3">
+                   <label class="small fw-black text-muted mb-1" style="font-size:10px;">TIPO DE MERMA</label>
+                   <select id="omni-waste-type" class="form-select fw-bold border-dark shadow-sm" onchange="HandooApp.WasteManager.updateUI()">
+                     <option value="INVENTARIO">📦 MATERIA PRIMA (Almacén / Crudo)</option>
+                     <option value="FRESCO">🟢 PRODUCTO FRESCO (Hecho hoy)</option>
+                     <option value="ARRASTRE">🟠 PRODUCTO ARRASTRE (Sobrante de ayer)</option>
+                     <option value="PLATO">🍽️ RETORNO DE PLATO (Sobra del cliente)</option>
+                   </select>
+                </div>
+
+                <div class="mb-3">
+                   <label class="small fw-bold text-muted mb-1" style="font-size:10px;">PRODUCTO / PLATO</label>
+                   <input type="text" class="form-control fw-bold" id="omni-waste-product-search" placeholder="Escribe para buscar..." onkeyup="HandooApp.WasteManager.search()">
+                   <div id="omni-waste-results" class="list-group mt-1 shadow-sm" style="display:none; max-height:150px; overflow-y:auto;"></div>
+                   <input type="hidden" id="omni-waste-product-id">
+                </div>
+
+                <div class="row g-2 mb-3">
+                   <div class="col-5">
+                     <label class="small fw-bold text-muted mb-1" style="font-size:9px;">CANTIDAD</label>
+                     <input type="number" step="any" class="form-control text-center fw-bold shadow-sm" id="omni-waste-qty" placeholder="0.00">
+                   </div>
+                   <div class="col-7">
+                     <label class="small fw-bold text-muted mb-1" style="font-size:9px;">MOTIVO</label>
+                     <select id="omni-waste-reason" class="form-select fw-bold shadow-sm">
+                       <option value="CADUCADO">Caducidad / Fin de turno</option>
+                       <option value="MAL_ESTADO">Mal estado / Contaminado</option>
+                       <option value="ERROR_COCINA">Error de cocina / Quemado</option>
+                       <option value="SOBRA_CLIENTE">Sobra en plato</option>
+                     </select>
+                   </div>
+                </div>
+
+              </div>
+              <div class="modal-footer p-3 border-0 bg-white">
+                <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border" data-bs-dismiss="modal">CANCELAR</button>
+                <button class="btn btn-danger rounded-pill px-4 fw-black shadow" onclick="HandooApp.WasteManager.save()">REGISTRAR PÉRDIDA</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          HandooApp.WasteManager = {
+            open: function(productId = null, productName = null) {
+              const modal = new bootstrap.Modal(document.getElementById('modal-omni-waste'));
+              document.getElementById('omni-waste-product-id').value = productId || '';
+              document.getElementById('omni-waste-product-search').value = productName || '';
+              document.getElementById('omni-waste-qty').value = '';
+              document.getElementById('omni-waste-results').style.display = 'none';
+              modal.show();
+            },
+            updateUI: function() {
+              const type = document.getElementById('omni-waste-type').value;
+              console.log("WasteManager UI Update for type:", type);
+            },
+            search: function() {
+              const q = document.getElementById('omni-waste-product-search').value.toLowerCase();
+              const resultsDiv = document.getElementById('omni-waste-results');
+              if (q.length < 2) { resultsDiv.style.display = 'none'; return; }
+              
+              // Usamos el listado global si existe, si no lo cargamos
+              const all = window.HandooCatalogGlobal || [];
+              const matches = all.filter(m => (m.nombre || m.name || '').toLowerCase().includes(q)).slice(0, 5);
+              
+              if (matches.length > 0) {
+                resultsDiv.innerHTML = matches.map(m => `
+                  <button class="list-group-item list-group-item-action small fw-bold" onclick="HandooApp.WasteManager.select('${m.id}', '${m.nombre}')">
+                    ${m.nombre} <span class="badge bg-light text-dark float-end">${m.type}</span>
+                  </button>
+                `).join('');
+                resultsDiv.style.display = 'block';
+              } else {
+                resultsDiv.style.display = 'none';
+              }
+            },
+            select: function(id, name) {
+              document.getElementById('omni-waste-product-id').value = id;
+              document.getElementById('omni-waste-product-search').value = name;
+              document.getElementById('omni-waste-results').style.display = 'none';
+            },
+            save: async function() {
+              const pId = document.getElementById('omni-waste-product-id').value;
+              const qty = document.getElementById('omni-waste-qty').value;
+              if (!pId || !qty) return HandooApp.ui.showToast("Selecciona producto y cantidad", "warning");
+
+              const btn = document.querySelector('#modal-omni-waste .btn-danger');
+              btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> REGISTRANDO...';
+
+              const res = await HandooApp.api('inventory.register_waste_classified', {
+                producto_id: pId,
+                tipo: document.getElementById('omni-waste-type').value,
+                cantidad: qty,
+                motivo: document.getElementById('omni-waste-reason').value
+              });
+
+              btn.disabled = false; btn.innerText = 'REGISTRAR PÉRDIDA';
+              if (res.ok) {
+                HandooApp.ui.showToast("Merma registrada satisfactoriamente", "success");
+                bootstrap.Modal.getInstance(document.getElementById('modal-omni-waste')).hide();
+              } else {
+                HandooApp.ui.showToast(res.msg, "error");
+              }
+            }
+          };
+        </script>
+        <?!= include('Views_Production'); ?>
+        <?!= include('Views_ProductionSettings'); ?>
+        <?!= include('Views_MiseEnPlace'); ?>
+        <script>
+          if (typeof window.ProductionView === 'undefined') {
+            console.error("⛔ CRITICAL: window.ProductionView NO registrado. Intentando forzar carga...");
+          } else {
+            console.log("✅ window.ProductionView disponible en templates.");
+          }
+        </script>
+        <?!= include('Views_Platform'); ?>
+        <?!= include('Views_Vendors'); ?>
+        <?!= include('Views_Subscriptions'); ?>
+        <?!= include('Views_Invoices'); ?>
+        <?!= include('Views_Expenses'); ?>
+        <script>
+          if (typeof window.ExpensesView === 'undefined') {
+            console.log("CRITICAL: window.ExpensesView no se registró desde el archivo. Intentando reinicialización...");
+          }
+        </script>
+        <?!= include('Views_Treasury'); ?>
+        <?!= include('Views_Settings'); ?>
+        <?!= include('Views_Trash'); ?>
+        <?!= include('Views_Taxes'); ?>
+        <?!= include('Views_Chemin'); ?>
+        <?!= include('HandooAI'); ?>
+        <?!= include('Views_Strategy'); ?>
+        <?!= include('Views_Movements'); ?>
+        <?!= include('Views_Kardex'); ?>
+        <script>
+          if (typeof window.KardexView === 'undefined') {
+            console.error("⛔ ERROR: window.KardexView no se registró.");
+          } else {
+            console.log("✅ window.KardexView registrado correctamente.");
+            window.StockMovementsView = window.KardexView;
+          }
+        </script>
+        <?!= include('Views_DataBridge'); ?>
+        <?!= include('Views_Performance'); ?>
+        <?!= include('Views_FixedAssets'); ?>
+        <?!= include('Views_OperationalTools'); ?>
+        <?!= include('Views_Scanner'); ?>
+        <?!= include('Views_LicenseControl'); ?>
+        <?!= include('Views_Inventory'); ?>
+        <?!= include('Views_Test'); ?>
+        <?!= include('Views_InventoryOperations'); ?>
+        <?!= include('Views_Team'); ?>
+        <?!= include('Views_Formulas'); ?>
+        <?!= include('Views_SmartOrders'); ?>
+        <?!= include('Views_Allergens'); ?>
+        <?!= include('Styles'); ?>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+      // 1. GESTIÓN DE SESIÓN Y ARRANQUE
+      window.addEventListener('load', () => {
+          // Leemos la vista que inyectó el servidor (Code.gs)
+          const initialView = "<?!= view ?>"; 
+          
+          const session = JSON.parse(localStorage.getItem('handoo_session') || '{}');
+          const now = Date.now();
+          
+          // Si hay sesión activa (menos de 12h)
+          if (session.last_interaction && (now - session.last_interaction < 12 * 60 * 60 * 1000)) {
+              document.getElementById('view-login').style.display = 'none';
+              document.getElementById('view-login').classList.remove('visible');
+              document.getElementById('view-app').classList.add('visible');
+              
+              // Navegamos a la vista del F5 o al Dashboard
+              if (initialView && initialView !== "undefined") {
+                HandooApp.navTo(initialView);
+              } else {
+                HandooApp.navTo('Dashboard');
+              }
+              
+              console.log('DEBUG: Verificando InventoryView:', typeof InventoryView);
+              window.TitaniumStateSync.init();
+              // Carga inicial de equipo para el Omni-Modal de mermas
+              HandooApp.api('team.get_all').then(res => { if(res && res.ok) window.HandooStaffDB = res.data; });
+              // Carga inicial de catálogo para buscadores globales (Kárdex, Mermas, etc)
+              HandooApp.api('inventory.get_catalog').then(res => { if(res && res.ok) window.HandooCatalogGlobal = res.data.products; });
+          } else {
+             localStorage.removeItem('handoo_session');
+             document.getElementById('view-login').classList.add('visible');
+             setTimeout(() => document.getElementById('input-pin').focus(), 150);
+          }
+          
+          if (window.InventoryOperationsView) {
+             window.InventoryOperationsView.initView();
+          }
+      });
+
+      window.HandooCatalogGlobal = []; // Caché global de productos
+
+      // 4. NAVEGADOR GLOBAL DE FICHAS (PREV/NEXT)
+      window.HandooNavigator = {
+        currentList: [],
+        currentIndex: -1,
+        
+        setup: function(list, currentId) {
+            this.currentList = list || [];
+            this.currentIndex = this.currentList.findIndex(item => String(item.id) === String(currentId));
+        },
+        
+        goNext: function(callback) {
+            if (this.currentIndex < this.currentList.length - 1) {
+                this.currentIndex++;
+                callback(this.currentList[this.currentIndex]);
+                return true;
+            }
+            return false;
+        },
+        
+        goPrev: function(callback) {
+            if (this.currentIndex > 0) {
+                this.currentIndex--;
+                callback(this.currentList[this.currentIndex]);
+                return true;
+            }
+            return false;
+        }
+      };
+
+      // 5. SLIDING SESSION (Mantiene la sesión activa)
+      function updateInteraction() {
+        const session = JSON.parse(localStorage.getItem('handoo_session') || '{}');
+        session.last_interaction = Date.now();
+        localStorage.setItem('handoo_session', JSON.stringify(session));
+      }
+      document.addEventListener('mousedown', updateInteraction);
+      document.addEventListener('keydown', updateInteraction);
+
+      // 3. WATCHDOG: 4 horas de inactividad
+      setInterval(() => {
+         const session = JSON.parse(localStorage.getItem('handoo_session') || '{}');
+         if (session.last_interaction && (Date.now() - session.last_interaction > 4 * 60 * 60 * 1000)) {
+            HandooApp.logout();
+         }
+      }, 60000);
+    </script>
+<script>
+(function() {
+    // 1. EL MOTOR DE BASE DE DATOS LOCAL
+    window.TitaniumDB = {
+        dbName: 'HandooKernel',
+        dbVersion: 1,
+        db: null,
+
+        init: function() {
+            return new Promise((resolve, reject) => {
+                if (this.db) return resolve(); // Ya está inicializada
+                
+                const req = indexedDB.open(this.dbName, this.dbVersion);
+                
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('cache_store')) {
+                        // Creamos el almacén indexado por el nombre del endpoint (ej: 'inventory.get_catalog')
+                        db.createObjectStore('cache_store', { keyPath: 'endpoint' });
+                    }
+                };
+                
+                req.onsuccess = (e) => { 
+                    this.db = e.target.result; 
+                    resolve(); 
+                };
+                
+                req.onerror = (e) => {
+                    console.error("TitaniumDB Error:", e);
+                    reject(e);
+                };
+            });
+        },
+
+        set: function(endpoint, data, ttlMinutes = 60) {
+            return new Promise(async (resolve, reject) => {
+                await this.init();
+                const tx = this.db.transaction('cache_store', 'readwrite');
+                const store = tx.objectStore('cache_store');
+                const record = {
+                    endpoint: endpoint,
+                    data: data,
+                    expiry: Date.now() + (ttlMinutes * 60000) // Caducidad programada
+                };
+                store.put(record);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject();
+            });
+        },
+
+        get: function(endpoint) {
+            return new Promise(async (resolve, reject) => {
+                await this.init();
+                const tx = this.db.transaction('cache_store', 'readonly');
+                const store = tx.objectStore('cache_store');
+                const req = store.get(endpoint);
+                
+                req.onsuccess = () => {
+                    const record = req.result;
+                    // Comprobamos si existe y si NO ha caducado
+                    if (record && record.expiry > Date.now()) {
+                        resolve(record.data);
+                    } else {
+                        resolve(null); // Está vacío o caducado
+                    }
+                };
+                req.onerror = () => resolve(null);
+            });
+        },
+
+        clearAll: function() {
+            return new Promise(async (resolve) => {
+                await this.init();
+                const tx = this.db.transaction('cache_store', 'readwrite');
+                tx.objectStore('cache_store').clear();
+                tx.oncomplete = () => {
+                    console.log("🧹 TitaniumDB: Caché purgada con éxito.");
+                    resolve();
+                };
+            });
+        }
+    };
+
+    // 2. EL INTERCEPTOR (MIDDLEWARE) DE LA API
+    // Guardamos la función original para no perderla
+    if (window.HandooApp && window.HandooApp.api) {
+        const originalApi = window.HandooApp.api;
+        
+        window.HandooApp.api = async function(endpoint, params = {}, forceRefresh = false) {
+            
+            // RUTAS BLINDADAS: Solo cacheamos catálogos y maestros pesados.
+            // NUNCA cachear facturas, ventas o guardados (porque cambian constantemente).
+            const cacheableEndpoints = [
+                'inventory.get_catalog', 
+                'vendor.list', 
+                'admin.get_amortization_rules',
+                'bridge.get_quarantine'
+            ];
+
+            // ¿Es una ruta que debemos cachear y no trae parámetros raros?
+            const isCacheable = cacheableEndpoints.includes(endpoint) && Object.keys(params).length === 0;
+
+            if (isCacheable && !forceRefresh) {
+                const cachedResponse = await window.TitaniumDB.get(endpoint);
+                if (cachedResponse) {
+                    console.log(`⚡ TITANIUM CACHE HIT [0 ms]: ${endpoint}`);
+                    return cachedResponse; // Devolvemos los datos instantáneamente sin tocar internet
+                }
+            }
+
+            // Si no está en caché (o forzamos refresco), llamamos al servidor real de Google
+            console.log(`☁️ TITANIUM SERVER CALL [> 1000 ms]: ${endpoint}`);
+            const res = await originalApi.apply(this, [endpoint, params]);
+
+            // Si el servidor nos responde bien, lo guardamos en IndexedDB para la próxima vez (1 hora de caducidad)
+            if (res && res.ok && isCacheable) {
+                 await window.TitaniumDB.set(endpoint, res, 60);
+            }
+
+            return res;
+        };
+        console.log("🚀 Interceptor TitaniumDB inyectado correctamente en el Kernel.");
+    }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,586 @@
+<style>
+  .v-tabs-container { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .v-tabs-sidebar { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 25px; }
+  .v-tab-btn { 
+    display: flex; align-items: center; gap: 15px; padding: 20px 30px; border: none; background: none; 
+    width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; 
+    border-bottom: 1px solid #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .v-tab-btn:hover { background: #f1f5f9; color: var(--dark); }
+  .v-tab-btn.active { background: white; color: var(--dark); border-right: 6px solid var(--brand); }
+  .v-tab-btn i { font-size: 1.4rem; color: #94a3b8; transition: 0.3s; width: 24px; text-align: center; }
+  .v-tab-btn.active i { color: var(--brand); }
+  .v-tabs-content { flex-grow: 1; padding: 40px; overflow-y: auto; background: white; }
+
+  /* PATRÓN TITANIUM UNIFICADO */
+  .unified-block { padding: 24px; border-radius: 16px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 16px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .block-dark .text-muted { color: #94a3b8 !important; }
+  .block-dark .form-control, .block-dark .form-select { background: #1e293b; border-color: #334155; color: #fff; font-size: 11px; }
+
+  .block-header-title { font-size: 12px !important; font-weight: 900; margin: 0; text-transform: uppercase; }
+  .block-header-desc { font-size: 11px; margin: 0; }
+
+  .h-form-control { height: 42px; border-radius: 10px; font-size: 13px; border-color: #e2e8f0; font-weight: 600; }
+  .h-label-refined { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+</style>
+
+<script>
+window.VendorsView = {
+  cache: [],
+  settings: null,
+  allExpenses: [],
+  allCatalog: [],
+  allEffects: [],
+  currentVendor: null,
+  activeTab: 'fiscal',
+  historyFilters: { status: 'ALL', start: '', end: '' },
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">SISTEMA DE COMPRAS</h6><h2 class="fw-black m-0 text-uppercase">Directorio de Proveedores</h2></div>
+         <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="VendorsView.openForm('new')">+ NUEVO PROVEEDOR</button>
+      </div>
+      <div class="p-5 animate-slide">
+         <div class="card-industrial border-0 overflow-hidden shadow-sm bg-white">
+            <div class="p-4 bg-light border-bottom d-flex gap-3 align-items-end">
+               <div class="flex-grow-1"><label class="h-label-refined">BÚSQUEDA INTELIGENTE</label><input type="text" id="v-search" class="form-control h-form-control" placeholder="Nombre o CIF..." onkeyup="VendorsView.applyFilters()"></div>
+               <div id="v-counter" class="pb-2">
+                  <div class="d-flex align-items-center gap-2 small text-muted fw-bold">
+                     <div class="spinner-border spinner-border-sm text-brand" style="width: 14px; height: 14px;"></div>
+                     <span>SINCRONIZANDO KERNEL...</span>
+                  </div>
+               </div>
+            </div>
+            <div class="table-responsive">
+               <table class="table table-hover m-0 align-middle">
+                  <thead class="bg-light"><tr><th class="ps-4">ID</th><th>RAZÓN SOCIAL</th><th>CIF / NIF</th><th>CATEGORÍA</th><th class="text-end pe-4">GESTIÓN</th></tr></thead>
+                  <tbody id="v-table-body"></tbody>
+               </table>
+            </div>
+         </div>
+      </div>`;
+    this.applyFilters();
+    await this.load();
+  },
+
+  load: async function() {
+    try {
+      const [resV, resS, resE, resC, resEff] = await Promise.all([
+        HandooApp.api('vendor.list').catch(e => ({ok:false, msg: e.message})),
+        HandooApp.api('admin.get_settings').catch(e => ({ok:false, msg: e.message})),
+        HandooApp.api('expense.list').catch(e => ({ok:false, msg: e.message})),
+        HandooApp.api('inventory.get_catalog').catch(e => ({ok:false, msg: e.message})),
+        HandooApp.api('treasury.list_all_effects').catch(e => ({ok:false, msg: e.message}))
+      ]);
+      
+      if(resV && resV.ok) this.cache = resV.data || [];
+      if(resS && resS.ok) this.settings = resS.data;
+      if(resE && resE.ok) this.allExpenses = resE.data || [];
+      if(resEff && resEff.ok) this.allEffects = resEff.data || [];
+      if(resC && resC.ok && resC.data) {
+        this.allCatalog = [...(resC.data.products || []), ...(resC.data.modules || [])];
+      }
+      this.applyFilters();
+    } catch(e) {
+      console.error("Error crítico en VendorsView.load:", e);
+      HandooApp.ui.showToast("Error al sincronizar datos de proveedores", "error");
+    }
+  },
+
+  validateIBAN: function(iban) {
+    const clean = iban.replace(/\s/g, '').toUpperCase();
+    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}$/.test(clean)) return false;
+    const rearranged = clean.slice(4) + clean.slice(0, 4);
+    const numeric = rearranged.split('').map(c => {
+      const code = c.charCodeAt(0);
+      return code >= 65 && code <= 90 ? (code - 55).toString() : c;
+    }).join('');
+    let remainder = numeric;
+    while (remainder.length > 2) {
+      let block = remainder.slice(0, 9);
+      remainder = (parseInt(block, 10) % 97).toString() + remainder.slice(block.length);
+    }
+    return parseInt(remainder, 10) % 97 === 1;
+  },
+
+  handleIBANChange: function(val) {
+    const btn = document.getElementById('btn-save-v');
+    const msg = document.getElementById('iban-error-msg');
+    const isValid = !val || this.validateIBAN(val);
+    
+    if (btn) btn.disabled = !isValid;
+    if (msg) msg.style.display = isValid ? 'none' : 'block';
+  },
+
+  applyFilters: function() {
+    const q = document.getElementById('v-search')?.value.toLowerCase() || '';
+    const filtered = this.cache.filter(v => (v.nombre_fiscal||'').toLowerCase().includes(q) || (v.cif||'').toLowerCase().includes(q));
+    document.getElementById('v-table-body').innerHTML = filtered.map(v => `
+      <tr onclick="VendorsView.openForm('${v.id}')" style="cursor:pointer">
+         <td class="ps-4 font-monospace small text-muted">${v.id}</td>
+         <td class="fw-black text-uppercase">
+            ${escapeHTML(v.nombre_fiscal)}
+            ${v.has_price_alert ? '<span class="badge bg-danger animate-pulse ms-2" style="font-size:8px" title="ALERTA PRECIO: Se han detectado discrepancias en el histórico de costes."><i class="bi bi-graph-up-arrow me-1"></i> RIESGO PRECIO</span>' : ''}
+         </td>
+         <td><span class="badge bg-white text-dark border font-monospace px-2">${v.cif}</span></td>
+         <td><span class="badge bg-light text-dark text-uppercase" style="font-size:9px">${v.categoria || 'GENERAL'}</span></td>
+         <td class="text-end pe-4"><button class="btn btn-link text-danger p-0" onclick="event.stopPropagation(); VendorsView.deleteVendor('${v.id}')"><i class="bi bi-trash3"></i></button></td>
+      </tr>`).join('') || '<tr><td colspan="5" class="p-5 text-center opacity-25">SIN REGISTROS</td></tr>';
+    
+    const counter = document.getElementById('v-counter');
+    if(counter) {
+      counter.innerHTML = `
+        <div class="small text-muted fw-black text-uppercase animate-slide" style="font-size: 10px; letter-spacing: 0.5px;">
+           <i class="bi bi-check2-circle text-success me-1"></i> REGISTROS LOCALIZADOS: ${filtered.length}
+        </div>`;
+    }
+  },
+
+  openForm: function(id) {
+    const today = new Date().toISOString().split('T')[0];
+    const empty = { 
+      id:'new', nombre_fiscal:'', cif:'', categoria:'Mercancía', fecha_alta: today,
+      dia_limite_pedido: 'DIARIO', hora_limite_pedido: '12:00', lead_time: 1,
+      direccion_fiscal: { tipo_via:'Calle', nombre:'', num:'', portal:'', escalera:'', cp:'', pob:'', prov:'' },
+      comercial: { persona_contacto:'', email_facturacion:'', email_contacto:'', telefono:'', telefono_2:'', web:'' },
+      facturacion: { forma_pago:'TRANSFERENCIA', iva:21, irpf:0, vencimiento:30, periodicidad: 'Mensual', iban: '', swift: '' },
+      bancos: []
+    };
+    const raw = id === 'new' ? empty : this.cache.find(x => x.id === id);
+    this.currentVendor = JSON.parse(JSON.stringify(Object.assign({}, empty, raw)));
+    
+    // Asegurar estructura
+    if(!this.currentVendor.direccion_fiscal) this.currentVendor.direccion_fiscal = Object.assign({}, empty.direccion_fiscal);
+    if(!this.currentVendor.comercial) this.currentVendor.comercial = empty.comercial;
+    if(!this.currentVendor.facturacion) this.currentVendor.facturacion = empty.facturacion;
+
+    this.renderFormContainer();
+  },
+
+  navigate: function(direction) {
+      if (!this.cache || this.cache.length <= 1) return;
+      const currentId = this.currentVendor.id;
+      const currentIndex = this.cache.findIndex(v => String(v.id) === String(currentId));
+      
+      let targetIndex = currentIndex + direction;
+      if (targetIndex < 0) targetIndex = this.cache.length - 1;
+      if (targetIndex >= this.cache.length) targetIndex = 0;
+      
+      this.openForm(this.cache[targetIndex].id);
+  },
+
+  renderFormContainer: function() {
+    const v = this.currentVendor;
+    document.getElementById('main-stage').innerHTML = `
+      <div class="bg-white border-bottom px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow-sm">
+         <div class="d-flex align-items-center gap-4">
+            <button class="btn btn-link text-dark p-0" onclick="VendorsView.render()"><i class="bi bi-arrow-left-circle-fill fs-3"></i></button>
+            <div class="d-flex align-items-center gap-2">
+                <button class="h-nav-arrow" onclick="VendorsView.navigate(-1)"><i class="bi bi-chevron-left"></i></button>
+                <div><h6 class="h-label text-muted">EXPEDIENTE PROVEEDOR: ${v.id}</h6><h2 class="fw-black m-0 text-uppercase">${escapeHTML(v.nombre_fiscal) || 'NUEVO PROVEEDOR'}</h2></div>
+                <button class="h-nav-arrow" onclick="VendorsView.navigate(1)"><i class="bi bi-chevron-right"></i></button>
+            </div>
+         </div>
+         <div class="d-flex gap-2">
+            <button class="btn btn-light border px-4 fw-bold" onclick="VendorsView.render()">DESCARTAR</button>
+            <button id="btn-save-v" class="h-btn h-btn-dark px-5 py-2 shadow" onclick="VendorsView.save()">SINCRONIZAR KERNEL</button>
+         </div>
+      </div>
+      <div class="p-5"><div class="v-tabs-container animate-slide"><div class="v-tabs-sidebar" id="v-tabs-nav"></div><div class="v-tabs-content" id="v-tabs-content"></div></div></div>`;
+    this.renderTabs();
+  },
+
+  renderTabs: function() {
+    const tabs = [
+      {id:'fiscal', icon:'bi-bank', label:'Fiscal / Identidad'},
+      {id:'comercial', icon:'bi-chat-dots', label:'Canales Comunicación'},
+      {id:'pago', icon:'bi-credit-card', label:'Acuerdos de Pago'},
+      {id:'items', icon:'bi-tags', label:'Catálogo Asociado'},
+      {id:'tariff', icon:'bi-file-earmark-spreadsheet', label:'Tarifa Maestra'},
+      {id:'history', icon:'bi-receipt', label:'Historial Facturas'}
+    ];
+    document.getElementById('v-tabs-nav').innerHTML = tabs.map(t => `<button class="v-tab-btn ${this.activeTab===t.id?'active':''}" onclick="VendorsView.setTab('${t.id}')"><i class="${t.icon}"></i> ${t.label}</button>`).join('');
+    this.renderActiveContent();
+  },
+
+  setTab: function(t) { this.syncLocal(); this.activeTab = t; this.renderTabs(); },
+
+  syncLocal: function() {
+    const v = this.currentVendor;
+    const g = (id) => document.getElementById(id)?.value;
+    
+    if(g('v-nombre')) v.nombre_fiscal = g('v-nombre');
+    if(g('v-cif')) v.cif = g('v-cif');
+    if(g('v-cat')) v.categoria = g('v-cat');
+    if(document.getElementById('v-handoo-network')) v.handoo_network = document.getElementById('v-handoo-network').checked;
+
+    if(document.getElementById('v-via')) {
+      v.direccion_fiscal.tipo_via = g('v-via');
+      v.direccion_fiscal.nombre = g('v-calle');
+      v.direccion_fiscal.num = g('v-num');
+      v.direccion_fiscal.portal = g('v-portal');
+      v.direccion_fiscal.cp = g('v-cp');
+      v.direccion_fiscal.pob = g('v-pob');
+      v.direccion_fiscal.prov = g('v-prov');
+    }
+
+    if(document.getElementById('v-email-fac')) {
+      v.comercial.persona_contacto = g('c-persona');
+      v.comercial.email_facturacion = g('c-email-fac');
+      v.comercial.email_contacto = g('c-email-con');
+      v.comercial.telefono = g('c-tel');
+      v.comercial.web = g('v-web');
+    }
+
+    if(document.getElementById('v-metodo')) {
+      v.facturacion.forma_pago = g('v-metodo');
+      v.facturacion.vencimiento = g('v-vto');
+      v.facturacion.iva = parseFloat(g('v-iva') || 0);
+      v.facturacion.irpf = parseFloat(g('v-irpf') || 0);
+      v.facturacion.iban = g('v-iban');
+      v.facturacion.swift = g('v-swift');
+      
+      // Logística Predictiva
+      v.dia_limite_pedido = g('v-dia-limite');
+      v.hora_limite_pedido = g('v-hora-limite');
+      v.lead_time = parseInt(g('v-lead-time') || 0);
+    }
+  },
+
+  renderActiveContent: async function() {
+    const v = this.currentVendor;
+    const container = document.getElementById('v-tabs-content');
+    const masters = this.settings?.masters || {};
+
+    if(this.activeTab === 'fiscal') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-light mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-bank fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Identidad Legal y Jurídica</h6><p class="block-header-desc text-muted">Datos oficiales y categoría de suministro.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-8"><label class="h-label-refined">RAZÓN SOCIAL</label><input type="text" id="v-nombre" class="form-control h-form-control fw-black" value="${escapeHTML(v.nombre_fiscal)}"></div>
+                 <div class="col-md-4"><label class="h-label-refined">CIF / NIF</label><input type="text" id="v-cif" class="form-control h-form-control font-monospace" value="${v.cif}"></div>
+                 <div class="col-md-12"><label class="h-label-refined">CATEGORÍA</label><select id="v-cat" class="form-select h-form-control fw-bold"><option ${v.categoria==='Mercancía'?'selected':''}>Mercancía</option><option ${v.categoria==='Suministros'?'selected':''}>Suministros</option><option ${v.categoria==='Servicios'?'selected':''}>Servicios</option></select></div>
+              </div>
+           </div>
+
+           <!-- BLOQUE UNIFICADO RED HANDOO (MODO DARK CRÍTICO) -->
+           <div class="unified-block block-dark">
+              <div class="row align-items-center">
+                 <div class="col-md-1 text-center"><i class="bi bi-hexagon-fill fs-2 text-brand"></i></div>
+                 <div class="col-md-8">
+                    <h6 class="block-header-title" style="color:#fff !important;">Conexión en Red Handoo Network</h6>
+                    <p class="small text-muted m-0">Si el proveedor usa Handoo, sus facturas entrarán automáticamente por el canal digital neural.</p>
+                 </div>
+                 <div class="col-md-3 text-end">
+                    <div class="form-check form-switch d-inline-block">
+                       <input class="form-check-input" type="checkbox" id="v-handoo-network" style="width: 3.5em; height: 1.8em; cursor:pointer;" ${v.handoo_network ? 'checked' : ''}>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <div class="unified-block block-light">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-geo-alt fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Domicilio Fiscal (Sede Central)</h6><p class="block-header-desc text-muted">Ubicación principal del proveedor para documentos legales.</p></div>
+              </div>
+              <div class="row g-2">
+                 <div class="col-md-2"><label class="h-label-refined">VÍA</label><input type="text" id="v-via" class="form-control h-form-control" value="${v.direccion_fiscal.tipo_via || ''}" placeholder="Calle, Av..."></div>
+                 <div class="col-md-7"><label class="h-label-refined">NOMBRE DE LA CALLE</label><input type="text" id="v-calle" class="form-control h-form-control" value="${v.direccion_fiscal.nombre || ''}"></div>
+                 <div class="col-md-1"><label class="h-label-refined">Nº</label><input type="text" id="v-num" class="form-control h-form-control" value="${v.direccion_fiscal.num || ''}"></div>
+                 <div class="col-md-2"><label class="h-label-refined">CP</label><input type="text" id="v-cp" class="form-control h-form-control fw-bold" value="${v.direccion_fiscal.cp || ''}"></div>
+              </div>
+              <div class="row g-2 mt-2">
+                 <div class="col-md-6"><label class="h-label-refined">POBLACIÓN</label><input type="text" id="v-pob" class="form-control h-form-control" value="${v.direccion_fiscal.pob || ''}"></div>
+                 <div class="col-md-6"><label class="h-label-refined">PROVINCIA</label><input type="text" id="v-prov" class="form-control h-form-control" value="${v.direccion_fiscal.prov || ''}"></div>
+              </div>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'comercial') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-light mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-chat-dots fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Canales de Comunicación</h6><p class="block-header-desc text-muted">Personas de contacto y correos comerciales.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-12"><label class="h-label-refined">PERSONA DE CONTACTO</label><input type="text" id="c-persona" class="form-control h-form-control fw-bold" value="${v.comercial.persona_contacto || ''}"></div>
+                 <div class="col-md-6"><label class="h-label-refined">EMAIL CONTACTO GENERAL</label><input type="email" id="c-email-con" class="form-control h-form-control" value="${v.comercial.email_contacto || ''}"></div>
+                 <div class="col-md-6"><label class="h-label-refined text-brand">EMAIL PARA FACTURACIÓN</label><input type="email" id="c-email-fac" class="form-control h-form-control fw-bold" value="${v.comercial.email_facturacion || ''}"></div>
+                 <div class="col-md-6"><label class="h-label-refined">TELÉFONO PRINCIPAL</label><input type="text" id="c-tel" class="form-control h-form-control" value="${v.comercial.telefono || ''}"></div>
+                 <div class="col-md-6"><label class="h-label-refined">WEB CORPORATIVA</label><input type="text" id="c-web" class="form-control h-form-control" value="${v.comercial.web || ''}" placeholder="https://..."></div>
+              </div>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'pago') {
+      container.innerHTML = `
+        <div class="animate-slide">
+           <div class="unified-block block-light mt-0">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-sliders fs-2 text-brand"></i></div>
+                 <div class="col-md-11"><h6 class="block-header-title">Condiciones de Adquisición</h6><p class="block-header-desc text-muted">Impuestos por defecto y plazos de liquidación.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-3"><label class="h-label-refined">TIPO IVA (%)</label><select id="v-iva" class="form-select h-form-control fw-bold">${(masters.taxes||[]).map(t => `<option value="${t.valor}" ${parseFloat(v.facturacion.iva)===parseFloat(t.valor)?'selected':''}>${t.nombre} (${t.valor}%)</option>`).join('')}</select></div>
+                 <div class="col-md-3"><label class="h-label-refined text-danger">RETENCIÓN IRPF (%)</label><select id="v-irpf" class="form-select h-form-control fw-black text-danger"><option value="0">0% - NINGUNA</option>${(masters.retentions||[]).map(r => `<option value="${r.valor}" ${parseFloat(v.facturacion.irpf)===parseFloat(r.valor)?'selected':''}>${r.nombre} (${r.valor}%)</option>`).join('')}</select></div>
+                 <div class="col-md-3"><label class="h-label-refined">FORMA PAGO</label><select id="v-metodo" class="form-select h-form-control fw-black">${(masters.payment_methods||[]).map(pm => `<option value="${pm.nombre}" ${v.facturacion.forma_pago===pm.nombre?'selected':''}>${pm.nombre.toUpperCase()}</option>`).join('')}</select></div>
+                 <div class="col-md-3"><label class="h-label-refined">PLAZO (DÍAS)</label><input type="number" id="v-vto" class="form-control h-form-control fw-bold" value="${v.facturacion.vencimiento || 30}"></div>
+              </div>
+           </div>
+
+           <!-- BLOQUE TITANIUM DARK: DATOS BANCARIOS DEL PROVEEDOR (CRÍTICO) -->
+           <div class="unified-block block-dark">
+              <div class="row align-items-center">
+                 <div class="col-md-1 text-center"><i class="bi bi-bank fs-2 text-warning"></i></div>
+                 <div class="col-md-11">
+                    <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Cuenta de Abono (Destino)</h6>
+                    <p class="small text-muted m-0">Donde se emitirán las transferencias de pago al proveedor. Se requiere validación Mod-97.</p>
+                    <div class="row mt-3 g-3">
+                       <div class="col-md-8">
+                          <label class="h-label-refined text-white-50">IBAN COMPLETO</label>
+                          <input type="text" id="v-iban" class="form-control bg-dark border-secondary text-brand fw-black h-form-control font-monospace" value="${v.facturacion.iban || ''}" placeholder="ES00 0000 0000 0000 0000 0000" oninput="VendorsView.handleIBANChange(this.value)">
+                          <div id="iban-error-msg" class="text-danger small fw-bold mt-1" style="display:none; font-size:10px;"><i class="bi bi-exclamation-triangle-fill"></i> Algoritmo Mod-97 Inválido. Bloqueando guardado preventivo.</div>
+                       </div>
+                       <div class="col-md-4">
+                          <label class="h-label-refined text-white-50">BIC / SWIFT</label>
+                          <input type="text" id="v-swift" class="form-control bg-dark border-secondary text-white h-form-control" value="${v.facturacion.swift || ''}" placeholder="XXXXXXXX">
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <!-- BLOQUE LOGÍSTICA PREDICTIVA -->
+           <div class="unified-block block-dark mt-3" style="border-left: 4px solid var(--brand) !important;">
+              <div class="row align-items-center">
+                 <div class="col-md-1 text-center"><i class="bi bi-exclamation-triangle-fill fs-2 text-brand"></i></div>
+                 <div class="col-md-11">
+                    <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Motor de Logística Predictiva</h6>
+                    <p class="small text-muted m-0">Configura los límites de pedido para activar alertas de cierre de ventana de compra.</p>
+                    <div class="row mt-3 g-3">
+                       <div class="col-md-4">
+                          <label class="h-label-refined text-white-50">Día Límite</label>
+                          <select id="v-dia-limite" class="form-select bg-dark border-secondary text-white h-form-control fw-bold">
+                             <option value="DIARIO" ${v.dia_limite_pedido==='DIARIO'?'selected':''}>DIARIO</option>
+                             <option value="LUNES" ${v.dia_limite_pedido==='LUNES'?'selected':''}>LUNES</option>
+                             <option value="MARTES" ${v.dia_limite_pedido==='MARTES'?'selected':''}>MARTES</option>
+                             <option value="MIÉRCOLES" ${v.dia_limite_pedido==='MIÉRCOLES'?'selected':''}>MIÉRCOLES</option>
+                             <option value="JUEVES" ${v.dia_limite_pedido==='JUEVES'?'selected':''}>JUEVES</option>
+                             <option value="VIERNES" ${v.dia_limite_pedido==='VIERNES'?'selected':''}>VIERNES</option>
+                             <option value="SÁBADO" ${v.dia_limite_pedido==='SÁBADO'?'selected':''}>SÁBADO</option>
+                             <option value="DOMINGO" ${v.dia_limite_pedido==='DOMINGO'?'selected':''}>DOMINGO</option>
+                          </select>
+                       </div>
+                       <div class="col-md-4">
+                          <label class="h-label-refined text-white-50">Hora de Corte (Cut-off)</label>
+                          <input type="time" id="v-hora-limite" class="form-control bg-dark border-secondary text-white h-form-control fw-bold" value="${v.hora_limite_pedido || '12:00'}">
+                       </div>
+                       <div class="col-md-4">
+                          <label class="h-label-refined text-white-50">Lead Time (Días)</label>
+                          <input type="number" id="v-lead-time" class="form-control bg-dark border-secondary text-white h-form-control fw-bold" value="${v.lead_time || 1}">
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'items') {
+       const itemsBought = this.allCatalog.filter(item => 
+          (item.aliases || []).some(a => String(a.vendor_id) === String(v.id))
+       );
+
+       container.innerHTML = `
+        <div class="animate-slide">
+           <h6 class="fw-black text-uppercase mb-4">Artículos del Catálogo Vinculados</h6>
+           <div class="card-industrial border-0 overflow-hidden shadow-sm">
+              <table class="table table-hover m-0 align-middle" style="font-size:11px">
+                 <thead class="bg-light"><tr><th class="ps-3 py-2">PRODUCTO INTERNO</th><th>ALIAS DEL PROVEEDOR</th><th class="text-end pe-3">ÚLTIMO PRECIO</th></tr></thead>
+                 <tbody>
+                    ${itemsBought.map(item => {
+                       const alias = item.aliases.find(a => String(a.vendor_id) === String(v.id));
+                       return `<tr><td class="ps-3 fw-bold text-uppercase">${escapeHTML(item.nombre)}</td><td class="font-monospace text-muted">${alias.vendor_ref}</td><td class="text-end pe-3 fw-black text-brand">${parseFloat(alias.last_price).toLocaleString()} €</td></tr>`;
+                    }).join('') || '<tr><td colspan="3" class="p-5 text-center opacity-25">SIN HISTÓRICO DE COMPRAS MAPEADO</td></tr>'}
+                 </tbody>
+              </table>
+           </div>
+        </div>`;
+    }
+    else if(this.activeTab === 'tariff') {
+       await this.renderTariffUI(container);
+    }
+    else if(this.activeTab === 'history') {
+       const clientInvs = this.allExpenses.filter(inv => {
+          const matchesVendor = String(inv.vendor_id) === String(v.id);
+          const status = inv.status || 'PENDIENTE';
+          const matchStatus = this.historyFilters.status === 'ALL' || status === this.historyFilters.status;
+          const d = new Date(inv.fecha);
+          const start = this.historyFilters.start ? new Date(this.historyFilters.start) : null;
+          const end = this.historyFilters.end ? new Date(this.historyFilters.end) : null;
+          return matchesVendor && matchStatus && (!start || d >= start) && (!end || d <= end);
+       });
+
+       container.innerHTML = `
+        <div class="animate-slide">
+           <!-- FILTROS DE HISTORIAL PROVEEDOR -->
+           <div class="unified-block block-dark mt-0 mb-4">
+              <div class="row align-items-center mb-3">
+                 <div class="col-md-1 text-center"><i class="bi bi-funnel fs-3 text-brand"></i></div>
+                 <div class="col-md-11 ps-4"><h6 class="block-header-title" style="color:#fff !important;">Filtros de Adquisición</h6><p class="block-header-desc text-muted">Búsqueda selectiva en el libro de gastos.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-4"><label class="h-label-refined text-white-50">ESTADO GASTO</label><select class="form-select h-form-control fw-bold" onchange="VendorsView.historyFilters.status=this.value; VendorsView.renderActiveContent()"><option value="ALL">TODOS</option><option value="Pagado" ${this.historyFilters.status==='Pagado'?'selected':''}>PAGADOS</option><option value="Pendiente" ${this.historyFilters.status==='Pendiente'?'selected':''}>PENDIENTES</option></select></div>
+                 <div class="col-md-3"><label class="h-label-refined text-white-50">DESDE</label><input type="date" class="form-control h-form-control fw-bold" value="${this.historyFilters.start}" onchange="VendorsView.historyFilters.start=this.value; VendorsView.renderActiveContent()"></div>
+                 <div class="col-md-3"><label class="h-label-refined text-white-50">HASTA</label><input type="date" class="form-control h-form-control fw-bold" value="${this.historyFilters.end}" onchange="VendorsView.historyFilters.end=this.value; VendorsView.renderActiveContent()"></div>
+                 <div class="col-md-2 d-flex align-items-end"><button class="btn btn-outline-light border-secondary text-white w-100 py-2 small fw-black" onclick="VendorsView.historyFilters={status:'ALL',start:'',end:''}; VendorsView.renderActiveContent()">LIMPIAR</button></div>
+              </div>
+           </div>
+
+           <div class="d-flex justify-content-between align-items-center mb-4">
+              <h6 class="fw-black text-uppercase m-0">Registro Histórico de Compras</h6>
+              <button class="btn btn-dark btn-sm fw-black px-4" onclick="ExpensesView.openExpenseModal(null, 'INVOICE')"><i class="bi bi-plus-circle me-2"></i> NUEVO GASTO</button>
+           </div>
+
+           <div class="card-industrial border-0 overflow-hidden shadow-sm">
+              <table class="table table-hover m-0 align-middle" style="font-size:11px">
+                 <thead class="bg-light"><tr><th class="ps-3">ID GASTO / FACTURA</th><th>FECHA</th><th class="text-center">ESTADO PAGO</th><th class="text-end pe-3">TOTAL</th></tr></thead>
+                 <tbody>${clientInvs.map(e => {
+                    const treStatus = e.status || 'PENDIENTE';
+                    return `
+                    <tr onclick="ExpensesView.openExpenseModal('${e.id}')" style="cursor:pointer" title="Haga clic para editar gasto (si el periodo está abierto)">
+                       <td class="ps-3 font-monospace fw-bold">${e.invoice_num || e.id}</td>
+                       <td>${new Date(e.fecha).toLocaleDateString()}</td>
+                       <td class="text-center"><span class="badge ${treStatus==='Pagado'?'bg-success':'bg-light text-dark border'}" style="font-size:8px">${treStatus.toUpperCase()}</span></td>
+                       <td class="text-end pe-3 fw-black">${parseFloat(e.total).toLocaleString()} €</td>
+                    </tr>`;
+                 }).join('') || '<tr><td colspan="4" class="p-5 text-center opacity-25">SIN MOVIMIENTOS</td></tr>'}
+                 </tbody>
+              </table>
+           </div>
+        </div>`;
+    }
+  },
+
+  renderTariffUI: async function(container) {
+    const resT = await HandooApp.api('vendor.get_tariff', { vendor_id: this.currentVendor.id });
+    const tariff = resT.ok && resT.data ? resT.data.items : [];
+    
+    container.innerHTML = `
+      <div class="animate-slide">
+         <div class="p-4 rounded-4 shadow-sm mt-0 block-dark row align-items-center mb-4">
+            <div class="col-md-1 text-center"><i class="bi bi-file-earmark-spreadsheet fs-1 text-brand"></i></div>
+            <div class="col-md-7 ps-4">
+               <h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Tarifa Maestra del Proveedor</h6>
+               <p class="small text-muted m-0">Cargue el catálogo completo de precios para habilitar el motor de comparativa proactiva.</p>
+            </div>
+            <div class="col-md-4 text-end">
+               <input type="file" id="tariff-csv" class="d-none" accept=".csv" onchange="VendorsView.handleTariffUpload(this)">
+               <button class="btn btn-brand-titanium fw-black shadow px-4 py-2" onclick="document.getElementById('tariff-csv').click()">
+                  <i class="bi bi-cloud-upload me-2"></i> IMPORTAR CSV
+               </button>
+            </div>
+         </div>
+         
+         <div class="card-industrial border-0 overflow-hidden shadow-sm bg-white">
+            <table class="table table-hover m-0 align-middle" style="font-size:11px">
+               <thead class="bg-light"><tr><th class="ps-3">REF. PROVEEDOR</th><th>CONCEPTO / ARTÍCULO</th><th class="text-end pe-3">PRECIO TARIFA (€)</th></tr></thead>
+               <tbody>
+                  ${tariff.map(it => `
+                    <tr>
+                       <td class="ps-3 font-monospace fw-bold">${it.ref}</td>
+                       <td class="text-uppercase">${escapeHTML(it.concept)}</td>
+                       <td class="text-end pe-3 fw-black text-brand">${parseFloat(it.price).toLocaleString('es-ES', {minimumFractionDigits: 2})} €</td>
+                    </tr>
+                  `).join('') || '<tr><td colspan="3" class="p-5 text-center opacity-25 fw-bold">SIN TARIFA CARGADA EN EL KERNEL</td></tr>'}
+               </tbody>
+            </table>
+         </div>
+         
+         <div class="mt-4 p-4 rounded-4 bg-light border row align-items-center">
+            <div class="col-md-1 text-center"><i class="bi bi-info-circle fs-3 text-brand"></i></div>
+            <div class="col-md-11 small fw-bold text-muted">
+               Formato CSV sugerido: REFERENCIA;CONCEPTO;PRECIO. El Kernel mapeará automáticamente estos precios contra los pedidos futuros para detectar desviaciones o ahorros competitivos.
+            </div>
+         </div>
+      </div>`;
+  },
+
+  handleTariffUpload: function(input) {
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+       const content = e.target.result;
+       const lines = content.split('\n').slice(1);
+       const items = lines.map(l => {
+          const p = l.split(';');
+          return { ref: p[0], concept: p[1], price: p[2] };
+       }).filter(it => it.ref && it.price);
+       
+       HandooApp.ui.showToast("Inyectando catálogo en el cerebro Kernel...", "info");
+       const res = await HandooApp.api('vendor.save_tariff', { vendor_id: this.currentVendor.id, items });
+       if(res.ok) {
+          HandooApp.ui.showToast(res.msg, "success");
+          await this.renderActiveContent();
+       }
+    };
+    reader.readAsText(file);
+  },
+
+  save: async function() {
+    this.syncLocal();
+    HandooApp.ui.setLoading('btn-save-v', true);
+    const res = await HandooApp.api('vendor.save', this.currentVendor);
+    HandooApp.ui.setLoading('btn-save-v', false);
+    if(res.ok) { 
+      // Persistencia en Firestore para Logística Predictiva (Real-time)
+      try {
+        const v = res.data;
+        await window.db.collection('vendors').doc(String(v.id)).set({
+          id: v.id,
+          nombre_fiscal: v.nombre_fiscal,
+          dia_limite_pedido: v.dia_limite_pedido || 'DIARIO',
+          hora_limite_pedido: v.hora_limite_pedido || '12:00',
+          lead_time: v.lead_time || 1,
+          updated_at: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch(e) { console.error("Error Firestore Sync:", e); }
+
+      HandooApp.ui.showToast("Proveedor sincronizado"); 
+      this.render(); 
+    }
+    else { HandooApp.ui.showToast(res.msg, "error"); }
+  },
+
+  deleteVendor: async function(id) {
+    if(await HandooApp.ui.confirm("¿ELIMINAR PROVEEDOR?", "Esta acción moverá el expediente de forma permanente a la papelera.")) {
+       HandooApp.ui.showToast("Verificando integridad y procesando baja...", "info");
+       const res = await HandooApp.api('vendor.delete', {id});
+       if(res.ok) {
+         HandooApp.ui.showToast("Proveedor movido a papelera.");
+         this.load();
+       } else {
+         HandooApp.ui.showToast(res.msg, "error");
+       }
+    }
+  },
+
+  removeBank: async function(idx) { 
+    if(await HandooApp.ui.confirm("¿ELIMINAR CUENTA BANCARIA?", "Se eliminará del diccionario del proveedor.")) { 
+      this.currentVendor.bancos.splice(idx, 1); 
+      this.renderActiveContent(); 
+    } 
+  }
+};
+</script>

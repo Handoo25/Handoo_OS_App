@@ -1,0 +1,1615 @@
+<style>
+  .v-tabs-container-settings { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+  .v-tabs-sidebar-settings { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 20px; display: flex; flex-direction: column; }
+  
+  .v-tab-btn-settings { display: flex; align-items: center; gap: 15px; padding: 18px 30px; border: none; background: none; width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; border-bottom: 1px solid #f1f5f9; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; }
+  .v-tab-btn-settings.active { background: #f1f5f9; color: var(--dark); }
+  .v-tab-btn-settings i { font-size: 1.2rem; color: #94a3b8; width: 20px; text-align: center; }
+  .v-tab-btn-settings.active i { color: var(--brand); }
+
+  .settings-sub-sidebar { background: #fff; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+  .btn-sub-nav { 
+    display: flex; align-items: center; padding: 12px 30px 12px 55px; width: 100%; border: none; 
+    background: transparent; color: #64748b; font-weight: 800; font-size: 10px; 
+    text-transform: uppercase; letter-spacing: 0.05em; transition: 0.2s; cursor: pointer;
+    border-right: 4px solid transparent;
+  }
+  .btn-sub-nav:hover { color: var(--dark); background: #f8fafc; }
+  .btn-sub-nav.active { color: var(--dark); border-right-color: var(--brand); background: #fffdf5; }
+
+  .v-tabs-content-settings { flex-grow: 1; padding: 50px; overflow-y: auto; background: white; }
+
+  .settings-section-title { font-weight: 900; color: var(--dark); margin-bottom: 25px; border-bottom: 3px solid var(--brand); display: flex; justify-content: space-between; align-items: center; width: 100%; padding-bottom: 5px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+  
+  .titanium-card { 
+    padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; 
+    background: #fff; transition: 0.3s; cursor: pointer; position: relative; 
+    overflow: hidden; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .titanium-card:hover { border-color: var(--brand); transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,0.05); }
+  .card-accent-active { border-left: 5px solid var(--brand) !important; }
+  
+  /* UNIFIED BLOCK PATTERN V108.5 */
+  .unified-block { padding: 24px; border-radius: 16px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 16px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .block-dark .text-muted { color: #94a3b8 !important; }
+  .block-dark .form-control, .block-dark .form-select { background: #1e293b; border-color: #334155; color: #fff; font-size: 11px; }
+
+  .h-form-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; display: block; }
+  .h-label-refined { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
+  .h-form-control { height: 38px; border-radius: 8px; font-size: 13px; border-color: #e2e8f0; font-weight: 500; }
+
+  .btn-brand-titanium { background: var(--brand) !important; color: #ffffff !important; border: none; font-weight: 900; border-radius: 10px; }
+  .btn-brand-titanium:hover { background: #d97706 !important; transform: scale(1.01); }
+
+  .logo-preview-container { width: 100px; height: 100px; border: 2px dashed #cbd5e1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; background: white; }
+  .logo-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+  .table-pgc-industrial { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+  .table-pgc-industrial thead th { background: #0f172a; color: white; padding: 18px 20px; text-transform: uppercase; font-weight: 900; font-size: 10px; letter-spacing: 1px; border: none; }
+  .table-pgc-industrial td { padding: 18px 20px; border-bottom: 1px solid #f1f5f9; background: #fff; font-family: 'Inter', sans-serif; transition: 0.2s; }
+  .table-pgc-industrial tr { cursor: pointer; }
+  .table-pgc-industrial tr:hover td { background: #fffdf5; border-bottom-color: var(--brand); }
+  
+  .cell-acc-id { font-family: 'JetBrains Mono', monospace; font-weight: 900; color: var(--brand); font-size: 13px; }
+  .cell-acc-name { font-weight: 800; text-transform: uppercase; color: #0f172a; font-size: 11px; }
+  .cell-acc-val { font-family: 'JetBrains Mono', monospace; font-weight: 900; text-align: right; }
+
+  /* COMPARATIVA V190 */
+  .diff-badge { font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-top: 5px; }
+  .diff-plus { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
+  .diff-minus { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+  .table-audit tr { cursor: pointer !important; transition: 0.2s; }
+  .table-audit tr:hover td { background: #f0fdf4 !important; }
+</style>
+
+<script>
+window.SettingsView = {
+  data: null,
+  activeCategory: 'nucleus',
+  editingMaster: null, 
+  subCategory: 'global',
+  autoBilling: { active: false, hour: 4 },
+  costCenters: [],
+  auditLogs: [],
+  globalShifts: null,
+  FEATURES_LIST: [
+    { id: 'FEAT_PROD_FLOOR', label: 'Control de Planta / Piso', desc: 'Gestión operativa en tiempo real (Sustituye Oído Chef).', icon: 'bi-activity', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_FIN_CAPTURE', label: 'Captura Financiera Rápida', desc: 'Matching de facturas y cobros ágil (Sustituye Oído Caja).', icon: 'bi-cash-stack', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_CORE_DASHBOARD', label: 'Dashboard Ejecutivo', desc: 'Panel visual de salud financiera.', icon: 'bi-grid', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_CORE_CLIENTS', label: 'Maestro de Clientes', desc: 'Base de datos soberana de entidades.', icon: 'bi-people', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_FIXED_ASSETS', label: 'Gestión de Inmovilizado', desc: 'Control de activos fijos, amortizaciones y revalorizaciones.', icon: 'bi-building-gear', cat: 'PATRIMONIO Y OPERACIONES' },
+    { id: 'FEAT_OPERATIONAL_TOOLS', label: 'Utillaje y Herramientas', desc: 'Control operativo de menaje, maquinaria ligera y reposición.', icon: 'bi-tools', cat: 'PATRIMONIO Y OPERACIONES' },
+    { id: 'FEAT_CORE_INVOICING', label: 'Facturación Ventas', desc: 'Emisión oficial y motor PDF.', icon: 'bi-receipt', cat: 'FACTURACIÓN' },
+    { id: 'FEAT_DOC_COBRO', label: 'Documentos de Cobro', desc: 'Gestión de efectos y vencimientos.', icon: 'bi-wallet2', cat: 'TESORERÍA' },
+    { id: 'FEAT_BATCH_COBRO', label: 'Cobro por lotes', desc: 'Liquidación masiva de documentos.', icon: 'bi-stack', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEPA_COBRO', label: 'Remesas de cobro', desc: 'Normas 19 y 58 XML Bancario.', icon: 'bi-collection', cat: 'TESORERÍA' },
+    { id: 'FEAT_DOC_PAGO', label: 'Documentos de Pago', desc: 'Gestión de obligaciones a proveedores.', icon: 'bi-receipt-cutoff', cat: 'TESORERÍA' },
+    { id: 'FEAT_BATCH_PAGO', label: 'Pago por lotes', desc: 'Liquidación masiva de pagos.', icon: 'bi-layers', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEPA_PAGO', label: 'Remesas de pago', desc: 'Norma 34 XML Transferencias.', icon: 'bi-send-check', cat: 'TESORERÍA' },
+    { id: 'FEAT_FINANCIACION', label: 'Préstamos y Pasivo', desc: 'Control de deuda y cuadros amortización.', icon: 'bi-bank', cat: 'TESORERÍA' },
+    { id: 'FEAT_CIRCULANTE', label: 'Líneas de Crédito', desc: 'Pólizas de circulante y descuento.', icon: 'bi-arrow-repeat', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION', label: 'Conciliación Bancaria', desc: 'Cámara de compensación y Scan.', icon: 'bi-arrow-left-right', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION_CASH', label: 'Conciliación Caja', desc: 'Cuadre de efectivo y arqueos.', icon: 'bi-cash-coin', cat: 'TESORERÍA' },
+    { id: 'FEAT_CONCILIACION_STRIPE', label: 'Conciliación Stripe', desc: 'Cuadre automático de pasarela.', icon: 'bi-stripe', cat: 'TESORERÍA' },
+    { id: 'FEAT_LIBRO_MAYOR', label: 'Movimientos Bancarios', desc: 'Historial detallado de operaciones bancarias.', icon: 'bi-journal-text', cat: 'TESORERÍA' },
+    { id: 'FEAT_ANALISIS_RIESGO', label: 'IA Neural CFO', desc: 'Predicción de Cash Flow a 30 días.', icon: 'bi-lightning-charge', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_TRIPLE_CAJA', label: 'Triple Caja (Tesorería)', desc: 'Gestión de TPV, Caja Fuerte y Tránsito.', icon: 'bi-safe2', cat: 'TESORERÍA' },
+    { id: 'FEAT_CALENDAR_COBRO', label: 'Calendario de Cobros', desc: 'Vista temporal de entradas previstas.', icon: 'bi-calendar-check', cat: 'TESORERÍA' },
+    { id: 'FEAT_CALENDAR_PAGO', label: 'Calendario de Pagos', desc: 'Vista temporal de salidas previstas.', icon: 'bi-calendar-event', cat: 'TESORERÍA' },
+    { id: 'FEAT_SEDES', label: 'Sedes y Logística', desc: 'Gestión de múltiples centros de trabajo.', icon: 'bi-building', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_SUBSCRIPTIONS', label: 'Suscripciones y Licencias', desc: 'Motor de recurrencia y facturación automática.', icon: 'bi-stars', cat: 'FACTURACIÓN' },
+    { id: 'MOD_QMS_QUALITY', label: 'Vertical QMS / Calidad', desc: 'Trazabilidad, Lotes y Puntos Críticos (APPCC).', icon: 'bi-shield-check', cat: 'VERTICALES' },
+    { id: 'MOD_SOFTWARE', label: 'Vertical SaaS', desc: 'Red Handoo e Interconexión.', icon: 'bi-hexagon', cat: 'VERTICALES' },
+    { id: 'FEAT_CATALOG_MODULES', label: 'Catálogo de Módulos', desc: 'Venta de módulos de software.', icon: 'bi-cpu', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_PLANS', label: 'Catálogo de Planes', desc: 'Venta de bundles y suscripciones.', icon: 'bi-stars', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_DISCOUNTS', label: 'Gestión de Descuentos', desc: 'Motor de promociones y rebajas.', icon: 'bi-percent', cat: 'CATÁLOGO' },
+    { id: 'FEAT_CATALOG_TAXONOMY', label: 'Taxonomía Avanzada', desc: 'Desplegables dinámicos para Categorías, Familias y Zonas.', icon: 'bi-tags-fill', cat: 'CATÁLOGO' },
+    { id: 'FEAT_TAXES', label: 'Módulo de Impuestos', desc: 'Liquidaciones de IVA e IRPF oficiales.', icon: 'bi-calculator', cat: 'CONTABILIDAD' },
+    { id: 'FEAT_BRIDGE', label: 'Conector Bridge', desc: 'Sincronización con plataformas externas.', icon: 'bi-link-45deg', cat: 'CONECTIVIDAD' },
+    { id: 'FEAT_IMPORTERS', label: 'Importadores de Datos', desc: 'Carga masiva de maestros y facturas.', icon: 'bi-file-earmark-arrow-up', cat: 'GESTIÓN BASE' },
+    { id: 'FEAT_EXPENSE_DELIVERY', label: 'Albaranes de Gasto', desc: 'Control de recepción de mercancía.', icon: 'bi-truck', cat: 'GASTOS' },
+    { id: 'FEAT_EXPENSE_ORDERS', label: 'Pedidos de Gasto', desc: 'Gestión de compras a proveedores.', icon: 'bi-cart-check', cat: 'GASTOS' },
+    { id: 'FEAT_STRATEGY', label: 'Estrategia Financiera', desc: 'Planificación y objetivos de negocio.', icon: 'bi-lightning-charge', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_PERFORMANCE', label: 'Análisis de Rentabilidad', desc: 'Métricas avanzadas de rendimiento.', icon: 'bi-bar-chart-steps', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_EXPENSE_NATURES', label: 'Naturalezas de Gasto', desc: 'Categorización avanzada de costes.', icon: 'bi-tags', cat: 'GASTOS' },
+    { id: 'FEAT_OCR', label: 'Escaneo OCR IA', desc: 'Lectura automática de facturas y tickets.', icon: 'bi-scan', cat: 'GASTOS' },
+    { id: 'FEAT_DASHBOARD_LIVE', label: 'Beneficio Real-Time', desc: 'Ticker de caja y beneficio diario en vivo.', icon: 'bi-clock-history', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_PROJECTION', label: 'Proyección 30 Días', desc: 'Gráfico de previsión de tesorería a corto plazo.', icon: 'bi-graph-up', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_INSIGHTS', label: 'Insights Proactivos', desc: 'Alertas automáticas del CFO sobre riesgos.', icon: 'bi-incognito', cat: 'DASHBOARD' },
+    { id: 'FEAT_DASHBOARD_STOCK', label: 'Oráculo de Stock', desc: 'Predicción de rotura de inventario.', icon: 'bi-box-seam', cat: 'DASHBOARD' },
+    { id: 'FEAT_INVENTORY_ADVANCED', label: 'Ingeniería de Unidades', desc: 'Conversiones automáticas caja/unidad, y auditoría logística.', icon: 'bi-arrow-left-right', cat: 'INVENTARIO' },
+    { id: 'FEAT_INVENTORY_BOM', label: 'Ingeniería de Escandallos / BOM', desc: 'Cálculo de Bill of Materials y costes de ensamblaje.', icon: 'bi-diagram-3-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_STOCK_ALERTS', label: 'Alertas de Stock', desc: 'Sistema de notificaciones por rotura de stock y niveles críticos.', icon: 'bi-bell-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_CATALOG_ENGINEERING', label: 'Ingeniería de Catálogo (Matriz BCG)', desc: 'Desbloquea el análisis de rentabilidad (Estrella, Perro, Caballo, Enigma).', icon: 'bi-graph-up-arrow', cat: 'INTELIGENCIA / IA' },
+    { id: 'FEAT_QUARANTINE_PRO', label: 'Aduana e Importación', desc: 'Activa la zona de Aduana e importación inteligente desde Excel.', icon: 'bi-box-arrow-in-down', cat: 'INVENTARIO' },
+    { id: 'FEAT_RECIPE_DYNAMIC', label: 'Estructuras Vivas', desc: 'Estructuras de coste que se actualizan solas con precios de proveedor.', icon: 'bi-lightning-fill', cat: 'INVENTARIO' },
+    { id: 'FEAT_WASTE_MONITOR', label: 'Monitor de Desperdicio', desc: 'Registro analítico de mermas y pérdidas operativas.', icon: 'bi-trash', cat: 'INVENTARIO' }
+  ],
+  
+  bankDict: {
+    '0049': { n: 'SANTANDER', s: 'BSCH ES MM' },
+    '0182': { n: 'BBVA', s: 'BBVA ES MM' },
+    '2100': { n: 'CAIXABANK', s: 'CAIX ES BB' },
+    '0081': { n: 'SABADELL', s: 'BSAB ES BB' },
+    '0128': { n: 'BANKINTER', s: 'BKNTE ES MM' },
+    '2038': { n: 'BANKIA / CAIXA', s: 'CAIX ES BB' },
+    '0239': { n: 'EVO BANK', s: 'EVOB ES MM' },
+    '0149': { n: 'BNP PARIBAS', s: 'BNPA ES MM' }
+  },
+
+  renderSidebar: function() {
+    const sidebar = document.getElementById('v-settings-sidebar-inner');
+    if (!sidebar) return;
+    
+    const menu = [
+      { id: 'nucleus', icon: 'bi-cpu', label: 'NÚCLEO', subs: [
+          {id:'global', label:'Ajustes Globales'},
+          {id:'companies', label:'Empresas / Sedes'},
+          {id:'operations', label:'Operativa y Turnos'},
+          {id:'series', label:'Series Facturación'},
+          {id:'automation', label:'Robótica y Procesos'},
+          {id:'ai_config', label:'Motor IA y Visión'},
+          {id:'plans', label:'Catálogo de Planes'},
+          {id:'modules', label:'Módulos Individuales'}
+      ]},
+      { id: 'accounting', icon: 'bi-journal-text', label: 'CONTABILIDAD', subs: [
+          {id:'pgc_list', label:'Diario Balances'},
+          {id:'cost_centers', label:'Centros de Coste'},
+          {id:'taxes', label:'Impuestos (IVA)'},
+          {id:'retentions', label:'Retenciones'},
+          {id:'period_closing', label:'Cierre Contable'}
+      ]},
+      { id: 'treasury', icon: 'bi-bank', label: 'TESORERÍA', subs: [
+          {id:'banks', label:'Bancos Empresa'},
+          {id:'sepa', label:'Config. SEPA'},
+          {id:'stripe', label:'Stripe Cloud'},
+          {id:'payment_terms', label:'Plazos y Fracciones'},
+          {id:'payments', label:'Formas de Pago'},
+          {id:'periods', label:'Periodicidades'}
+      ]},
+      { id: 'security', icon: 'bi-shield-lock', label: 'SEGURIDAD', subs: [
+          {id:'profile', label:'Perfil Operador'},
+          {id:'password', label:'Cambio PIN'},
+          {id:'audit_logs', label:'Logs Auditoría'}
+      ]}
+    ];
+
+    sidebar.innerHTML = menu.map(m => `
+      <div class="category-group">
+         <button class="v-tab-btn-settings ${this.activeCategory === m.id ? 'active' : ''}" onclick="SettingsView.setCategory('${m.id}')">
+           <i class="bi ${m.icon}"></i> ${m.label}
+         </button>
+         ${this.activeCategory === m.id ? `
+            <div class="settings-sub-sidebar animate-slide">
+               ${m.subs.map(s => `
+                  <button class="btn-sub-nav ${this.subCategory === s.id ? 'active' : ''}" onclick="SettingsView.setSubCategory('${s.id}')">
+                     ${s.label}
+                  </button>
+               `).join('')}
+            </div>
+         ` : ''}
+      </div>
+    `).join('');
+  },
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">CONFIGURACIÓN DEL SISTEMA</h6><h2 class="fw-black m-0 text-uppercase">CENTRO DE CONTROL TITANIUM</h2></div>
+         <button id="btn-save-settings" class="h-btn bg-white text-dark px-5 py-2 fw-black shadow-sm" onclick="SettingsView.saveAll(this)">SINCRONIZAR AJUSTES</button>
+      </div>
+      <div class="p-5 animate-slide">
+         <div class="v-tabs-container-settings">
+            <div class="v-tabs-sidebar-settings" id="v-settings-sidebar-inner"></div>
+            <div class="v-tabs-content-settings" id="settings-content">
+               <div class="text-center p-5"><div class=\"spinner-border text-brand\"></div><p class="mt-3 fw-bold small text-muted">EXTRAYENDO KERNEL...</p></div>
+            </div>
+         </div>
+      </div>`;
+    this.renderSidebar();
+    await this.load();
+  },
+
+  load: async function() {
+    const [resS, resCC, resAuto] = await Promise.all([
+      HandooApp.api('admin.get_settings'),
+      HandooApp.api('admin.get_cost_centers'),
+      HandooApp.api('subscription.get_auto_status')
+    ]);
+
+    if(resS.ok) this.data = resS.data; 
+    if(resCC.ok) this.costCenters = resCC.data || [];
+    if(resAuto.ok) this.autoBilling = resAuto.data;
+    
+    if(this.subCategory === 'audit_logs') {
+       const resLogs = await HandooApp.api('admin.get_audit_logs');
+       if(resLogs.ok) this.auditLogs = resLogs.data || [];
+    }
+
+    this.renderContent(); 
+  },
+
+  setCategory: function(cat) { 
+    this.activeCategory = cat; 
+    this.editingMaster = null; 
+    const map = { nucleus:'global', accounting:'pgc_list', treasury:'banks', security:'profile' };
+    this.subCategory = map[cat];
+    this.renderSidebar();
+    
+    // 🚀 NAVEGACIÓN INSTANTÁNEA EN MEMORIA
+    this.renderContent(); 
+  },
+
+  setSubCategory: async function(sub) { 
+    this.subCategory = sub; 
+    this.editingMaster = null; 
+    this.renderSidebar();
+    
+    if (sub === 'audit_logs' && (!this.auditLogs || this.auditLogs.length === 0)) {
+       const content = document.getElementById('settings-content');
+       if(content) content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="small fw-bold text-muted mt-3">Recuperando registros de seguridad...</p></div>';
+       const resLogs = await HandooApp.api('admin.get_audit_logs');
+       if(resLogs.ok) this.auditLogs = resLogs.data || [];
+    }
+
+    if (sub === 'operations') {
+       const content = document.getElementById('settings-content');
+       if(content) content.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="small fw-bold text-muted mt-3">Conectando con túnel de operativa...</p></div>';
+       const resOp = await new Promise(r => google.script.run.withSuccessHandler(r).withFailureHandler(()=>r(null)).TITANIUM_get_shift_types());
+       this.globalShifts = (resOp && resOp.ok && resOp.data) ? resOp.data : [
+           {name: '☀️ TURNO DE MAÑANA', start: '08:00', end: '16:00'},
+           {name: '🌤️ TURNO DE TARDE', start: '16:00', end: '23:59'}
+       ];
+    }
+    
+    this.renderContent(); 
+  },
+
+  renderContent: function() {
+    const content = document.getElementById('settings-content');
+    if (!this.data || !content) return;
+    if (this.editingMaster) { content.innerHTML = this.renderMasterForm(); return; }
+
+    if (this.subCategory === 'audit_logs') {
+       content.innerHTML = `
+        <div class="animate-slide">
+           <div class="d-flex justify-content-between align-items-center mb-4">
+              <div><h5 class="settings-section-title mb-0">Logs de Auditoría y Seguridad</h5><p class="small text-muted m-0">Trazabilidad histórica de las acciones de los operadores en el Kernel.</p></div>
+              <button class="btn btn-dark btn-sm fw-black px-4" onclick="SettingsView.load()"><i class="bi bi-arrow-clockwise me-1"></i> REFRESCAR</button>
+           </div>
+           <div class="card-industrial border-0 overflow-hidden shadow-sm">
+              <table class="table table-hover m-0 align-middle table-erp">
+                 <thead class="bg-light"><tr><th class="ps-4">TIMESTAMP</th><th>USUARIO</th><th>ACCIÓN</th><th class="pe-4">DETALLES</th></tr></thead>
+                 <tbody>
+                    ${this.auditLogs.map(l => `
+                       <tr>
+                          <td class="ps-4 font-monospace small text-muted">${new Date(l.timestamp).toLocaleString()}</td>
+                          <td><span class="badge bg-dark fw-black" style="font-size:9px">${l.user}</span></td>
+                          <td class="fw-bold small text-uppercase">${l.action}</td>
+                          <td class="small text-muted pe-4">${escapeHTML(l.details)}</td>
+                       </tr>`).join('') || '<tr><td colspan="4" class="p-5 text-center opacity-25">SIN EVENTOS REGISTRADOS</td></tr>'}
+                 </tbody>
+              </table>
+           </div>
+        </div>`;
+       return;
+    }
+
+    if (this.subCategory === 'cost_centers') {
+       content.innerHTML = `
+        <div class="animate-slide">
+           <div class="d-flex justify-content-between align-items-center mb-4">
+              <div><h5 class="settings-section-title mb-0">Gestión de Centros de Coste</h5><p class="small text-muted m-0">Defina departamentos para segmentación de gastos (EBITDA Analítico).</p></div>
+              <button class="btn btn-dark fw-black px-4 py-2" onclick="SettingsView.openCostCenterModal()">+ NUEVO CENTRO</button>
+           </div>
+           <div class="row g-3">
+              ${this.costCenters.map(cc => `
+                 <div class="col-md-6">
+                    <div class="titanium-card" onclick="SettingsView.openCostCenterModal('${cc.id}')">
+                       <div class="d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center">
+                             <i class="bi bi-diagram-3-fill fs-3 text-brand me-3"></i>
+                             <div>
+                                <div class="fw-black text-uppercase" style="font-size:11px">${cc.nombre}</div>
+                                <div class="small text-muted font-monospace">${cc.codigo || 'S/C'} | Presupuesto: ${parseFloat(cc.budget || 0).toLocaleString()}€</div>
+                             </div>
+                          </div>
+                          <button class="btn btn-sm text-danger" onclick="event.stopPropagation(); SettingsView.deleteCostCenter('${cc.id}')"><i class="bi bi-trash3"></i></button>
+                       </div>
+                    </div>
+                 </div>
+              `).join('') || '<div class="col-12 p-5 text-center opacity-25">SIN CENTROS DEFINIDOS</div>'}
+           </div>
+        </div>`;
+       return;
+    }
+
+    if (this.subCategory === 'ai_config') {
+       content.innerHTML = `
+        <div class="animate-slide">
+           <h5 class="settings-section-title">IDENTIDAD NEURAL AVANZADA</h5>
+           <div class="p-4 rounded-4 shadow-sm mt-3" style="background: #0f172a; color: #fff;">
+              <div class="row align-items-center mb-4">
+                 <div class="col-md-1 text-center"><i class="bi bi-cpu fs-2 text-warning"></i></div>
+                 <div class="col-md-11 ps-4">
+                    <h6 class="fw-black text-uppercase m-0" style="font-size: 12px; color:#fff !important;">Configuración del Motor de IA</h6>
+                    <p class="small text-muted m-0">Ajuste fino de la identidad y comportamiento del oráculo.</p>
+                 </div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-12">
+                    <label class="h-form-label text-white-50">API KEY (GEMINI)</label>
+                    <input type="password" id="set-ai-api-key" class="form-control bg-dark border-secondary text-brand h-form-control font-monospace" value="${this.data.ai?.api_key || ''}" placeholder="sk-...">
+                 </div>
+                 <div class="col-md-6">
+                    <label class="h-form-label text-white-50">MODELO</label>
+                    <select id="set-ai-model" class="form-select bg-dark border-secondary text-white h-form-control fw-bold">
+                       <option value="gemini-1.5-flash" ${this.data.ai?.model==='gemini-1.5-flash'?'selected':''}>Gemini 1.5 Flash (Rápido)</option>
+                       <option value="gemini-1.5-pro" ${this.data.ai?.model==='gemini-1.5-pro'?'selected':''}>Gemini 1.5 Pro (Potente)</option>
+                    </select>
+                 </div>
+                 <div class="col-md-6">
+                    <label class="h-form-label text-white-50">AUTOPILOT</label>
+                    <select id="set-ai-autopilot" class="form-select bg-dark border-secondary text-white h-form-control fw-bold">
+                       <option value="true" ${this.data.ai?.auto_pilot?'selected':''}>ACTIVO</option>
+                       <option value="false" ${!this.data.ai?.auto_pilot?'selected':''}>DESACTIVADO</option>
+                    </select>
+                 </div>
+              </div>
+              <div class="mt-4 pt-3 border-top border-secondary text-end">
+                 <button class="btn btn-warning px-5 py-2 fw-black shadow text-dark" id="btn-save-ai-neural" onclick="SettingsView.saveNeuralSettings()">GUARDAR CONFIGURACIÓN NEURAL</button>
+              </div>
+           </div>
+        </div>`;
+       return;
+    }
+
+    if (this.subCategory === 'stripe') {
+       content.innerHTML = `
+        <div class="animate-slide">
+           <h5 class="settings-section-title">Pasarela Stripe Cloud</h5>
+           <div class="unified-block block-dark mt-0">
+              <div class="row align-items-center mb-4">
+                 <div class="col-md-1 text-center"><i class="bi bi-stripe fs-2 text-brand"></i></div>
+                 <div class="col-md-11 ps-4"><h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Infraestructura de Pagos Global</h6><p class="small text-muted m-0">Conexión cifrada para cobros off-session y Auto-Pay.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-12"><label class="h-form-label text-white-50">STRIPE SECRET KEY (sk_live_...)</label><input type="password" id="st-secret" class="form-control bg-dark border-secondary text-brand h-form-control" value="${this.data.stripe_secret_key || ''}"></div>
+                 <div class="col-md-12"><label class="h-label-refined text-white-50">STRIPE PUBLIC KEY (pk_live_...)</label><input type="text" id="st-public" class="form-control bg-dark border-secondary text-white h-form-control" value="${this.data.stripe_public_key || ''}"></div>
+              </div>
+              <div class="mt-4 pt-3 border-top border-secondary text-end">
+                 <button class="btn btn-warning px-5 py-2 fw-black shadow text-dark" id="btn-save-stripe" onclick="SettingsView.saveStripeConfig()">ACTUALIZAR PASARELA</button>
+              </div>
+           </div>
+        </div>`;
+       return;
+    }
+
+    if (this.subCategory === 'period_closing') {
+       content.innerHTML = `
+        <div class="animate-slide">
+           <h5 class="settings-section-title">Cierre de Periodo y Bloqueo</h5>
+           <div class="unified-block block-dark mt-0">
+              <div class="row align-items-center mb-4">
+                 <div class="col-md-1 text-center"><i class="bi bi-calendar-lock fs-2 text-brand"></i></div>
+                 <div class="col-md-11 ps-4"><h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Protocolo de Integridad Temporal</h6><p class="small text-muted m-0">Impide la modificación de facturas y gastos cuya fecha sea anterior o igual a la seleccionada.</p></div>
+              </div>
+              <div class="row g-3">
+                 <div class="col-md-8">
+                    <label class="h-label-refined text-white-50">FECHA DE CIERRE (BLOQUEO)</label>
+                    <input type="date" id="set-closing-date" class="form-control bg-dark border-secondary text-white h-form-control fw-black" value="${this.data.closing_date || ''}">
+                 </div>
+                 <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-warning w-100 py-2 fw-black shadow text-dark" id="btn-save-closing" onclick="SettingsView.saveClosingDate()">GUARDAR CIERRE</button>
+                 </div>
+              </div>
+           </div>
+        </div>`;
+       return;
+    }
+
+    if(this.activeCategory === 'nucleus') content.innerHTML = `<div class="animate-slide">${this.renderNucleusContent()}</div>`;
+    else if(this.activeCategory === 'accounting') content.innerHTML = `<div class="animate-slide">${this.renderAccountingContent()}</div>`;
+    else if(this.activeCategory === 'treasury') content.innerHTML = `<div class="animate-slide">${this.renderTreasuryContentLogic()}</div>`;
+    else if(this.activeCategory === 'security') content.innerHTML = `<div class="animate-slide">${this.renderSecurityContent()}</div>`;
+  },
+
+  handleCCNameInput: async function(val) {
+    if(val.length < 3) return;
+    const codeInp = document.getElementById('cc-codigo');
+    codeInp.placeholder = "CALCULANDO...";
+    const res = await HandooApp.api('admin.generate_cc_code', { name: val });
+    if(res.ok) codeInp.value = res.data;
+  },
+
+  openCostCenterModal: function(id = null) {
+    const cc = id ? this.costCenters.find(x => x.id === id) : { id: 'new', nombre: '', codigo: '', budget: 0 };
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px">
+         <div class="h-modal-header d-flex justify-content-between">
+            <h5 class="m-0 fw-black text-uppercase">${id ? 'EDITAR CENTRO' : 'NUEVO CENTRO DE COSTE'}</h5>
+            <button class="btn btn-sm btn-light p-0 px-2" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x fs-4"></i></button>
+         </div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <label class="h-label-refined">NOMBRE DEL DEPARTAMENTO</label>
+               <input type="text" id="cc-nombre" class="form-control h-form-control fw-black text-uppercase mb-3" value="${cc.nombre}" placeholder="EJ: COCINA, BARRA, MKT" onblur="SettingsView.handleCCNameInput(this.value)">
+               <div class="row g-2">
+                  <div class="col-6">
+                     <label class="h-label-refined">CÓDIGO TÉCNICO (AUTO)</label>
+                     <input type="text" id="cc-codigo" class="form-control h-form-control fw-bold bg-white" readonly value="${cc.codigo || ''}" placeholder="AUTO-GEN">
+                  </div>
+                  <div class="col-6">
+                     <label class="h-label-refined">PRESUPUESTO MES (€)</label>
+                     <input type="number" id="cc-budget" class="form-control h-form-control fw-black text-brand" value="${cc.budget || 0}">
+                  </div>
+               </div>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button id="btn-save-cc" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="SettingsView.executeSaveCostCenter('${cc.id}')">GUARDAR CENTRO</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeSaveCostCenter: async function(id) {
+    const payload = {
+      id: id,
+      nombre: document.getElementById('cc-nombre').value,
+      codigo: document.getElementById('cc-codigo').value,
+      budget: parseFloat(document.getElementById('cc-budget').value || 0)
+    };
+    HandooApp.ui.setLoading('btn-save-cc', true);
+    const res = await HandooApp.api('admin.save_cost_center', payload);
+    if(res.ok) {
+       document.querySelector('.h-modal-overlay').remove();
+       await this.load();
+    }
+  },
+
+  deleteCostCenter: async function(id) {
+     if(await HandooApp.ui.confirm("¿ELIMINAR CENTRO DE COSTE?", "Esta acción puede afectar a la integridad de los informes analíticos.")) {
+        await HandooApp.api('admin.delete_cost_center', { id });
+        this.load();
+     }
+  },
+
+  renderAccountingContent: function() {
+    const m = this.data.masters || {};
+    const bals = this.data.balances || {};
+    const clients = this.data.clients || [];
+    const vendors = m.vendors || [];
+    const banks = m.bank_accounts || [];
+    const aliases = m.pgc_aliases || [];
+
+    if(this.subCategory === 'pgc_list') {
+       const allAccounts = new Set();
+       clients.forEach(c => { if(c.cuenta_contable) allAccounts.add(c.cuenta_contable); });
+       banks.forEach(b => { if(b.ref_contable) allAccounts.add(b.ref_contable); });
+       Object.keys(bals).forEach(acc => allAccounts.add(acc));
+       aliases.forEach(a => { if(a.ref_contable) allAccounts.add(a.ref_contable); });
+
+       const sortedAccounts = Array.from(allAccounts).sort();
+
+       return `
+       <div class="animate-slide">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+             <div><h6 class="h-label m-0">DIARIO DE SUMAS Y SALDOS</h6><p class="small text-muted m-0">Estado vivo del PGC.</p></div>
+             <div class="badge bg-dark px-3 py-2 fw-black" style="font-size:10px">${sortedAccounts.length} CUENTAS REGISTRADAS</div>
+          </div>
+          <div class="card-industrial border-0 overflow-hidden shadow-sm">
+             <table class="table-pgc-industrial">
+                <thead>
+                   <tr><th style="width:180px">CUENTA</th><th>TITULAR / REFERENCIA AUXILIAR</th><th class="text-end" style="width:150px">SALDO (€)</th></tr>
+                </thead>
+                <tbody>
+                   ${sortedAccounts.map(acc => {
+                     let name = 'Auxiliar Técnico / Cuenta Interna';
+                     const val = parseFloat(bals[acc] || 0);
+                     const custom = aliases.find(a => a.ref_contable === acc);
+                     if(custom) name = custom.nombre;
+                     else if(acc.startsWith('430') || acc.startsWith('431')) {
+                       const c = clients.find(cl => cl.cuenta_contable === acc || cl.cuenta_contable?.replace('430','431') === acc || cl.cuenta_contable?.replace('430','4315') === acc);
+                       if(c) name = c.nombre_fiscal;
+                     } else if(acc.startsWith('572')) {
+                       const b = banks.find(ba => ba.ref_contable === acc);
+                       if(b) name = b.nombre;
+                     }
+                     return `
+                     <tr onclick="SettingsView.openAccountOptions('${acc}', '${escapeHTML(name)}')">
+                        <td class="cell-acc-id">${acc}</td>
+                        <td class="cell-acc-name">${name}</td>
+                        <td class="cell-acc-val ${val < 0 ? 'text-danger' : (val > 0 ? 'text-success' : 'text-muted')}">
+                           ${val.toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2})} €
+                        </td>
+                     </tr>`;
+                   }).join('')}
+                </tbody>
+             </table>
+          </div>
+       </div>`;
+    }
+    
+    const list = this.subCategory === 'taxes' ? m.taxes : m.retentions;
+    const type = this.subCategory === 'taxes' ? 'TAX' : 'RETENTION';
+    return this.renderMasterList(type, list);
+  },
+
+  renderMasterList: function(type, list) {
+    return `
+      <div class="animate-slide">
+         <div class="row g-3 mb-4">
+            ${(list||[]).map(t => `
+               <div class="col-md-6">
+                  <div class="titanium-card" onclick="SettingsView.openMasterForm('${type}', '${t.id}')">
+                     <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                           <i class="bi bi-gear-fill fs-3 text-brand me-3"></i>
+                           <div>
+                              <div class="fw-black text-uppercase" style="font-size:11px">${t.nombre}</div>
+                              <div class="small text-muted fw-bold">${t.descripcion || 'Registro Activo'}</div>
+                           </div>
+                        </div>
+                        <button class="btn btn-sm text-danger" onclick="event.stopPropagation(); SettingsView.deleteMaster('${t.id}')"><i class="bi bi-trash3"></i></button>
+                     </div>
+                  </div>
+               </div>`).join('') || '<div class="col-12 p-5 text-center opacity-25">SIN REGISTROS</div>'}
+         </div>
+         <button class="btn btn-dark w-100 py-3 fw-black shadow-sm" onclick="SettingsView.openMasterForm('${type}', 'new')">+ NUEVO REGISTRO</button>
+      </div>`;
+  },
+
+  openAccountOptions: function(acc, currentName) {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 550px">
+         <div class="h-modal-header d-flex justify-content-between">
+            <h5 class="m-0 fw-black text-uppercase">GESTIÓN DE CUENTA: ${acc}</h5>
+            <button class="btn btn-sm btn-light p-0 px-2" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x fs-4"></i></button>
+         </div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-dark mt-0">
+               <div class="row align-items-center mb-3">
+                  <div class="col-md-2 text-center"><i class="bi bi-search fs-2 text-brand"></i></div>
+                  <div class="col-md-10">
+                     <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color: #fff !important;">Auditoría Técnica</h6>
+                     <p class="small text-muted m-0">Ver desglose de documentos vinculados.</p>
+                  </div>
+               </div>
+               <button class="btn btn-brand-titanium btn-sm fw-black w-100 py-2 shadow" onclick="SettingsView.openMovementsAuditor('${acc}', '${escapeHTML(currentName)}')">AUDITAR MOVIMIENTOS</button>
+            </div>
+            <div class="unified-block block-light">
+               <div class="row align-items-center mb-3">
+                  <div class="col-md-2 text-center"><i class="bi bi-arrow-left-right fs-2 text-dark"></i></div>
+                  <div class="col-md-10"><h6 class="fw-black text-uppercase m-0" style="font-size:12px">Traspaso de Saldo (Ajuste)</h6><p class="small text-muted m-0">Genera un asiento de compensación entre cuentas.</p></div>
+               </div>
+               <label class="h-label-refined">CUENTA DESTINO</label>
+               <input type="text" id="transfer-dest" class="form-control mb-2" placeholder="Ej: 430000001">
+               <label class="h-label-refined">IMPORTE A TRASPASAR (€)</label>
+               <input type="number" id="transfer-amount" class="form-control mb-3" value="0.00">
+               <button class="btn btn-dark btn-sm fw-black w-100" onclick="SettingsView.executeTransfer('${acc}')">EJECUTAR TRASPASO</button>
+            </div>
+            <div class="unified-block block-light">
+               <div class="row align-items-center mb-3">
+                  <div class="col-md-2 text-center"><i class="bi bi-pencil-square fs-2 text-warning"></i></div>
+                  <div class="col-md-10"><h6 class="fw-black text-uppercase m-0" style="font-size:12px">Renombrar Auxiliar</h6><p class="small text-muted m-0">Cambia el alias comercial del PGC.</p></div>
+               </div>
+               <input type="text" id="edit-acc-name" class="form-control" value="${currentName}">
+               <button id="btn-save-acc-name" class="btn btn-warning btn-sm fw-black w-100 mt-3 text-dark" onclick="SettingsView.executeRename('${acc}')">ACTUALIZAR NOMBRE</button>
+            </div>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeTransfer: async function(acc) {
+    const dest = document.getElementById('transfer-dest').value;
+    const amount = parseFloat(document.getElementById('transfer-amount').value);
+    if(!dest || !amount) return;
+    
+    if(await HandooApp.ui.confirm("¿CONFIRMAR AJUSTE PGC?", "Se crearán dos movimientos de compensación manual.")) {
+       const res = await HandooApp.api('admin.save_movement', { cuenta: acc, cuenta_destino: dest, importe: amount, concepto: 'Traspaso de saldo PGC' });
+       if(res.ok) {
+          document.querySelector('.h-modal-overlay').remove();
+          this.load();
+          HandooApp.ui.showToast("Ajuste contable sincronizado");
+       }
+    }
+  },
+
+  executeRename: async function(acc) {
+    const newName = document.getElementById('edit-acc-name').value;
+    if(!newName) return;
+    HandooApp.ui.setLoading('btn-save-acc-name', true);
+    const res = await HandooApp.api('platform.get_clients');
+    const clients = res.data || [];
+    const c = clients.find(cl => cl.cuenta_contable === acc || cl.cuenta_contable?.replace('430','431') === acc || cl.cuenta_contable?.replace('430','4315') === acc);
+    if(c) {
+       c.nombre_fiscal = newName.toUpperCase();
+       await HandooApp.api('platform.save_client', c);
+    } else {
+       const mRes = await HandooApp.api('admin.get_settings');
+       const banks = mRes.data?.masters?.bank_accounts || [];
+       const b = banks.find(ba => ba.ref_contable === acc);
+       if(b) {
+          b.nombre = newName.toUpperCase();
+          await HandooApp.api('masters.save', { master: b });
+       } else {
+          await HandooApp.api('masters.save', { master: { type: 'PGC_ALIAS', id: 'PGC-' + acc, ref_contable: acc, nombre: newName.toUpperCase() } });
+       }
+    }
+    HandooApp.ui.setLoading('btn-save-acc-name', false);
+    document.querySelector('.h-modal-overlay').remove();
+    await this.load();
+    HandooApp.ui.showToast("Sincronizado");
+  },
+
+  openMovementsAuditor: async function(acc, name) {
+    HandooApp.ui.showToast("Cargando diario...", "info");
+    const [resInv, resEff, resMov] = await Promise.all([HandooApp.api('invoice.get_history'), HandooApp.api('treasury.list_all_effects'), HandooApp.api('admin.get_settings')]);
+    const docs = [];
+    if(acc.startsWith('430')) {
+       const clients = resMov.data?.clients || [];
+       const c = clients.find(cl => cl.cuenta_contable === acc);
+       if(c) {
+          (resInv.data || []).filter(i => i.client_id === c.id).forEach(i => docs.push({ id: i.id, fecha: i.fecha, concepto: `Factura ${i.numero}`, importe: i.total, type: 'INVOICE' }));
+          (resEff.data || []).filter(e => e.client_id === c.id && e.status === 'COBRADO').forEach(e => docs.push({ id: e.id, fecha: e.vencimiento, concepto: `Cobro Efecto ${e.id}`, importe: e.importe * -1, type: 'EFFECT' }));
+       }
+    }
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.style.zIndex = '11000';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 800px">
+         <div class="h-modal-header"><h5 class="m-0 fw-black text-uppercase">AUDITORÍA: ${acc}</h5><span class="badge bg-white text-dark fw-black">${name}</span></div>
+         <div class="h-modal-body bg-light">
+            <div class="card-industrial border-0 overflow-hidden shadow-sm">
+               <table class="table table-hover m-0 align-middle table-audit" style="font-size:11px">
+                  <thead class="bg-light"><tr><th class="ps-3 py-2">FECHA</th><th>CONCEPTO / DOCUMENTO</th><th class="text-end pe-3">IMPORTE</th></tr></thead>
+                  <tbody>${docs.map(d => `<tr onclick="SettingsView.showDocumentFicha('${d.id}', '${d.type}')" title="Ver Ficha de Detalle"><td class="ps-3">${new Date(d.fecha).toLocaleDateString()}</td><td class="fw-bold"><i class="bi bi-file-earmark-text text-brand me-2"></i> ${d.concepto}</td><td class="text-end pe-3 fw-black ${d.importe<0?'text-danger':'text-success'}">${parseFloat(d.importe).toLocaleString()} €</td></tr>`).join('') || '<tr><td colspan="3" class="p-5 text-center opacity-25">SIN REGISTROS LOCALIZADOS</td></tr>'}</tbody>
+               </table>
+            </div>
+         </div>
+         <div class="h-modal-footer"><button class="btn btn-dark w-100 fw-black" onclick="this.closest('.h-modal-overlay').remove()">CERRAR</button></div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  showDocumentFicha: async function(id, type) {
+    if (type === 'INVOICE') {
+      const res = await HandooApp.api('invoice.get_history');
+      const inv = (res.data || []).find(i => String(i.id) === String(id));
+      if (!inv) return HandooApp.ui.showToast("No se localiza el registro físico.", "error");
+      
+      const overlay = document.createElement('div');
+      overlay.className = 'h-modal-overlay animate-slide';
+      overlay.style.zIndex = '12000';
+      overlay.innerHTML = `
+        <div class="h-modal shadow-lg" style="width: 600px">
+           <div class="h-modal-header d-flex justify-content-between">
+              <h5 class="m-0 fw-black text-uppercase">FICHA TÉCNICA: ${inv.numero || 'DOCUMENTO'}</h5>
+              <button class="btn btn-sm btn-light p-0 px-2" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x fs-4"></i></button>
+           </div>
+           <div class="h-modal-body bg-light">
+              <div class="unified-block block-dark mt-0">
+                 <div class="row g-2">
+                    <div class="col-md-6"><label class="h-label-refined text-white-50">TITULAR CLIENTE</label><div class="fw-black text-uppercase small" style="color: #fff !important;">${inv.client_name}</div></div>
+                    <div class="col-md-6"><label class="h-label-refined text-white-50">FECHA DOCUMENTO</label><div class="fw-black small" style="color: #fff !important;">${new Date(inv.fecha).toLocaleDateString()}</div></div>
+                    <div class="col-md-12 mt-2 pt-2 border-top border-secondary"><label class="h-label-refined text-white-50">CONCEPTO PRINCIPAL</label><div class="small fw-bold text-brand">${inv.item_display_name}</div></div>
+                 </div>
+              </div>
+              <div class="unified-block block-light">
+                 <div class="row g-2 text-center">
+                    <div class="col-md-4"><label class="h-label-refined">BASE IMPONIBLE</label><div class="fw-black text-dark fs-5">${parseFloat(inv.base).toLocaleString()} €</div></div>
+                    <div class="col-md-4"><label class="h-label-refined">TOTAL IVA</label><div class="fw-black text-success fs-5">${parseFloat(inv.total_iva).toLocaleString()} €</div></div>
+                    <div class="col-md-4"><label class="h-label-refined">TOTAL FACTURA</label><div class="fw-black text-brand fs-5">${parseFloat(inv.total).toLocaleString()} €</div></div>
+                 </div>
+              </div>
+              <div class="mt-4">
+                 <button class="btn btn-dark w-100 py-3 fw-black shadow" onclick="InvoicesView.openPDF('${inv.id}')">
+                    <i class="bi bi-file-pdf-fill me-2"></i> VER DOCUMENTO PDF OFICIAL
+                 </button>
+              </div>
+           </div>
+        </div>`;
+      document.body.appendChild(overlay);
+    } else {
+       InvoicesView.openPDF(id); 
+    }
+  },
+
+  renderNucleusContent: function() {
+    if(this.subCategory === 'global') return this.renderGlobalConfigUI();
+    if(this.subCategory === 'companies') return this.renderCompaniesListUI();
+    if(this.subCategory === 'operations') return this.renderOperationsUI();
+    if(this.subCategory === 'series') return this.renderSeriesListUI();
+    if(this.subCategory === 'plans') return this.renderMasterList('PLAN', this.data.masters.plans);
+    if(this.subCategory === 'modules') return this.renderMasterList('MODULE', this.data.masters.modules);
+    if(this.subCategory === 'automation') return this.renderAutomationUI();
+    return '';
+  },
+
+  renderOperationsUI: function() {
+    const shifts = this.globalShifts || [];
+    return `
+      <h5 class="settings-section-title">OPERATIVA INDUSTRIAL</h5>
+      <div class="unified-block block-dark mt-0">
+         <div class="row align-items-center mb-4">
+            <div class="col-md-1 text-center"><i class="bi bi-clock-history fs-2 text-brand"></i></div>
+            <div class="col-md-11 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Estructura de Turnos y Franjas Horarias</h6>
+               <p class="small text-muted m-0">Definición horaria para cruce automático con inventario, ventas y fichajes (HR).</p>
+            </div>
+         </div>
+         
+         <div class="row g-2 mb-2 d-none d-md-flex text-white-50 small fw-bold text-center" style="font-size: 10px; letter-spacing: 1px;">
+            <div class="col-5 text-start">NOMBRE DEL TURNO</div>
+            <div class="col-3">HORA INICIO</div>
+            <div class="col-3">HORA FIN</div>
+            <div class="col-1"></div>
+         </div>
+         
+         <div id="shifts-container">
+            ${shifts.map(s => `
+                <div class="row g-2 align-items-center mb-2 shift-config-row">
+                   <div class="col-md-5"><input type="text" class="form-control bg-dark border-secondary text-white h-form-control fw-bold shift-name text-uppercase" placeholder="EJ: MAÑANA" value="${s.name}"></div>
+                   <div class="col-md-3"><input type="time" class="form-control bg-dark border-secondary text-brand h-form-control shift-start fw-bold text-center" value="${s.start || ''}"></div>
+                   <div class="col-md-3"><input type="time" class="form-control bg-dark border-secondary text-brand h-form-control shift-end fw-bold text-center" value="${s.end || ''}"></div>
+                   <div class="col-md-1 text-center"><button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('.shift-config-row').remove()"><i class="bi bi-trash3-fill"></i></button></div>
+                </div>
+            `).join('')}
+         </div>
+         
+         <div class="mt-3">
+            <button type="button" class="btn btn-outline-secondary btn-sm w-100 fw-bold border-dashed text-white" onclick="SettingsView.addShiftConfigRow()">+ AÑADIR NUEVA FRANJA</button>
+         </div>
+         <div class="col-12 mt-4 pt-3 border-top border-secondary text-end">
+            <button id="btn-save-op" class="btn btn-brand-titanium px-5 py-2 fw-black shadow text-dark" onclick="SettingsView.saveOperations(this)">SINCRONIZAR OPERATIVA</button>
+         </div>
+      </div>`;
+  },
+
+  saveOperations: function() {
+      const btn = document.getElementById('btn-save-op');
+      if(!btn) return;
+      
+      // 1. Bloqueo y animación visual nativa
+      HandooApp.ui.setLoading('btn-save-op', true, "GUARDANDO...");
+      
+      const shiftRows = document.querySelectorAll('.shift-config-row');
+      const shifts = Array.from(shiftRows).map(row => ({
+          name: row.querySelector('.shift-name').value.trim().toUpperCase(),
+          start: row.querySelector('.shift-start').value,
+          end: row.querySelector('.shift-end').value
+      })).filter(s => s.name !== '');
+
+      // 2. Envío por el túnel paralelo TITANIUM
+      google.script.run.withSuccessHandler(res => {
+          HandooApp.ui.setLoading('btn-save-op', false); // Apagamos animación
+          if(res && res.ok) {
+              HandooApp.ui.showToast(res.msg, "success");
+              SettingsView.globalShifts = shifts; // Actualizamos memoria local
+          } else {
+              HandooApp.ui.showToast("Fallo al guardar: " + res.msg, "error");
+          }
+      }).withFailureHandler(err => {
+          HandooApp.ui.setLoading('btn-save-op', false); // Apagamos animación
+          HandooApp.ui.showToast(err.message, "error");
+      }).TITANIUM_save_shift_types(shifts);
+  },
+
+  addShiftConfigRow: function() {
+      const container = document.getElementById('shifts-container');
+      if(!container) return;
+      const div = document.createElement('div');
+      div.className = 'row g-2 align-items-center mb-2 shift-config-row animate-slide';
+      div.innerHTML = `
+         <div class="col-md-5"><input type="text" class="form-control bg-dark border-secondary text-white h-form-control fw-bold shift-name text-uppercase" placeholder="NUEVO TURNO"></div>
+         <div class="col-md-3"><input type="time" class="form-control bg-dark border-secondary text-brand h-form-control shift-start fw-bold text-center"></div>
+         <div class="col-md-3"><input type="time" class="form-control bg-dark border-secondary text-brand h-form-control shift-end fw-bold text-center"></div>
+         <div class="col-md-1 text-center"><button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('.shift-config-row').remove()"><i class="bi bi-trash3-fill"></i></button></div>
+      `;
+      container.appendChild(div);
+  },
+
+  renderCompaniesListUI: function() {
+    const m = this.data.masters || {};
+    return `
+      <div class="row g-3 mb-4">
+         ${(m.companies||[]).map(c => `
+            <div class="col-md-12">
+               <div class="titanium-card ${c.favorita?'card-accent-active':''}" onclick="SettingsView.openMasterForm('COMPANY', '${c.id}')">
+                  <div class="d-flex justify-content-between align-items-center">
+                     <div class="d-flex align-items-center">
+                        <i class="bi bi-building-fill fs-3 text-brand me-4"></i>
+                        <div>
+                           <div class="fw-black text-uppercase" style="font-size:12px">${c.nombre_fiscal} ${c.favorita?'<span class="badge bg-warning text-dark ms-2" style="font-size:8px">PRINCIPAL</span>':''}</div>
+                           <div class="small text-muted font-monospace">${c.cif} | ${c.email || '---'}</div>
+                        </div>
+                     </div>
+                     <button class="btn btn-sm text-danger" onclick="event.stopPropagation(); SettingsView.deleteMaster('${c.id}')"><i class="bi bi-trash3"></i></button>
+                  </div>
+               </div>
+            </div>`).join('') || '<div class="p-4 text-center opacity-25 fw-bold">SIN SEDES CONFIGURADAS</div>'}
+      </div>
+      <button class="btn btn-dark w-100 py-3 fw-black shadow-sm" onclick="SettingsView.openMasterForm('COMPANY', 'new')">+ REGISTRAR NUEVA SEDE LEGAL</button>`;
+  },
+
+  renderSeriesListUI: function() {
+    const m = this.data.masters || {};
+    return `
+      <div class="row g-3 mb-4">
+         ${(m.series||[]).map(s => `
+            <div class="col-md-6">
+               <div class="titanium-card" onclick="SettingsView.openMasterForm('SERIES', '${s.id}')">
+                  <div class="d-flex justify-content-between align-items-center">
+                     <div class="d-flex align-items-center">
+                        <i class="bi bi-hash fs-3 text-brand me-3"></i>
+                        <div>
+                           <div class="fw-black text-uppercase" style="font-size:11px">${s.nombre} (${s.prefijo})</div>
+                           <div class="small text-muted fw-bold">ID: ${s.id} | TIPO: ${s.tipo_serie}</div>
+                        </div>
+                     </div>
+                     <button class="btn btn-sm text-danger" onclick="event.stopPropagation(); SettingsView.deleteMaster('${s.id}')"><i class="bi bi-trash3"></i></button>
+                  </div>
+               </div>
+            </div>`).join('')}
+      </div>
+      <button class="btn btn-dark w-100 py-3 fw-black shadow-sm" onclick="SettingsView.openMasterForm('SERIES', 'new')">+ DEFINIR NUEVA SERIE</button>`;
+  },
+
+  renderGlobalConfigUI: function() {
+    const diff = (this.data.fixed_costs_real_avg || 0) - (this.data.fixed_costs || 0);
+    return `
+      <h5 class="settings-section-title">Parámetros Globales del Kernel</h5>
+
+      <div class="unified-block block-dark mt-0 mb-4">
+         <div class="row align-items-center mb-4">
+            <div class="col-md-1 text-center"><i class="bi bi-speedometer2 fs-2 text-brand"></i></div>
+            <div class="col-md-11 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="color:#fff !important; font-size:12px;">Presupuesto vs Realidad Dinámica</h6>
+               <p class="small text-muted m-0">El sistema aprende de tus facturas recurrentes para ajustar el Burn Rate por segundo.</p>
+            </div>
+         </div>
+         <div class="row g-3">
+            <div class="col-md-6">
+               <label class="h-form-label text-white-50">PRESUPUESTO ESTRUCTURAL MENSUAL (SEMILLA)</label>
+               <input type="number" id="set-fixed-costs" class="form-control bg-dark border-secondary text-white h-form-control fw-black" value="${this.data.fixed_costs || 0}">
+               <p class="small text-muted mt-2">Dato inicial de referencia para proyecciones.</p>
+            </div>
+            <div class="col-md-6">
+               <label class="h-form-label text-white-50">MEDIA DINÁMICA REAL (APRENDIDA)</label>
+               <div class="form-control bg-dark border-secondary h-form-control fw-black text-brand d-flex align-items-center justify-content-between">
+                  <span>${(this.data.fixed_costs_real_avg || 0).toLocaleString()} €</span>
+                  <i class="bi bi-cpu"></i>
+               </div>
+               <div class="diff-badge ${diff > 0 ? 'diff-plus' : 'diff-minus'}">
+                  <i class="bi ${diff > 0 ? 'bi-caret-up-fill' : 'bi-caret-down-fill'}"></i> 
+                  DESVIACIÓN: ${Math.abs(diff).toLocaleString()}€
+               </div>
+            </div>
+         </div>
+      </div>
+
+      <div class="unified-block block-light">
+         <div class="row g-3">
+            <div class="col-md-6"><label class="h-form-label">MONEDA DEL SISTEMA</label><select id="set-currency" class="form-select h-form-control fw-bold"><option value="EUR" ${this.data.system_currency==='EUR'?'selected':''}>EUR (€) - EURO</option><option value="USD" ${this.data.system_currency==='USD'?'selected':''}>USD ($) - DÓLAR</option></select></div>
+            <div class="col-md-12 mt-2">
+               <label class="h-form-label">PERFIL DEL MOTOR (BAUTISMO TITANIUM)</label>
+               <select id="set-profile" class="form-select h-form-control fw-black bg-white border-warning">
+                  <option value="GENERIC" ${this.data.sector_profile==='GENERIC'?'selected':''}>LIENZO EN BLANCO (GENÉRICO)</option>
+                  <option value="HORECA" ${this.data.sector_profile==='HORECA'?'selected':''}>HOSTELERÍA Y RESTAURACIÓN</option>
+                  <option value="SOFTWARE" ${this.data.sector_profile==='SOFTWARE'?'selected':''}>SOFTWARE Y TECNOLOGÍA</option>
+                  <option value="SERVICES" ${this.data.sector_profile==='SERVICES'?'selected':''}>SERVICIOS PROFESIONALES</option>
+                  <option value="RETAIL" ${this.data.sector_profile==='RETAIL'?'selected':''}>COMERCIO Y RETAIL</option>
+                  <option value="INDUSTRY" ${this.data.sector_profile==='INDUSTRY'?'selected':''}>INDUSTRIA Y CONSTRUCCIÓN</option>
+                  <option value="CLINIC" ${this.data.sector_profile==='CLINIC'?'selected':''}>SALUD Y CLÍNICAS</option>
+               </select>
+               <p class="small text-muted mt-2 m-0"><i class="bi bi-shield-lock-fill me-1"></i> Este ajuste inyectará la taxonomía y el diccionario operativo específico para el sector seleccionado.</p>
+            </div>
+         </div>
+      </div>
+      
+      <div class="unified-block block-dark">
+         <div class="row align-items-center mb-3">
+            <div class="col-md-1 text-center"><i class="bi bi-calculator fs-2 text-brand"></i></div>
+            <div class="col-md-11"><h6 class="block-header-title" style="color:#fff !important;">Precisión y Ajustes Financieros</h6><p class="small text-muted m-0">Control del motor de cálculo y cuadre de saldos.</p></div>
+         </div>
+         <div class="row g-3">
+            <div class="col-md-6">
+               <label class="h-label-refined text-white-50">DECIMALES DE PRECISIÓN</label>
+               <input type="number" id="set-decimal-precision" class="form-control bg-dark border-secondary text-white h-form-control fw-black" value="${this.data.decimal_precision || 2}" min="0" max="6">
+            </div>
+            <div class="col-md-6">
+               <label class="h-label-refined text-white-50">DÍAS PRE-AVISO VTO. CRÉDITO</label>
+               <input type="number" id="set-credit-threshold" class="form-control bg-dark border-secondary text-white h-form-control fw-black" value="${this.data.credit_expiry_threshold || 30}">
+            </div>
+            <div class="col-md-6 mt-2">
+               <label class="h-label-refined text-white-50">CUENTA AJUSTE POSITIVO (REDONDEO)</label>
+               <input type="text" id="set-write-off-credit" class="form-control bg-dark border-secondary text-success h-form-control font-monospace fw-bold" value="${this.data.write_off_credit_acc || '768000000'}">
+            </div>
+            <div class="col-md-6 mt-2">
+               <label class="h-label-refined text-white-50">CUENTA AJUSTE NEGATIVO (REDONDEO)</label>
+               <input type="text" id="set-write-off-debit" class="form-control bg-dark border-secondary text-danger h-form-control font-monospace fw-bold" value="${this.data.write_off_debit_acc || '668000000'}">
+            </div>
+         </div>
+      </div>
+      <div class="col-12 mt-4 pt-3 text-end">
+         <button class="btn btn-brand-titanium px-5 py-2 fw-black shadow text-dark" onclick="SettingsView.saveAll(this)">GUARDAR AJUSTES GLOBALES</button>
+      </div>`;
+  },
+
+  renderAutomationUI: function() {
+    const a = this.autoBilling;
+    return `
+      <h5 class="settings-section-title">AUTOMATIZACIÓN (ROBOT)</h5>
+      <div class="unified-block block-dark mt-0">
+         <div class="row align-items-center mb-4">
+            <div class="col-md-1 text-center"><i class="bi bi-robot fs-2 text-warning"></i></div>
+            <div class="col-md-8 ps-4"><h6 class="fw-black text-uppercase m-0" style="font-size:12px">Facturación Automática Nocturna</h6><p class="small text-muted m-0">Generación masiva de borradores.</p></div>
+            <div class="col-md-3 d-flex justify-content-end"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="auto-active" style="width:3.5em; height:1.8em;" ${a.active?'checked':''}></div></div>
+         </div>
+         <div class="row g-4">
+            <div class="col-md-6"><label class="h-form-label">HORA DE EJECUCIÓN</label><select id="auto-hour" class="form-select bg-dark border-secondary text-white h-form-control">${Array.from({length:24}, (_,i)=>`<option value="${i}" ${a.hour===i?'selected':''}>${String(i).padStart(2,'0')}:00 HORAS</option>`).join('')}</select></div>
+            <div class="col-md-6 d-flex align-items-end"><button class="btn btn-warning w-100 py-2 fw-black shadow text-dark" id="btn-save-auto" onclick="SettingsView.saveAutomation()">SINC. AUTOMATIZACIÓN</button></div>
+         </div>
+      </div>
+
+      <div class="unified-block block-dark">
+         <div class="row align-items-center">
+            <div class="col-md-1 text-center"><i class="bi bi-database-fill-gear fs-2 text-brand"></i></div>
+            <div class="col-md-8 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Memoria Volátil Titanium (T-SS)</h6>
+               <p class="small text-muted m-0">Control del motor de hidratación local para navegación instantánea.</p>
+            </div>
+            <div class="col-md-3 text-end">
+               <button class="btn btn-brand-titanium px-4 py-2 fw-black text-dark" onclick="SettingsView.clearSyncCache()">PURGAR CACHÉ LOCAL</button>
+            </div>
+         </div>
+         <div class="mt-3 p-3 bg-dark bg-opacity-50 rounded border border-secondary">
+            <div class="d-flex justify-content-between small">
+               <span class="text-white-50 fw-bold">ÚLTIMA HIDRATACIÓN COMPLETA:</span>
+               <span id="cache-ts" class="text-brand fw-black">${new Date().toLocaleString()}</span>
+            </div>
+         </div>
+      </div>
+
+      <div class="unified-block block-dark">
+         <div class="row align-items-center">
+            <div class="col-md-1 text-center"><i class="bi bi-lightning-charge-fill fs-2 text-brand"></i></div>
+            <div class="col-md-8 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">Autopilot: Cierre de Ciclo Autónomo</h6>
+               <p class="small text-muted m-0">Aprobación y pago desatendido basado en confianza probabilística.</p>
+            </div>
+            <div class="col-md-3 d-flex justify-content-end">
+               <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="ap-active" style="width:3.5em; height:1.8em;" ${this.data.autopilot_active ? 'checked' : ''}>
+               </div>
+            </div>
+         </div>
+         <div class="row g-3 mt-3">
+            <div class="col-md-6">
+               <label class="h-label-refined text-white-50">UMBRAL DE CONFIANZA OCR (%)</label>
+               <input type="number" id="ap-confidence" class="form-control bg-dark border-secondary text-brand h-form-control fw-black" value="${this.data.autopilot_confidence_min || 95}" min="80" max="100">
+            </div>
+            <div class="col-md-6">
+               <label class="h-label-refined text-white-50">MARGEN DE DESVIACIÓN PRECIO (%)</label>
+               <input type="number" id="ap-deviation" class="form-control bg-dark border-secondary text-white h-form-control fw-black" value="${this.data.autopilot_max_deviation || 2}" min="0" max="10">
+            </div>
+            <div class="col-12 mt-3 pt-3 border-top border-secondary d-flex justify-content-between align-items-center">
+               <div class="small text-muted fw-bold">El robot procesará gastos pendientes cada hora si la confianza supera el umbral.</div>
+               <button class="btn btn-brand-titanium px-4 py-2 fw-black text-dark" onclick="SettingsView.executeAutopilotScan()">EJECUTAR SCAN AHORA</button>
+            </div>
+         </div>
+      </div>
+
+      <div class="unified-block block-dark">
+         <div class="row align-items-center">
+            <div class="col-md-1 text-center"><i class="bi bi-envelope-check-fill fs-2 text-warning"></i></div>
+            <div class="col-md-8 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="font-size:12px; color:#fff !important;">G-Inbound: Sincronización de Correo</h6>
+               <p class="small text-muted m-0">Succión desatendida de facturas desde su bandeja de entrada (Gmail/Workspace).</p>
+            </div>
+            <div class="col-md-3 d-flex justify-content-end">
+               <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="gi-active" style="width:3.5em; height:1.8em;" ${this.data.ginbound_active ? 'checked' : ''}>
+               </div>
+            </div>
+         </div>
+         <div class="row g-3 mt-3">
+            <div class="col-md-8">
+               <label class="h-label-refined text-white-50">ETIQUETA DE ESCANEO (LABEL)</label>
+               <input type="text" id="gi-label" class="form-control bg-dark border-secondary text-brand h-form-control fw-black" value="${this.data.ginbound_label || 'Handoo_Inbox'}" placeholder="Nombre de carpeta en Gmail">
+            </div>
+            <div class="col-md-4">
+               <label class="h-label-refined text-white-50">MODO DE SEGURIDAD</label>
+               <div class="form-check form-switch p-0 mt-2">
+                  <input class="form-check-input ms-0" type="checkbox" id="gi-whitelist" style="width:2.5em; height:1.2em;" ${this.data.ginbound_whitelist_only ? 'checked' : ''}>
+                  <label class="form-check-label text-white ms-4 fw-bold small" style="font-size:9px">SOLO PROVEEDORES CONOCIDOS</label>
+               </div>
+            </div>
+            <div class="col-12 mt-3 pt-3 border-top border-secondary d-flex justify-content-between align-items-center">
+               <div class="small text-muted fw-bold">Handoo buscará correos sin leer en la etiqueta especificada cada 30 minutos.</div>
+               <button class="btn btn-warning px-4 py-2 fw-black text-dark" onclick="SettingsView.executeGInboundScan()">ESCANEAR GMAIL AHORA</button>
+            </div>
+         </div>
+         <div class="col-12 mt-4 pt-3 text-end">
+            <button class="btn btn-brand-titanium px-5 py-2 fw-black shadow text-dark" onclick="SettingsView.saveAll(this)">GUARDAR AUTOMATIZACIÓN</button>
+         </div>
+      </div>`;
+  },
+
+  clearSyncCache: function() {
+     localStorage.removeItem('HANDOO_TITANIUM_STATE');
+     HandooApp.ui.showToast("Memoria volátil purgada. Reiniciando hidratación...", "success");
+     setTimeout(() => window.location.reload(), 1000);
+  },
+
+  executeAutopilotScan: async function() {
+     HandooApp.ui.showToast("Iniciando escaneo autónomo del Kernel...", "info");
+     const res = await HandooApp.api('autopilot.execute_scan');
+     if(res.ok) {
+        HandooApp.ui.showToast(res.msg, "success");
+        HandooApp.ui.logToDrawer(res.msg, "success");
+     } else {
+        HandooApp.ui.showToast(res.msg, "error");
+     }
+  },
+
+  executeGInboundScan: async function() {
+     HandooApp.ui.showToast("Conectando con Gmail API...", "info");
+     const res = await HandooApp.api('autopilot.scan_mail');
+     if(res.ok) {
+        HandooApp.ui.showToast(res.msg, "success");
+        HandooApp.ui.logToDrawer(res.msg, "success");
+     } else {
+        HandooApp.ui.showToast(res.msg, "error");
+     }
+  },
+
+  renderTreasuryContentLogic: function() {
+    const m = this.data.masters || {};
+    if(this.subCategory === 'banks') return `
+      <div class="row g-3 mb-4">
+         ${(m.bank_accounts||[]).map(b => `
+            <div class="col-md-12">
+               <div class="titanium-card" onclick="SettingsView.openMasterForm('BANK_ACCOUNT', '${b.id}')">
+                  <div class="d-flex justify-content-between align-items-center">
+                     <div class="d-flex align-items-center">
+                        <i class="bi bi-bank fs-3 text-brand me-3"></i>
+                        <div><div class="fw-black text-uppercase" style="font-size:11px">${b.nombre} ${b.is_credit_line ? '<span class="badge bg-dark text-white ms-2">LÍNEA CRÉDITO</span>' : ''}</div><div class="font-monospace small text-muted">${b.iban} | RAÍZ: ${b.pgc_root}</div></div>
+                     </div>
+                     <button class="btn btn-sm text-danger" onclick="event.stopPropagation(); SettingsView.deleteMaster('${b.id}')"><i class="bi bi-trash3"></i></button>
+                  </div>
+               </div>
+            </div>`).join('')}
+      </div>
+      <button class="btn btn-dark w-100 py-3 fw-black" onclick="SettingsView.openMasterForm('BANK_ACCOUNT', 'new')">+ VINCULAR BANCO</button>`;
+    
+    if(this.subCategory === 'sepa') return `<h5 class="settings-section-title">CONFIGURACIÓN SEPA</h5><div class="unified-block block-dark mt-0"><div class="row g-3"><div class="col-md-6"><label class="h-form-label">ID ACREEDOR</label><input type="text" id="set-sepa-id" class="form-control bg-dark border-secondary text-white fw-bold h-form-control" value="${this.data.sepa_creditor_id||''}"></div><div class="col-md-3"><label class="h-label-refined text-white-50">SUFIJO</label><input type="text" id="set-sepa-suffix" class="form-control bg-dark border-secondary text-white h-form-control" value="${this.data.sepa_suffix||'000'}"></div><div class="col-md-3"><label class="h-label-refined text-white-50">MODALIDAD</label><select id="set-sepa-mode" class="form-select bg-dark border-secondary text-white h-form-control"><option value="CORE" ${this.data.sepa_mode==='CORE'?'selected':''}>CORE</option><option value="B2B" ${this.data.sepa_mode==='B2B'?'selected':''}>B2B</option></select></div></div></div>`;
+
+    if(this.subCategory === 'payment_terms') return this.renderMasterList('PAYMENT_TERM', m.payment_terms);
+    if(this.subCategory === 'payments') return this.renderMasterList('PAYMENT_METHOD', m.payment_methods);
+    if(this.subCategory === 'periods') return this.renderMasterList('PERIODICITY', m.periodicities);
+
+    return '';
+  },
+
+  renderSecurityContent: function() {
+    const prof = this.data.profile || {};
+    if(this.subCategory === 'profile') return `<h5 class="settings-section-title">PERFIL OPERADOR</h5><div class="unified-block block-light mt-3 p-4 rounded-4 shadow-sm"><div class="row g-3"><div class="col-md-4"><label class="h-label-refined">UID USUARIO</label><input type="text" id="prof-usuario" class="form-control h-form-control fw-black text-brand" value="${prof.usuario||''}"></div><div class="col-md-4"><label class="h-label-refined">ROL</label><select id="prof-rol" class="form-select h-form-control fw-bold"><option value="ADMINISTRADOR">ADMINISTRADOR</option></select></div><div class="col-md-4"><label class="h-label-refined">ESTADO</label><div class="p-2 border rounded-3 bg-white fw-black text-center text-success" style="font-size:11px">ACTIVO</div></div><div class="col-md-6 mt-4"><label class="h-form-label">NOMBRE</label><input type="text" id="prof-nombre" class="form-control h-form-control fw-bold" value="${prof.nombre||''}"></div><div class="col-md-6 mt-4"><label class="h-label-refined">APELLIDOS</label><input type="text" id="prof-apellidos" class="form-control h-form-control fw-bold" value="${prof.apellidos||''}"></div><div class="col-md-12"><label class="h-label-refined">EMAIL OFICIAL</label><input type="email" id="prof-email" class="form-control h-form-control fw-bold" value="${prof.email||''}"></div></div></div>`;
+    
+    if(this.subCategory === 'password') return `
+      <h5 class="settings-section-title">CAMBIO DE PIN DE ACCESO</h5>
+      <div class="unified-block block-dark mt-3 p-4 rounded-4 shadow-sm">
+        <div class="row align-items-center mb-4">
+           <div class="col-md-1 text-center"><i class="bi bi-key fs-2 text-brand"></i></div>
+           <div class="col-md-11 ps-4"><h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Protección de Identidad</h6><p class="small text-muted m-0">El PIN de 4 dígitos protege el acceso administrativo al Kernel.</p></div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="h-label-refined text-white-50">PIN ACTUAL</label>
+            <input type="password" id="set-pin-old" class="form-control bg-dark border-secondary text-white h-form-control text-center fw-black" maxlength="4" placeholder="••••">
+          </div>
+          <div class="col-md-4">
+            <label class="h-label-refined text-white-50">NUEVO PIN</label>
+            <input type="password" id="set-pin-new" class="form-control bg-dark border-secondary text-brand h-form-control text-center fw-black" maxlength="4" placeholder="••••">
+          </div>
+          <div class="col-md-4">
+            <label class="h-label-refined text-white-50">CONFIRMAR NUEVO PIN</label>
+            <input type="password" id="set-pin-confirm" class="form-control bg-dark border-secondary text-brand h-form-control text-center fw-black" maxlength="4" placeholder="••••">
+          </div>
+        </div>
+        <div class="mt-4 pt-3 border-top border-secondary text-end">
+           <button class="btn btn-warning px-5 py-2 fw-black shadow text-dark" id="btn-save-pin" onclick="SettingsView.savePIN()">ACTUALIZAR CREDENCIALES</button>
+        </div>
+      </div>`;
+    return '';
+  },
+
+  savePIN: async function() {
+    const pinNew = document.getElementById('set-pin-new').value;
+    const pinConf = document.getElementById('set-pin-confirm').value;
+
+    if(!pinNew || !pinConf) return HandooApp.ui.showToast("Complete los campos del PIN", "error");
+    if(pinNew !== pinConf) return HandooApp.ui.showToast("Los PIN no coinciden", "error");
+    if(pinNew.length !== 4) return HandooApp.ui.showToast("El PIN debe tener 4 dígitos", "error");
+
+    HandooApp.ui.setLoading('btn-save-pin', true);
+    const res = await HandooApp.api('admin.save_settings', { admin_pin: pinNew });
+    HandooApp.ui.setLoading('btn-save-pin', false);
+    
+    if(res.ok) {
+       HandooApp.ui.showToast("PIN de seguridad actualizado.");
+       document.getElementById('set-pin-old').value = '';
+       document.getElementById('set-pin-new').value = '';
+       document.getElementById('set-pin-confirm').value = '';
+    } else {
+       HandooApp.ui.showToast(res.msg, "error");
+    }
+  },
+
+  openMasterForm: function(type, id) {
+    const m = this.data.masters || {};
+    let schema = { id: 'new', type: type, nombre: '', descripcion: '', ref_interna: '', ref_contable: '', pvp: 0, iva: '21', pgc_root: '700' };
+    
+    if (type === 'COMPANY') schema = { id: 'new', type: 'COMPANY', nombre_fiscal: '', cif: '', logo_url: '', favorita: false, email: '', telefono: '', direccion_fiscal: { tipo_via: 'Calle', nombre: '', num: '', portal: '', escalera: '', cp: '', pob: '', prov: '', pais: 'ESPAÑA' }, registro: { tomo: '', folio: '', hoja: '', inscripcion: '' } };
+    if (type === 'SERIES') schema = { id: 'new', type: 'SERIES', nombre: '', prefijo: '', inicio: 1, tipo_serie: 'VENTA', pgc_root: '700' };
+    if (type === 'TAX') schema = { id: 'new', type: 'TAX', nombre: '', valor: 0, cuenta_soportado: '472000000', cuenta_repercutido: '477000000' };
+    if (type === 'RETENTION') schema = { id: 'new', type: 'RETENTION', nombre: '', valor: 0, cuenta_compra: '475100000', cuenta_venta: '473000000' };
+    if (type === 'BANK_ACCOUNT') schema = { id: 'new', type: 'BANK_ACCOUNT', nombre: '', iban: '', swift: '', pgc_root: '572' };
+    if (type === 'PLAN') schema = { id: 'new', type: 'PLAN', nombre: '', descripcion: '', pvp: 0, active_modules: [] };
+    if (type === 'MODULE') schema = { id: 'new', type: 'MODULE', nombre: '', descripcion: '', pvp: 0, active_modules: [] };
+
+    if (id !== 'new') {
+      const keys = { 'TAX': 'taxes', 'RETENTION': 'retentions', 'COMPANY': 'companies', 'SERIES': 'series', 'BANK_ACCOUNT': 'bank_accounts', 'PAYMENT_METHOD': 'payment_methods', 'PERIODICITY': 'periodicities', 'PAYMENT_TERM': 'payment_terms', 'PLAN': 'plans', 'MODULE': 'modules' };
+      const found = (m[keys[type]] || []).find(x => x.id === id);
+      if(found) schema = JSON.parse(JSON.stringify(found));
+    }
+    this.editingMaster = schema;
+    this.renderContent();
+  },
+
+  renderMasterForm: function() {
+    const c = this.editingMaster;
+    if (c.type === 'COMPANY') return this.renderCompanyFormUI();
+    
+    return `
+      <div class="animate-slide">
+         <div class="settings-section-title"><span>FICHA TÉCNICA: ${c.type}</span><span class="badge bg-dark font-monospace">${c.id}</span></div>
+         
+         <div class="unified-block block-light mt-0">
+            <div class="row g-3">
+               <div class="col-md-8"><label class="h-label-refined">NOMBRE DEL CONCEPTO</label><input type="text" id="m-nombre" class="form-control fw-black text-uppercase h-form-control" value="${c.nombre}"></div>
+               <div class="col-md-4"><label class="h-label-refined">REF. INTERNA / CÓDIGO</label><input type="text" id="m-ref" class="form-control h-form-control" value="${c.ref_interna||''}"></div>
+               <div class="col-md-12"><label class="h-label-refined">DESCRIPCIÓN / COMENTARIO</label><textarea id="m-desc" class="form-control" rows="2" style="font-size:11px">${c.descripcion||''}</textarea></div>
+            </div>
+         </div>
+
+         ${c.type === 'SERIES' ? `
+            <div class="unified-block block-dark">
+               <div class="row g-3">
+                  <div class="col-md-3"><label class="h-label-refined text-white-50">PREFIJO</label><input type="text" id="m-prefijo" class="form-control h-form-control fw-black" value="${c.prefijo||''}"></div>
+                  <div class="col-md-3"><label class="h-label-refined text-white-50">INICIO CONTADOR</label><input type="number" id="m-inicio" class="form-control h-form-control fw-black" value="${c.inicio||1}"></div>
+                  <div class="col-md-3"><label class="h-label-refined text-white-50">RAÍZ PGC (700...)</label><input type="text" id="m-pgc-root" class="form-control h-form-control font-monospace fw-bold" maxlength="3" value="${c.pgc_root||'700'}"></div>
+                  <div class="col-md-3">
+                     <label class="h-label-refined text-white-50">TIPO DE SERIE</label>
+                     <select id="m-tipo-serie" class="form-select h-form-control fw-bold">
+                        <option value="VENTA" ${c.tipo_serie==='VENTA'?'selected':''}>FACTURACIÓN VENTAS</option>
+                        <option value="COMPRA" ${c.tipo_serie==='COMPRA'?'selected':''}>FACTURACIÓN COMPRAS</option>
+                        <option value="RECTIFICATIVA" ${c.tipo_serie==='RECTIFICATIVA'?'selected':''}>FACTURA RECTIFICATIVA</option>
+                        <option value="ABONO" ${c.tipo_serie==='ABONO'?'selected':''}>NOTA DE ABONO</option>
+                        <option value="PRESUPUESTO" ${c.tipo_serie==='PRESUPUESTO'?'selected':''}>PRESUPUESTOS / PROFORMA</option>
+                     </select>
+                  </div>
+               </div>
+            </div>
+         ` : ''}
+
+         ${c.type === 'TAX' || c.type === 'RETENTION' ? `
+            <div class="unified-block block-dark">
+               <div class="row g-3">
+                  <div class="col-md-4"><label class="h-label-refined text-white-50">VALOR (%)</label><input type="number" id="m-valor" class="form-control h-form-control fw-black" value="${c.valor||0}"></div>
+                  <div class="col-md-4"><label class="h-label-refined text-white-50">CTA REPERCUTIDO / VENTA</label><input type="text" id="m-acc-sales" class="form-control h-form-control font-monospace" value="${c.type==='TAX'?c.total_repercutido:c.total_venta}"></div>
+                  <div class="col-md-4"><label class="h-label-refined text-white-50">CTA SOPORTADO / COMPRA</label><input type="text" id="m-acc-purch" class="form-control h-form-control font-monospace" value="${c.type==='TAX'?c.total_soportado:c.total_compra}"></div>
+               </div>
+            </div>
+         ` : ''}
+
+         ${c.type === 'PLAN' || c.type === 'MODULE' ? `
+            <div class="unified-block block-dark">
+               <div class="row g-3">
+                  <div class="col-md-6"><label class="h-label-refined text-white-50">PRECIO BASE (€)</label><input type="number" id="m-precio" class="form-control h-form-control fw-black text-brand" value="${c.precio||0}"></div>
+                  <div class="col-md-6"><label class="h-label-refined text-white-50">TIPO DE PRODUCTO</label><div class="p-2 border rounded-3 bg-white bg-opacity-10 text-white fw-black text-center" style="font-size:11px">${c.type}</div></div>
+               </div>
+            </div>
+            
+            <div class="mt-4">
+               <h6 class="h-label-refined">CAPACIDADES INCLUIDAS EN ESTE ${c.type}</h6>
+               <div class="input-group mb-3">
+                  <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                  <input type="text" id="m-feat-search" class="form-control h-form-control border-start-0" placeholder="Buscar capacidad..." oninput="SettingsView.filterMasterFeatures()">
+               </div>
+               <div id="m-features-grid" class="row g-2 overflow-auto" style="max-height: 300px">
+                  ${this.FEATURES_LIST.map(f => `
+                    <div class="col-md-6 m-feat-item" data-search="${f.label.toLowerCase()} ${f.desc.toLowerCase()}">
+                       <div class="p-2 border rounded-3 bg-white d-flex align-items-center gap-2" style="cursor:pointer" onclick="const cb = this.querySelector('input'); cb.checked = !cb.checked;">
+                          <input type="checkbox" class="form-check-input m-feat-check" value="${f.id}" ${c.active_modules?.includes(f.id) ? 'checked' : ''} onclick="event.stopPropagation()">
+                          <div class="small fw-bold text-uppercase" style="font-size:9px">${f.label}</div>
+                       </div>
+                    </div>
+                  `).join('')}
+               </div>
+            </div>
+         ` : ''}
+
+         ${c.type === 'BANK_ACCOUNT' ? `
+            <div class="unified-block block-dark">
+               <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="h-label-refined text-white-50">IBAN COMPLETO</label>
+                    <input type="text" id="m-iban" class="form-control h-form-control font-monospace fw-black" placeholder="ES00 0000..." value="${c.iban||''}" oninput="SettingsView.handleIBANInput(this.value)">
+                  </div>
+                  <div class="col-md-3"><label class="h-label-refined text-white-50">RAÍZ PGC (572...)</label><input type="text" id="m-pgc-root" class="form-control h-form-control font-monospace fw-bold" maxlength="3" value="${c.pgc_root||'572'}"></div>
+                  <div class="col-md-3"><label class="h-label-refined text-white-50">BIC / SWIFT</label><input type="text" id="m-swift" class="form-control h-form-control font-monospace bg-dark text-white border-secondary" readonly value="${c.swift||''}"></div>
+               </div>
+            </div>
+         ` : ''}
+
+         <div class="col-md-12 mt-5 d-flex gap-3">
+            <button class="btn btn-light border fw-bold px-5" onclick="SettingsView.editingMaster=null; SettingsView.renderContent()">DESCARTAR</button>
+            <button class="btn btn-dark flex-grow-1 fw-black py-2 shadow" id="btn-save-master" onclick="SettingsView.saveMaster()">SINCRONIZAR MAESTRO</button>
+         </div>
+      </div>`;
+  },
+
+  handleIBANInput: function(val) {
+    let clean = val.replace(/\s/g, '').toUpperCase();
+    const masked = clean.replace(/(.{4})/g, '$1 ').trim();
+    document.getElementById('m-iban').value = masked;
+    
+    if(clean.length >= 8) {
+       const code = clean.substring(4, 8);
+       const bank = this.bankDict[code] || { n: 'ENTIDAD DESCONOCIDA', s: '---' };
+       const nameInp = document.getElementById('m-nombre');
+       const swiftInp = document.getElementById('m-swift');
+       if(nameInp && (!nameInp.value || nameInp.value === 'ENTIDAD DESCONOCIDA')) nameInp.value = bank.n;
+       if(swiftInp) swiftInp.value = bank.s;
+    }
+  },
+
+  filterMasterFeatures: function() {
+    const q = document.getElementById('m-feat-search').value.toLowerCase();
+    document.querySelectorAll('.m-feat-item').forEach(el => {
+      el.style.display = el.dataset.search.includes(q) ? 'block' : 'none';
+    });
+  },
+
+  renderCompanyFormUI: function() {
+    const c = this.editingMaster;
+    const addr = c.direccion_fiscal || {};
+    const reg = c.registro || { tomo: '', folio: '', hoja: '', inscripcion: '' };
+    return `
+      <div class="animate-slide">
+         <div class="settings-section-title"><span>SEDE LEGAL TITULAR</span><div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-2"><label class="h-label-refined m-0">PRINCIPAL</label><input class="form-check-input" type="checkbox" id="comp-favorita" ${c.favorita?'checked':''}></div></div>
+         
+         <div class="unified-block block-light mt-0">
+            <div class="row g-3">
+               <div class="col-md-2">
+                  <div class="logo-preview-container" onclick="document.getElementById('comp-logo-file').click()">
+                     <img src="${c.logo_url||''}" class="${c.logo_url?'':'d-none'}" id="logo-img">
+                     <i class="bi bi-cloud-arrow-up fs-2 text-muted ${c.logo_url?'d-none':''}" id="logo-icon"></i>
+                  </div>
+                  <input type="file" id="comp-logo-file" class="d-none" onchange="SettingsView.handleLogo(this)">
+               </div>
+               <div class="col-md-10">
+                  <div class="row g-3">
+                     <div class="col-md-8"><label class="h-label-refined">RAZÓN SOCIAL</label><input type="text" id="comp-nombre-fiscal" class="form-control h-form-control fw-black text-uppercase" value="${c.nombre_fiscal}"></div>
+                     <div class="col-md-4"><label class="h-label-refined">CIF</label><input type="text" id="comp-cif" class="form-control h-form-control font-monospace fw-bold" value="${c.cif}"></div>
+                     <div class="col-md-6"><label class="h-label-refined">EMAIL OFICIAL</label><input type="email" id="comp-email" class="form-control h-form-control fw-bold" value="${c.email}"></div>
+                     <div class="col-md-6"><label class="h-label-refined">TELÉFONO</label><input type="text" id="comp-tel" class="form-control h-form-control" value="${c.telefono||''}"></div>
+                  </div>
+               </div>
+            </div>
+         </div>
+
+         <div class="unified-block block-light">
+            <h6 class="h-label border-bottom pb-2 mb-3">Localización Fiscal</h6>
+            <div class="row g-2">
+               <div class="col-md-6"><label class="h-label-refined">CALLE / DIRECCIÓN</label><input type="text" id="comp-calle" class="form-control h-form-control" value="${addr.nombre||''}"></div>
+               <div class="col-md-1"><label class="h-label-refined">Nº</label><input type="text" id="comp-num" class="form-control h-form-control" value="${addr.num||''}"></div>
+               <div class="col-md-1"><label class="h-label-refined">PTL</label><input type="text" id="comp-portal" class="form-control h-form-control" value="${addr.portal||''}"></div>
+               <div class="col-md-1"><label class="h-label-refined">ESC</label><input type="text" id="comp-esc" class="form-control h-form-control" value="${addr.escalera||''}"></div>
+               <div class="col-md-3"><label class="h-label-refined">CP</label><input type="text" id="comp-cp" class="form-control h-form-control fw-bold" value="${addr.cp||''}"></div>
+               <div class="col-md-4 mt-2"><label class="h-label-refined">PROVINCIA</label><input type="text" id="comp-prov" class="form-control h-form-control" value="${addr.prov||''}" list="list-provincias" onchange="SettingsView.loadMunicipios(this.value)">
+                  <datalist id="list-provincias">
+                    <option value="ALAVA">
+                    <option value="ALBACETE">
+                    <option value="ALICANTE">
+                    <option value="ALMERIA">
+                    <option value="ASTURIAS">
+                    <option value="AVILA">
+                    <option value="BADAJOZ">
+                    <option value="BARCELONA">
+                    <option value="BURGOS">
+                    <option value="CACERES">
+                    <option value="CADIZ">
+                    <option value="CANTABRIA">
+                    <option value="CASTELLON">
+                    <option value="CIUDAD REAL">
+                    <option value="CORDOBA">
+                    <option value="CUENCA">
+                    <option value="GIRONA">
+                    <option value="GRANADA">
+                    <option value="GUADALAJARA">
+                    <option value="GUIPUZCOA">
+                    <option value="HUELVA">
+                    <option value="HUESCA">
+                    <option value="BALEARS">
+                    <option value="JAEN">
+                    <option value="A CORUÑA">
+                    <option value="LA RIOJA">
+                    <option value="LAS PALMAS">
+                    <option value="LEON">
+                    <option value="LLEIDA">
+                    <option value="LUGO">
+                    <option value="MADRID">
+                    <option value="MALAGA">
+                    <option value="MURCIA">
+                    <option value="NAVARRA">
+                    <option value="OURENSE">
+                    <option value="PALENCIA">
+                    <option value="PONTEVEDRA">
+                    <option value="SALAMANCA">
+                    <option value="SANTA CRUZ DE TENERIFE">
+                    <option value="SEGOVIA">
+                    <option value="SEVILLA">
+                    <option value="SORIA">
+                    <option value="TARRAGONA">
+                    <option value="TERUEL">
+                    <option value="TOLEDO">
+                    <option value="VALENCIA">
+                    <option value="VALLADOLID">
+                    <option value="BIZKAIA">
+                    <option value="ZAMORA">
+                    <option value="ZARAGOZA">
+                    <option value="CEUTA">
+                    <option value="MELILLA">
+                  </datalist>
+               </div>
+               <div class="col-md-4 mt-2"><label class="h-label-refined">POBLACIÓN</label>
+                  <input type="text" id="comp-pob" class="form-control h-form-control" value="${addr.pob||''}" list="list-municipios">
+                  <datalist id="list-municipios"></datalist>
+               </div>
+               <div class="col-md-4 mt-2"><label class="h-label-refined">PAÍS</label><input type="text" id="comp-pais" class="form-control h-form-control" value="${addr.pais||'ESPAÑA'}"></div>
+            </div>
+         </div>
+
+         <div class="unified-block block-light">
+            <h6 class="h-label border-bottom pb-2 mb-3">Información Registral</h6>
+            <div class="row g-3">
+               <div class="col-md-3"><label class="h-label-refined">TOMO</label><input type="text" id="reg-tomo" class="form-control h-form-control" value="${reg.tomo||''}"></div>
+               <div class="col-md-3"><label class="h-label-refined">FOLIO</label><input type="text" id="reg-folio" class="form-control h-form-control" value="${reg.folio||''}"></div>
+               <div class="col-md-3"><label class="h-label-refined">HOJA</label><input type="text" id="reg-hoja" class="form-control h-form-control" value="${reg.hoja||''}"></div>
+               <div class="col-md-3"><label class="h-label-refined">INSCRIPCIÓN</label><input type="text" id="reg-inscripcion" class="form-control h-form-control" value="${reg.inscripcion||''}"></div>
+            </div>
+         </div>
+
+         <div class="col-md-12 mt-5 d-flex gap-3"><button class="btn btn-light border fw-bold px-5" onclick="SettingsView.editingMaster=null; SettingsView.renderContent()">DESCARTAR</button><button class="btn btn-dark flex-grow-1 fw-black py-2 shadow" id="btn-save-master" onclick="SettingsView.saveMaster()">SINCRONIZAR SEDE</button></div>
+      </div>`;
+  },
+
+  handleLogo: function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.editingMaster.logo_url = e.target.result;
+      const img = document.getElementById('logo-img');
+      const icon = document.getElementById('logo-icon');
+      if(img) { img.src = e.target.result; img.classList.remove('d-none'); }
+      if(icon) { icon.classList.add('d-none'); }
+    };
+    reader.readAsDataURL(file);
+  },
+
+  loadMunicipios: async function(provincia) {
+    const datalist = document.getElementById('list-municipios');
+    const input = document.getElementById('comp-pob');
+    if (!datalist || !input) return;
+    
+    input.value = '';
+    datalist.innerHTML = '<option value="CARGANDO...">';
+    
+    const res = await HandooApp.api('admin.get_municipios', { provincia: provincia.toUpperCase() });
+    
+    datalist.innerHTML = '';
+    if (res.ok && Array.isArray(res.data)) {
+      res.data.forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.toUpperCase();
+        datalist.appendChild(option);
+      });
+    }
+  },
+
+  saveMaster: async function() {
+    const c = this.editingMaster;
+    const nameInput = document.getElementById('m-nombre') || document.getElementById('comp-nombre-fiscal');
+    if(!nameInput || !nameInput.value) return HandooApp.ui.showToast("Nombre requerido", "error");
+
+    let updated = { id: c.id, type: c.type };
+
+    if(c.type === 'COMPANY') {
+       updated.nombre_fiscal = nameInput.value.toUpperCase();
+       updated.nombre = updated.nombre_fiscal;
+       updated.cif = document.getElementById('comp-cif').value.toUpperCase();
+       updated.email = document.getElementById('comp-email').value;
+       updated.telefono = document.getElementById('comp-tel').value;
+       updated.favorita = document.getElementById('comp-favorita').checked;
+       updated.logo_url = c.logo_url;
+       updated.direccion_fiscal = { 
+          nombre: document.getElementById('comp-calle').value, 
+          num: document.getElementById('comp-num').value, 
+          portal: document.getElementById('comp-portal').value,
+          escalera: document.getElementById('comp-esc').value,
+          pob: document.getElementById('comp-pob').value, 
+          cp: document.getElementById('comp-cp').value, 
+          prov: document.getElementById('comp-prov').value,
+          pais: document.getElementById('comp-pais').value
+       };
+       updated.registro = { tomo: document.getElementById('reg-tomo').value, folio: document.getElementById('reg-folio').value, hoja: document.getElementById('reg-hoja').value, inscripcion: document.getElementById('reg-inscripcion').value };
+    } 
+    else if(c.type === 'SERIES') {
+       updated.nombre = nameInput.value.toUpperCase();
+       updated.prefijo = document.getElementById('m-prefijo').value.toUpperCase();
+       updated.inicio = parseInt(document.getElementById('m-inicio').value) || 1;
+       updated.tipo_serie = document.getElementById('m-tipo-serie').value;
+       updated.pgc_root = document.getElementById('m-pgc-root')?.value || '700';
+    }
+    else if(c.type === 'TAX') {
+       updated.nombre = nameInput.value.toUpperCase();
+       updated.valor = parseFloat(document.getElementById('m-valor').value);
+       updated.total_repercutido = document.getElementById('m-acc-sales').value;
+       updated.total_soportado = document.getElementById('m-acc-purch').value;
+       updated.pgc_root = '477';
+    }
+    else if(c.type === 'RETENTION') {
+       updated.nombre = nameInput.value.toUpperCase();
+       updated.valor = parseFloat(document.getElementById('m-valor').value);
+       updated.total_venta = document.getElementById('m-acc-sales').value;
+       updated.total_compra = document.getElementById('m-acc-purch').value;
+       updated.pgc_root = '473';
+    }
+    else if(c.type === 'BANK_ACCOUNT') {
+       updated.nombre = nameInput.value.toUpperCase();
+       updated.iban = document.getElementById('m-iban').value.replace(/\s/g,'');
+       updated.swift = document.getElementById('m-swift')?.value || 'CREDIT';
+       updated.pgc_root = document.getElementById('m-pgc-root')?.value || '572';
+    }
+    else if(c.type === 'PLAN' || c.type === 'MODULE') {
+       updated.nombre = nameInput.value.toUpperCase();
+       updated.descripcion = document.getElementById('m-desc').value;
+       updated.precio = parseFloat(document.getElementById('m-precio').value || 0);
+       updated.active_modules = Array.from(document.querySelectorAll('.m-feat-check:checked')).map(cb => cb.value);
+    }
+    else {
+       updated.nombre = nameInput.value.toUpperCase();
+       updated.ref_interna = document.getElementById('m-ref').value;
+       updated.descripcion = document.getElementById('m-desc').value;
+       updated.pvp = parseFloat(document.getElementById('m-pvp').value || 0);
+    }
+
+    HandooApp.ui.setLoading('btn-save-master', true);
+    const res = await HandooApp.api('masters.save', { master: updated });
+    HandooApp.ui.setLoading('btn-save-master', false);
+    if(res.ok) { this.editingMaster = null; this.load(); } else { HandooApp.ui.showToast(res.msg, "error"); }
+  },
+
+  deleteMaster: async function(id) {
+    if(await HandooApp.ui.confirm("¿ELIMINAR REGISTRO MAESTRO?")) {
+      await HandooApp.api('masters.delete', {id});
+      this.load();
+    }
+  },
+
+  saveAll: async function(btnContext = null) {
+    const payload = {};
+    const getVal = (id) => document.getElementById(id)?.value;
+    const getCheck = (id) => document.getElementById(id)?.checked;
+
+    // PARÁMETROS GLOBALES
+    if(document.getElementById('set-fixed-costs')) payload.fixed_costs = parseFloat(getVal('set-fixed-costs') || 0);
+    if(document.getElementById('set-currency')) payload.system_currency = getVal('set-currency');
+    if(document.getElementById('set-profile')) payload.sector_profile = getVal('set-profile');
+    if(document.getElementById('set-credit-threshold')) payload.credit_expiry_threshold = parseInt(getVal('set-credit-threshold') || 30);
+    if(document.getElementById('set-decimal-precision')) payload.decimal_precision = parseInt(getVal('set-decimal-precision') || 2);
+    if(document.getElementById('set-write-off-credit')) payload.write_off_credit_acc = getVal('set-write-off-credit');
+    if(document.getElementById('set-write-off-debit')) payload.write_off_debit_acc = getVal('set-write-off-debit');
+    
+    // PARÁMETROS AUTOPILOT / G-INBOUND / AI
+    if(document.getElementById('ap-active')) payload.autopilot_active = getCheck('ap-active');
+    if(document.getElementById('ap-confidence')) payload.autopilot_confidence_min = parseInt(getVal('ap-confidence') || 95);
+    if(document.getElementById('ap-deviation')) payload.autopilot_max_deviation = parseInt(getVal('ap-deviation') || 2);
+    if(document.getElementById('gi-active')) payload.ginbound_active = getCheck('gi-active');
+    if(document.getElementById('gi-label')) payload.ginbound_label = getVal('gi-label');
+    if(document.getElementById('gi-whitelist')) payload.ginbound_whitelist_only = getCheck('gi-whitelist');
+    if(document.getElementById('ai-api-key')) payload.ai_api_key = getVal('ai-api-key');
+    if(document.getElementById('ai-model')) payload.ai_model = getVal('ai-model');
+    if(document.getElementById('ai-auto-pilot')) payload.ai_auto_pilot = getCheck('ai-auto-pilot');
+
+    // PARÁMETROS DE FRANJAS DE TURNO (Solo guarda si la tabla existe en la pantalla actual)
+
+    // BLINDAJE TITANIUM: Cargar animación de forma segura en el botón presionado
+    const btn = btnContext || (window.event ? window.event.target.closest('button') : document.getElementById('btn-save-settings'));
+    const originalText = btn ? btn.innerHTML : '';
+    if(btn) { btn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i> GUARDANDO...'; btn.disabled = true; }
+    
+    const res = await HandooApp.api('admin.save_settings', payload);
+    
+    if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
+    
+    if(res.ok) {
+       HandooApp.ui.showToast("Sincronizado correctamente", "success");
+       this.load();
+    } else {
+       HandooApp.ui.showToast(res.msg, "error");
+    }
+  },
+
+  saveAutomation: async function() {
+    const active = document.getElementById('auto-active').checked;
+    const hour = parseInt(document.getElementById('auto-hour').value);
+    HandooApp.ui.setLoading('btn-save-auto', true);
+    await HandooApp.api('subscription.save_auto_config', { active, hour });
+    HandooApp.ui.setLoading('btn-save-auto', false);
+    HandooApp.ui.showToast("Automatización Actualizada");
+    this.load();
+  },
+
+  saveStripeConfig: async function() {
+    const payload = { secret_key: document.getElementById('st-secret').value, public_key: document.getElementById('st-public').value };
+    HandooApp.ui.setLoading('btn-save-stripe', true);
+    await HandooApp.api('stripe.save_config', payload);
+    HandooApp.ui.setLoading('btn-save-stripe', false);
+    HandooApp.ui.showToast("Stripe Cloud Sincronizado");
+  },
+
+  saveClosingDate: async function() {
+    const val = document.getElementById('set-closing-date').value;
+    HandooApp.ui.setLoading('btn-save-closing', true);
+    await HandooApp.api('admin.save_settings', { closing_date: val });
+    HandooApp.ui.setLoading('btn-save-closing', false);
+    HandooApp.ui.showToast("Protocolo de Cierre Actualizado");
+    this.load();
+  },
+
+  saveNeuralSettings: async function() {
+    const payload = {
+        ai_api_key: document.getElementById('set-ai-api-key').value,
+        ai_model: document.getElementById('set-ai-model').value,
+        ai_auto_pilot: document.getElementById('set-ai-autopilot').value === 'true'
+    };
+    
+    HandooApp.ui.setLoading('btn-save-ai-neural', true);
+    const res = await HandooApp.api('admin.save_settings', payload);
+    HandooApp.ui.setLoading('btn-save-ai-neural', false);
+    
+    if(res.ok) {
+       HandooApp.ui.showToast("Configuración Neural Sincronizada", "success");
+       this.load();
+    } else {
+       HandooApp.ui.showToast(res.msg, "error");
+    }
+  }
+};
+</script>

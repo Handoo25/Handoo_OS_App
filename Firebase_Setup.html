@@ -1,0 +1,23 @@
+<!-- Firebase_Setup.html -->
+<!-- Carga de SDKs de Firebase (Versión Compat para fácil integración en GAS) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<script>
+  (function() {
+    // La configuración se inyecta desde el servidor (.gs)
+    const firebaseConfig = <?!= JSON.stringify(FIREBASE_CONFIG) ?>;
+    
+    // Inicialización
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    
+    // Exportamos a global para que el resto de la app lo use
+    window.db = firebase.firestore();
+    window.auth = firebase.auth();
+    
+    console.log("Firebase Titanium Setup: OK");
+  })();
+</script>

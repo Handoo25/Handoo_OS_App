@@ -1,0 +1,338 @@
+<style>
+  .tax-q-card { 
+    background: white; border: 1px solid var(--border); border-radius: 20px; padding: 25px; 
+    transition: 0.3s; height: 100%; position: relative; overflow: hidden;
+    cursor: pointer;
+  }
+  .tax-q-card:hover { transform: translateY(-5px); border-color: var(--brand); box-shadow: 0 15px 30px rgba(0,0,0,0.05); }
+  .tax-q-card:hover .btn-audit-inline { opacity: 1; transform: translateY(0); }
+  
+  .tax-metric { margin-bottom: 15px; }
+  .tax-metric-label { font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 5px; }
+  .tax-metric-val { font-size: 16px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+
+  .tax-badge-liq { 
+    position: absolute; top: 20px; right: 20px; padding: 4px 10px; border-radius: 8px; 
+    font-size: 9px; font-weight: 900; text-transform: uppercase;
+  }
+  
+  .liq-positive { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; } 
+  .liq-negative { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; } 
+
+  .btn-audit-inline {
+    position: absolute; bottom: 0; left: 0; width: 100%; background: var(--dark);
+    color: white; border: none; padding: 8px; font-size: 9px; font-weight: 900;
+    text-transform: uppercase; opacity: 0; transform: translateY(100%); transition: 0.3s;
+  }
+
+  .help-icon { cursor: help; color: var(--brand); font-size: 12px; }
+
+  /* AISLAMIENTO DE IMPRESIÓN TITANIUM */
+  @media print {
+    #view-app, .h-sidebar, .sticky-top, #toast-container, .h-modal-overlay, #system-drawer, #ai-trigger, .ai-fab { 
+      display: none !important; visibility: hidden !important;
+    }
+    #ledger-print-area { 
+      display: block !important; visibility: visible !important;
+      width: 100% !important; position: absolute !important; left: 0 !important; top: 0 !important;
+      background: white !important;
+    }
+    .ledger-page { page-break-after: always; padding: 40px; }
+    .ledger-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    .ledger-table th, .ledger-table td { border: 1px solid #000; padding: 6px 8px; font-size: 8pt; text-align: left; }
+    .ledger-table th { background: #f8fafc !important; -webkit-print-color-adjust: exact; font-weight: bold; text-transform: uppercase; }
+    .text-end { text-align: right !important; }
+    .fw-black { font-weight: 900 !important; }
+    .ledger-header { margin-bottom: 30px; border-bottom: 3px solid #000; padding-bottom: 15px; }
+    .ledger-title { font-size: 16pt; font-weight: 900; text-transform: uppercase; margin: 0; color: black !important; }
+    .ledger-subtitle { font-size: 11pt; color: #333; margin: 5px 0 0 0; font-weight: 700; }
+  }
+</style>
+
+<div id="ledger-print-area" style="display:none"></div>
+
+<script>
+window.TaxesView = {
+  currentYear: new Date().getFullYear(),
+  report: null,
+  rawInvoices: [],
+  rawExpenses: [],
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div>
+            <h6 class="h-label text-white-50">MI CUENTA CON HACIENDA</h6>
+            <h2 class="fw-black m-0 text-uppercase">Impuestos y Libros Fiscales</h2>
+         </div>
+         <div class="d-flex gap-3 align-items-center">
+            <select id="tax-year-sel" class="form-select fw-black shadow-sm" style="width: 150px; height: 42px; border-radius: 10px;" onchange="TaxesView.changeYear(this.value)">
+               ${[0,1,2].map(i => `<option value="${this.currentYear-i}" ${this.currentYear===this.currentYear-i?'selected':''}>${this.currentYear-i}</option>`).join('')}
+            </select>
+            <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="TaxesView.openClosingWizard()"><i class="bi bi-file-earmark-check me-2"></i> CIERRE TRIMESTRAL</button>
+            <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="TaxesView.printFullYearLedger()"><i class="bi bi-printer me-2"></i> LIBRO ANUAL ${this.currentYear}</button>
+            <button class="h-btn bg-brand text-dark px-4 py-2 fw-black shadow-sm" onclick="TaxesView.printReport()"><i class="bi bi-graph-up me-2"></i> IMPRIMIR BALANCE</button>
+         </div>
+      </div>
+      <div id="taxes-content" class="p-5 animate-slide">
+         <div class="text-center p-5"><div class="spinner-border text-brand"></div><p class="mt-3 fw-bold text-muted">CALCULANDO MIS IMPUESTOS...</p></div>
+      </div>`;
+    this.load();
+  },
+
+  changeYear: function(y) {
+    this.currentYear = parseInt(y);
+    this.load();
+  },
+
+  load: async function() {
+    const [resRep, resInv, resExp] = await Promise.all([
+      HandooApp.api('admin.get_vat_report', { year: this.currentYear }),
+      HandooApp.api('invoice.get_history'),
+      HandooApp.api('expense.list')
+    ]);
+    
+    if(resRep.ok) this.report = resRep.data;
+    if(resInv.ok) this.rawInvoices = resInv.data || [];
+    if(resExp.ok) this.rawExpenses = resExp.data || [];
+    
+    if(resRep.ok) this.renderReport();
+  },
+
+  renderReport: function() {
+    const container = document.getElementById('taxes-content');
+    const { quarters } = this.report;
+    const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+    const totalOutput = round2(quarters.reduce((s,q) => s + q.output_vat, 0));
+    const totalInput = round2(quarters.reduce((s,q) => s + q.input_vat, 0));
+    const totalLiq = round2(totalOutput - totalInput);
+    const totalIRPF = round2(quarters.reduce((s,q) => s + (q.irpf_retention || 0), 0));
+
+    let motivationMsg = totalLiq >= 0 
+      ? '<span class="text-warning">⚠️ Recuerda: este dinero lo has cobrado de tus clientes pero no es tuyo. ¡Guárdalo para el pago trimestral!</span>'
+      : '<span class="text-success">🎉 ¡Buen trabajo! Este trimestre Hacienda te debe dinero a ti (IVA a compensar).</span>';
+
+    container.innerHTML = `
+      <div class="row g-4 mb-5">
+         <div class="col-md-7">
+            <div class="p-4 rounded-4 shadow-sm block-dark row align-items-center h-100" onclick="HandooApp.navTo('Invoices')" style="cursor:pointer">
+               <div class="col-md-2 text-center"><i class="bi bi-piggy-bank fs-1 text-brand"></i></div>
+               <div class="col-md-6">
+                  <h6 class="fw-black text-uppercase m-0" style="color:#fff !important;">Estado de mi hucha de IVA ${this.currentYear}</h6>
+                  <p class="small text-muted m-0">${motivationMsg}</p>
+               </div>
+               <div class="col-md-4 text-end">
+                  <div class="h-label-refined text-white-50">SALDO IVA ACUMULADO</div>
+                  <h2 class="fw-black m-0 ${totalLiq >= 0 ? 'text-danger' : 'text-success'}">${totalLiq.toLocaleString('es-ES', {minimumFractionDigits:2})} €</h2>
+               </div>
+            </div>
+         </div>
+         <div class="col-md-5">
+            <div class="p-4 rounded-4 shadow-sm block-dark row align-items-center h-100 border-warning">
+               <div class="col-md-2 text-center"><i class="bi bi-person-badge-fill fs-1 text-warning"></i></div>
+               <div class="col-md-10 ps-4">
+                  <div class="h-label-refined text-white-50">PREVISIÓN IRPF (MODELOS 111/190) <i class="bi bi-question-circle help-icon" title="Dinero retenido a profesionales o alquileres que debes ingresar en Hacienda cada trimestre."></i></div>
+                  <h2 class="fw-black m-0 text-warning">${totalIRPF.toLocaleString('es-ES', {minimumFractionDigits:2})} €</h2>
+                  <p class="small text-muted m-0 mt-1 fw-bold">Dinero de terceros que no debes gastar.</p>
+               </div>
+            </div>
+         </div>
+      </div>
+
+      <div class="row g-4">
+         ${quarters.map(q => {
+            const liq = round2(q.output_vat - q.input_vat);
+            const irpf = round2(q.irpf_retention || 0);
+            return `
+            <div class="col-md-6 col-lg-3">
+               <div class="tax-q-card" onclick="TaxesView.openQuarterlyLedger(${q.id})">
+                  <div class="tax-badge-liq ${liq >= 0 ? 'liq-positive' : 'liq-negative'}">
+                     IVA: ${liq >= 0 ? 'Pagar' : 'Compensar'}
+                  </div>
+                  <h6 class="fw-black text-uppercase mb-4" style="font-size:12px; letter-spacing:1px">${q.label}</h6>
+                  
+                  <div class="tax-metric">
+                     <div class="tax-metric-label">IVA REPERCUTIDO (VENTAS)</div>
+                     <div class="tax-metric-val text-dark">${round2(q.output_vat).toLocaleString('es-ES', {minimumFractionDigits:2})} €</div>
+                  </div>
+
+                  <div class="tax-metric">
+                     <div class="tax-metric-label">IVA SOPORTADO (COMPRAS)</div>
+                     <div class="tax-metric-val text-muted">${round2(q.input_vat).toLocaleString('es-ES', {minimumFractionDigits:2})} €</div>
+                  </div>
+
+                  <div class="tax-metric mt-4 pt-3 border-top border-warning">
+                     <div class="tax-metric-label text-warning">Retención IRPF (A Pagar) <i class="bi bi-exclamation-triangle help-icon" title="Este dinero es una deuda con Hacienda. No lo cuentes como caja disponible."></i></div>
+                     <div class="tax-metric-val text-warning">${irpf.toLocaleString('es-ES', {minimumFractionDigits:2})} €</div>
+                  </div>
+
+                  <div class="border-top pt-3 mt-3 bg-light rounded-3 p-2 text-center">
+                     <div class="tax-metric-label fw-black text-dark" style="font-size:8px">CARGA TRIBUTARIA TOTAL</div>
+                     <div class="fw-black fs-5 text-dark">${round2((liq > 0 ? liq : 0) + irpf).toLocaleString('es-ES', {minimumFractionDigits:2})} €</div>
+                  </div>
+                  <button class="btn-audit-inline"><i class="bi bi-search me-1"></i> Auditar y Revisar Libro</button>
+               </div>
+            </div>`;
+         }).join('')}
+      </div>`;
+  },
+
+  openClosingWizard: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px">
+         <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black">CIERRE FISCAL TRIMESTRAL</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <label class="h-label-refined">SELECCIONAR PERIODO</label>
+               <select id="close-q" class="form-select h-form-control mb-3 fw-black">
+                  <option value="1">TRIMESTRE 1 (Q1)</option>
+                  <option value="2">TRIMESTRE 2 (Q2)</option>
+                  <option value="3">TRIMESTRE 3 (Q3)</option>
+                  <option value="4">TRIMESTRE 4 (Q4)</option>
+               </select>
+               <p class="small text-muted">Se generará un informe técnico con todos los documentos para tu gestoría. El sistema consolidará las bases para los modelos 303 y 111.</p>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-dark fw-black flex-grow-1 shadow" onclick="TaxesView.executeClosing()">CONSOLIDAR Y DESCARGAR</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeClosing: async function() {
+    const q = document.getElementById('close-q').value;
+    HandooApp.ui.showToast("Consolidando bases imponibles...", "info");
+    const res = await HandooApp.api('strategy.generate_quarterly_closing', { year: this.currentYear, quarter: q });
+    if(res.ok) {
+       document.querySelector('.h-modal-overlay').remove();
+       this.openQuarterlyLedger(parseInt(q));
+       HandooApp.ui.showToast("Informe de cierre preparado.");
+    }
+  },
+
+  openQuarterlyLedger: function(qId) {
+    const q = this.report.quarters.find(x => x.id === qId);
+    const { invoices, expenses } = this.getQuarterData(qId);
+    const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 1100px; height: 90vh;">
+         <div class="h-modal-header d-flex justify-content-between">
+            <h5 class="m-0 fw-black text-uppercase">Libro de IVA e IRPF: ${q.label} ${this.currentYear}</h5>
+            <div class="d-flex gap-2">
+               <button class="btn btn-sm btn-brand-titanium fw-black" onclick="TaxesView.printQuarterlyLedger(${qId})"><i class="bi bi-printer me-2"></i> IMPRIMIR PDF</button>
+               <button class="btn btn-sm btn-light p-0 px-2" onclick="this.closest('.h-modal-overlay').remove()"><i class="bi bi-x fs-4"></i></button>
+            </div>
+         </div>
+         <div class="h-modal-body bg-light">
+            <div class="row g-4">
+               <div class="col-md-12">
+                  <div class="p-3 bg-dark text-white rounded-top d-flex justify-content-between align-items-center">
+                     <h6 class="m-0 fw-black small">IVA REPERCUTIDO (MIS VENTAS)</h6>
+                     <span class="badge bg-brand text-dark fw-black">IVA COBRADO: ${round2(q.output_vat).toLocaleString()}€</span>
+                  </div>
+                  <div class="card border-0 shadow-sm overflow-hidden bg-white mb-4" style="max-height: 250px; overflow-y: auto;">
+                     <table class="table table-sm table-hover m-0 align-middle" style="font-size:10px">
+                        <thead class="bg-light sticky-top"><tr><th>FECHA</th><th>Nº FACTURA</th><th>CLIENTE</th><th class="text-end">BASE</th><th class="text-end">IVA</th><th class="text-end pe-3">TOTAL</th></tr></thead>
+                        <tbody>${invoices.map(i => `<tr><td>${new Date(i.fecha).toLocaleDateString()}</td><td class="fw-bold">${i.numero}</td><td class="text-uppercase">${escapeHTML(i.client_name)}</td><td class="text-end">${round2(i.base).toLocaleString()}</td><td class="text-end text-success fw-bold">${round2(i.total_iva).toLocaleString()}</td><td class="text-end pe-3 fw-black">${round2(i.total).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="6" class="p-4 text-center opacity-25">SIN VENTAS REGISTRADAS</td></tr>'}</tbody>
+                     </table>
+                  </div>
+               </div>
+               <div class="col-md-12">
+                  <div class="p-3 bg-secondary text-white rounded-top d-flex justify-content-between align-items-center">
+                     <h6 class="m-0 fw-black small">IVA SOPORTADO E IRPF RETENIDO (MIS GASTOS)</h6>
+                     <span class="badge bg-warning text-dark fw-black">IRPF RETENIDO: ${round2(q.irpf_retention).toLocaleString()}€</span>
+                  </div>
+                  <div class="card border-0 shadow-sm overflow-hidden bg-white" style="max-height: 350px; overflow-y: auto;">
+                     <table class="table table-sm table-hover m-0 align-middle" style="font-size:10px">
+                        <thead class="bg-light sticky-top"><tr><th>FECHA</th><th>REF / Nº DOC</th><th>PROVEEDOR</th><th class="text-end">BASE</th><th class="text-end">IVA</th><th class="text-end text-danger">IRPF</th><th class="text-end pe-3">TOTAL</th></tr></thead>
+                        <tbody>${expenses.map(e => `<tr><td>${new Date(e.fecha).toLocaleDateString()}</td><td class="fw-bold">${e.invoice_num || e.id}</td><td class="text-uppercase">${escapeHTML(e.beneficiario)}</td><td class="text-end">${round2(e.total/1.21).toLocaleString()}</td><td class="text-end text-danger fw-bold">${round2(e.total_iva || 0).toLocaleString()}</td><td class="text-end text-danger fw-black">${round2(e.total_ret || 0).toLocaleString()}</td><td class="text-end pe-3 fw-black">${round2(e.total).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="7" class="p-4 text-center opacity-25">SIN GASTOS REGISTRADOS</td></tr>'}</tbody>
+                     </table>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  getQuarterData: function(qId) {
+    const qMonths = { 1:[0,2], 2:[3,5], 3:[6,8], 4:[9,11] };
+    const [startM, endM] = qMonths[qId];
+    const startDate = new Date(this.currentYear, startM, 1);
+    const endDate = new Date(this.currentYear, endM + 1, 0);
+
+    return {
+      invoices: this.rawInvoices.filter(i => {
+        const d = new Date(i.fecha);
+        return d >= startDate && d <= endDate && i.status === 'ISSUED';
+      }).sort((a,b) => new Date(a.fecha) - new Date(b.fecha)),
+      expenses: this.rawExpenses.filter(e => {
+        const d = new Date(e.fecha);
+        return d >= startDate && d <= endDate && (e.status === 'Pagado' || e.status === 'APROBADO_FINANZAS' || e.status === 'RECIBIDO');
+      }).sort((a,b) => new Date(a.fecha) - new Date(b.fecha))
+    };
+  },
+
+  generateLedgerHTML: function(title, invoices, expenses) {
+    const format = (v) => parseFloat(v || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + '€';
+    const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+    return `
+      <div class="ledger-page">
+        <div class="ledger-header">
+          <h1 class="ledger-title">LIBRO DE REGISTRO DE FACTURAS EMITIDAS (VENTAS)</h1>
+          <p class="ledger-subtitle">${title} | EJERCICIO ${this.currentYear}</p>
+        </div>
+        <table class="ledger-table">
+          <thead><tr><th>FECHA</th><th>Nº FACTURA</th><th>CLIENTE</th><th class="text-end">BASE IMP.</th><th class="text-end">IVA</th><th class="text-end">TOTAL</th></tr></thead>
+          <tbody>${invoices.map(i => `<tr><td>${new Date(i.fecha).toLocaleDateString()}</td><td>${i.numero}</td><td>${escapeHTML(i.client_name)}</td><td class="text-end">${format(i.base)}</td><td class="text-end">${format(i.total_iva)}</td><td class="text-end fw-black">${format(i.total)}</td></tr>`).join('')}</tbody>
+          <tfoot><tr style="background:#f9f9f9"><td colspan="3" class="text-end fw-black">TOTALES EMITIDAS:</td><td class="text-end fw-black">${format(invoices.reduce((a,b)=>a+(parseFloat(b.base)||0),0))}</td><td class="text-end fw-black">${format(invoices.reduce((a,b)=>a+(parseFloat(b.total_iva)||0),0))}</td><td class="text-end fw-black">${format(invoices.reduce((a,b)=>a+(parseFloat(b.total)||0),0))}</td></tr></tfoot>
+        </table>
+      </div>
+
+      <div class="ledger-page">
+        <div class="ledger-header">
+          <h1 class="ledger-title">LIBRO DE REGISTRO DE FACTURAS RECIBIDAS (GASTOS E IRPF)</h1>
+          <p class="ledger-subtitle">${title} | EJERCICIO ${this.currentYear}</p>
+        </div>
+        <table class="ledger-table">
+          <thead><tr><th>FECHA</th><th>REF / Nº DOC</th><th>PROVEEDOR</th><th class="text-end">BASE IMP.</th><th class="text-end">IVA</th><th class="text-end">IRPF</th><th class="text-end">TOTAL</th></tr></thead>
+          <tbody>${expenses.map(e => `<tr><td>${new Date(e.fecha).toLocaleDateString()}</td><td>${e.invoice_num || e.id}</td><td>${escapeHTML(e.beneficiario)}</td><td class="text-end">${format(round2(e.total/1.21))}</td><td class="text-end">${format(e.total_iva || 0)}</td><td class="text-end text-danger">-${format(e.total_ret || 0)}</td><td class="text-end fw-black">${format(e.total)}</td></tr>`).join('')}</tbody>
+          <tfoot><tr style="background:#f9f9f9"><td colspan="3" class="text-end fw-black">TOTALES RECIBIDAS:</td><td class="text-end fw-black">${format(expenses.reduce((a,b)=>a+((parseFloat(b.total)||0)/1.21),0))}</td><td class="text-end fw-black">${format(expenses.reduce((a,b)=>a+(parseFloat(b.total_iva)||0),0))}</td><td class="text-end fw-black text-danger">-${format(expenses.reduce((a,b)=>a+(parseFloat(b.total_ret)||0),0))}</td><td class="text-end fw-black">${format(expenses.reduce((a,b)=>a+(parseFloat(b.total)||0),0))}</td></tr></tfoot>
+        </table>
+      </div>`;
+  },
+
+  executeAsyncPrint: function(html) {
+    const area = document.getElementById('ledger-print-area');
+    area.innerHTML = html;
+    HandooApp.ui.showToast("Generando Libro Fiscal para impresión...", "info");
+    setTimeout(() => { window.print(); setTimeout(() => { area.innerHTML = ''; }, 1000); }, 500);
+  },
+
+  printQuarterlyLedger: function(qId) {
+    const q = this.report.quarters.find(x => x.id === qId);
+    const { invoices, expenses } = this.getQuarterData(qId);
+    this.executeAsyncPrint(this.generateLedgerHTML(q.label, invoices, expenses));
+  },
+
+  printFullYearLedger: function() {
+    const allInvs = this.rawInvoices.filter(i => new Date(i.fecha).getFullYear() === this.currentYear && i.status === 'ISSUED').sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+    const allExps = this.rawExpenses.filter(e => new Date(e.fecha).getFullYear() === this.currentYear && (e.status === 'Pagado' || e.status === 'APROBADO_FINANZAS' || e.status === 'RECIBIDO')).sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+    this.executeAsyncPrint(this.generateLedgerHTML(`EJERCICIO FISCAL COMPLETO`, allInvs, allExps));
+  },
+
+  printReport: function() {
+    window.print();
+  }
+};
+</script>

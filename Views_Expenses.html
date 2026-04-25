@@ -1,0 +1,1844 @@
+<script>console.log("TITANIUM: Cargando Motor Consolidado (T1 + T2)...");</script>
+
+<style>
+  /* SHELL ESTRUCTURAL TITANIUM */
+  .exp-shell { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .exp-sidebar { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 25px; }
+  .exp-nav-btn { display: flex; align-items: center; gap: 15px; padding: 20px 30px; border: none; background: none; width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; border-bottom: 1px solid #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; }
+  .exp-nav-btn:hover { background: #f1f5f9; color: var(--dark); }
+  .exp-nav-btn.active { background: white; color: var(--dark); border-right: 6px solid var(--brand); }
+  .exp-nav-btn i { font-size: 1.4rem; color: #94a3b8; width: 24px; text-align: center; }
+  .exp-nav-btn.active i { color: var(--brand); }
+  .exp-content { flex-grow: 1; padding: 40px; overflow-y: auto; background: white; }
+  .t-batch-bar { background: #0f172a; color: white; border-radius: 16px; padding: 15px 30px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; border-left: 6px solid var(--brand); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .cal-day-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 10px; background: #fff; transition: 0.2s; cursor: pointer; }
+  .cal-day-box:hover { border-color: var(--brand); transform: translateX(5px); }
+
+  /* VISOR INDUSTRIAL BLINDADO */
+  .doc-img-container { 
+    flex-grow: 1; 
+    height: calc(85vh - 100px); 
+    background: #0f172a;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 24px 0;
+  }
+  .doc-img-container embed { 
+    width: 100%; 
+    height: 100%; 
+    border: none;
+  }
+
+  .thermal-danger { background-color: #fee2e2 !important; border-color: #ef4444 !important; color: #b91c1c !important; }
+  .badge-claim { background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; font-size: 8px; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+  .badge-network { background: #0f172a; color: var(--brand); border: 1px solid var(--brand); font-size: 8px; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+
+  /* Tipografía compacta y campos grandes */
+  .h-modal-body { font-size: 11px; }
+  .h-label-refined { font-size: 9px; margin-bottom: 2px; color: #64748b; font-weight: 800; text-transform: uppercase; }
+  .h-form-control { height: 36px; font-size: 13px !important; font-weight: 800; padding: 5px; border-radius: 8px; border: 1px solid #e2e8f0; }
+
+  /* Botones CAPEX: Píldoras Titanium */
+  .nature-selector-grid { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 8px; 
+    margin-top: 10px; 
+  }
+  .nature-btn { 
+    flex: 0 1 auto;
+    border: 1px solid #334155; 
+    background: #1e293b; 
+    color: #94a3b8; 
+    padding: 6px 14px; 
+    border-radius: 20px; 
+    display: flex; 
+    flex-direction: row; 
+    align-items: center; 
+    gap: 8px;
+    cursor: pointer; 
+    transition: 0.2s;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .nature-btn i { font-size: 14px; margin: 0; }
+  .nature-btn.active { border-color: var(--brand); background: var(--brand); color: #0f172a; }
+
+  /* Centrado quirúrgico del botón de subida (Imagen 2 Fix) */
+  .doc-img-container {
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      height: 600px !important; /* Altura mínima para que no se pierda el botón */
+  }
+
+    /* Selector de Tipo: Ancho suficiente para leerse */
+    .row-master-type { 
+      width: 180px !important; 
+      min-width: 180px !important;
+      font-size: 10px !important; 
+      font-weight: 900 !important; 
+      letter-spacing: 0.5px;
+      padding-left: 10px !important;
+      background-color: #f8fafc !important;
+      text-transform: uppercase;
+    }
+    .row-master-type option { font-size: 12px !important; background: white; }
+
+    /* Fix de Ancho para Unidades e IVA (Imagen 1) */
+    .row-qty { width: 75px !important; }
+    .row-price { width: 100px !important; }
+    .row-iva { width: 70px !important; }
+
+    /* Semáforos de Línea Titanium */
+    .row-recognized { background-color: #dcfce7 !important; } /* Verde: Reconocido */
+    .row-ocr-unrecognized { background-color: #fee2e2 !important; border-left: 5px solid #ef4444 !important; } /* Rojo: Sin coincidencia */
+    .row-price-deviation { border: 2px solid #ef4444 !important; } /* Borde Rojo: Desviación >10% */
+
+    /* Botones CAPEX: Estilo Píldora (Adiós a los rectángulos gigantes) */
+  .titanium-pill {
+    background: #0f172a;
+    color: var(--brand);
+    border: 1px solid var(--brand);
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-size: 10px;
+    transition: 0.3s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .titanium-pill.active {
+    background: var(--brand);
+    color: #0f172a;
+  }
+  .nature-btn {
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 16px !important;
+    border-radius: 50px !important;
+    border: 1px solid #475569 !important;
+    background: #1e293b !important;
+    color: #94a3b8 !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    transition: 0.2s !important;
+  }
+  .nature-btn:hover {
+      background: #334155 !important;
+      color: white !important;
+  }
+  .nature-btn.active { 
+    background: var(--brand) !important; 
+    color: #0f172a !important; 
+    border-color: var(--brand) !important; 
+    box-shadow: 0 0 15px rgba(255, 180, 0, 0.4) !important;
+  }
+  .nature-btn i {
+      font-size: 14px !important;
+  }
+
+  /* Ajustes de espaciado para el visor */
+  #col-viewer {
+    background: #0f172a;
+    display: flex;
+    flex-direction: column;
+  }
+  .viewer-controls {
+    padding: 15px;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+  }
+
+  /* Ajuste de margen para que los selectores respiren */
+  .pur-line-row td {
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
+  }
+
+  .row-master-id {
+      border-color: #cbd5e1 !important;
+  }
+</style>
+
+<script>
+(function() {
+  // Categorías que disparan el control térmico APPCC
+  const THERMAL_CATEGORIES = ['CARNE', 'PESCADO', 'LACTEOS', 'EMBUTIDO', 'CONGELADOS', 'V. GAMA'];
+
+  // EXPOSICIÓN GLOBAL DEL MOTOR TITANIUM
+  const ExpensesView = window.ExpensesView = {
+    activeTab: 'INVOICE',
+    expenses: [], vendors: [], effects: [], settings: null,
+    inbox: [], allCatalog: [], matchingNotes: [], matchingOrders: [],
+    amortizationRules: [],
+    ocrQueue: [], isProcessingOCR: false,
+    selectedBatchIds: new Set(),
+    currentEditId: null,
+
+    /* --- HELPERS DE NEGOCIO --- */
+    mapPaymentMethod: function(raw) {
+      if(!raw) return 'TRANSFER';
+      const s = String(raw).toUpperCase();
+      // Prioridad a Domiciliación / SEPA / Recibo / Giro Bancario
+      if(s.includes('DOMICILIAD') || s.includes('SEPA') || s.includes('RECIBO') || s.includes('GIRO') || s.includes('IBAN') || s.includes('CUENTA')) return 'SEPA';
+      // Transferencia
+      if(s.includes('TRANSFER')) return 'TRANSFER';
+      if(s.includes('EFECTIVO') || s.includes('CONTADO') || s.includes('CASH')) return 'CASH';
+      if(s.includes('TARJETA') || s.includes('CARD') || s.includes('VISA') || s.includes('MASTER')) return 'CARD';
+      return 'TRANSFER';
+    },
+
+    /* --- MOTOR DE ARRANQUE --- */
+    render: async function() {
+      console.log("TITANIUM: Ejecutando render de ExpensesView...");
+      const stage = document.getElementById('main-stage');
+      if(!stage) return;
+      
+      stage.innerHTML = `<div class="p-5 text-center"><div class="spinner-border text-brand"></div><p class="mt-2 fw-bold">Cargando Motor Titanium...</p></div>`;
+      
+      await this.load();
+      this.initPredictiveLogisticsAlerts();
+
+      stage.innerHTML = `
+        <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+            <div>
+              <h6 class="h-label text-white-50">SISTEMA DE COMPRAS</h6>
+              <h2 class="fw-black m-0 text-uppercase">Gestión de Ciclo de Gasto</h2>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <input type="file" id="global-ocr-input" class="d-none" multiple onchange="ExpensesView.handleOCR(this)">
+              <button class="btn btn-warning fw-black px-4 shadow" onclick="document.getElementById('global-ocr-input').click()">
+                  <i class="bi bi-lightning-fill"></i> + PROCESAR RÁFAGA
+              </button>
+              <button class="btn btn-outline-danger btn-sm fw-black px-3" onclick="ExpensesView.openBulkDeleteModal()">BORRADO MASIVO</button>
+              <button class="h-btn bg-white text-dark px-4 py-2 fw-black shadow-sm" onclick="ExpensesView.openExpenseModal(null, ExpensesView.activeTab)">
+                 <i class="bi bi-plus-circle me-2"></i> NUEVO REGISTRO
+              </button>
+            </div>
+        </div>
+        <div class="p-5 animate-slide">
+            <div id="neural-inbox-area"></div>
+            <div id="expenses-batch-area"></div>
+            <div class="exp-shell">
+              <div class="exp-sidebar" id="exp-sidebar-area"></div>
+              <div class="exp-content" id="expenses-content-area">
+                 <div class="text-center p-5"><div class="spinner-border text-brand"></div></div>
+              </div>
+            </div>
+        </div>`;
+      this.renderSidebar();
+      this.renderTabContent();
+    },
+
+    initPredictiveLogisticsAlerts: function() {
+      const now = new Date();
+      const currentDay = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'][now.getDay()];
+      
+      this.vendors.forEach(v => {
+        if (v.dia_limite_pedido && v.hora_limite_pedido) {
+          const isToday = (v.dia_limite_pedido === 'DIARIO' || v.dia_limite_pedido === currentDay);
+          if (isToday) {
+            const [h, m] = v.hora_limite_pedido.split(':').map(Number);
+            const deadline = new Date();
+            deadline.setHours(h, m, 0, 0);
+            
+            const diffMs = deadline.getTime() - now.getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins > 0 && diffMins <= 60) { // Alerta a 1 hora
+              HandooApp.ui.showToast(`⚠️ CORTE INMINENTE: Pedido de ${v.nombre_fiscal} en ${diffMins} min`, "warning");
+            }
+          }
+        }
+      });
+    },
+
+    load: async function() {
+      console.log("TITANIUM: Cargando datos del Kernel...");
+      try {
+        const [resExp, resVendors, resAmort, resCat, resEffects] = await Promise.all([
+          HandooApp.api('expense.list'),
+          HandooApp.api('vendor.list'),
+          HandooApp.api('admin.get_amortization_rules'), // <--- VITAL
+          HandooApp.api('inventory.get_catalog'),
+          HandooApp.api('treasury.list_all_effects')
+        ]);
+        
+        this.expenses = (resExp && resExp.ok) ? resExp.data : [];
+        this.vendors = (resVendors && resVendors.ok) ? resVendors.data : [];
+        this.amortizationRules = (resAmort && resAmort.ok) ? resAmort.data : []; 
+        this.effects = (resEffects && resEffects.ok) ? resEffects.data : [];
+        console.log("TITANIUM: Reglas de Amortización cargadas:", this.amortizationRules);
+        
+        this.allCatalog = (resCat && resCat.ok && resCat.data) ? [
+          ...(resCat.data.products || []), 
+          ...(resCat.data.modules || []),
+          ...(resCat.data.packs || [])
+        ] : [];
+        
+        this.renderTabContent();
+      } catch(e) { 
+        console.error("Error cargando motor CAPEX:", e); 
+        HandooApp.ui.showToast("Error de conexión con el Kernel", "error");
+      }
+    },
+
+    /* --- NAVEGACIÓN --- */
+    renderSidebar: function() {
+      const nav = document.getElementById('exp-sidebar-area');
+      if(!nav) return;
+      const items = [
+        { id: 'INVOICE', icon: 'bi-file-earmark-text', label: 'Facturas' },
+        { id: 'DELIVERY_NOTE', icon: 'bi-box-seam', label: 'Albaranes' },
+        { id: 'ORDER', icon: 'bi-cart-plus', label: 'Pedidos' },
+        { id: 'QUARANTINE', icon: 'bi-patch-question-fill', label: 'Conciliación OCR' },
+        { id: 'CALENDAR', icon: 'bi-calendar3', label: 'Calendario Pagos' }
+      ];
+      nav.innerHTML = items.map(m => `
+        <button class="exp-nav-btn ${this.activeTab===m.id?'active':''}" onclick="ExpensesView.setTab('${m.id}')">
+          <i class="bi ${m.icon}"></i> ${m.label}
+        </button>`).join('');
+    },
+
+    setTab: function(t) { 
+      this.activeTab = t; 
+      this.selectedBatchIds.clear(); 
+      this.renderSidebar(); 
+      if(t === 'CALENDAR') this.renderCalendar();
+      else if(t === 'QUARANTINE') this.renderQuarantine();
+      else this.renderTabContent(); 
+    },
+
+    /* --- TABLAS Y CONTENIDO --- */
+    renderTabContent: function() {
+      const container = document.getElementById('expenses-content-area');
+      const batchArea = document.getElementById('expenses-batch-area');
+      if(!container) return;
+      
+      // Barra Batch
+      if(this.selectedBatchIds.size > 0) {
+        batchArea.innerHTML = `<div class="t-batch-bar animate-slide"><span>${this.selectedBatchIds.size} seleccionados</span><button class="btn btn-danger btn-sm" onclick="ExpensesView.deleteBatch()">BORRAR</button></div>`;
+      } else { batchArea.innerHTML = ''; }
+
+      const filtered = this.expenses.filter(e => {
+        const matchType = (e.type || 'INVOICE') === this.activeTab;
+        const docDate = new Date(e.fecha);
+        return matchType && docDate.getFullYear() === HandooApp.fiscalYear;
+      });
+
+      let rows = filtered.map(e => {
+        const claimEffect = (this.effects || []).find(eff => eff.source_doc === e.id && eff.type === 'CLAIM');
+        const claimBadge = claimEffect ? `<br><div class="badge-claim mt-1">RECLAMADO</div>` : '';
+        const networkBadge = e.is_network_delivery ? '<br><span class="badge-network">NETWORK</span>' : '';
+        
+        let statusLabel = e.status || 'PENDIENTE';
+        let statusColor = 'bg-success'; // Por defecto Pagado
+        if (statusLabel === 'PENDIENTE') statusColor = 'bg-warning text-dark';
+        if (statusLabel === 'BORRADOR') statusColor = 'bg-info text-dark shadow-sm border border-info border-opacity-50'; // Azul Titanium
+
+        const isOverdue = e.fecha_vencimiento && new Date(e.fecha_vencimiento) < new Date() && statusLabel !== 'PAGADO';
+        const overdueClass = isOverdue ? 'text-danger fw-bold' : '';
+
+        return `
+        <tr onclick="ExpensesView.openExpenseModal('${e.id}')" style="cursor:pointer">
+          <td class="ps-4" onclick="event.stopPropagation()"><input type="checkbox" onchange="ExpensesView.toggleBatchItem('${e.id}')" ${this.selectedBatchIds.has(e.id)?'checked':''}></td>
+          <td class="small">${e.fecha ? new Date(e.fecha).toLocaleDateString() : '---'}</td>
+          <td class="small ${overdueClass}">${e.fecha_vencimiento ? new Date(e.fecha_vencimiento).toLocaleDateString() : '---'}</td>
+          <td class="fw-bold text-muted">${e.id} ${networkBadge}</td>
+          <td class="fw-black text-uppercase">${escapeHTML(e.beneficiario)}</td>
+          <td class="text-end fw-black">${parseFloat(e.total || 0).toLocaleString('es-ES', {minimumFractionDigits:2})} €</td>
+          <td class="text-center">
+            <span class="badge ${statusColor}">${statusLabel.toUpperCase()}</span>
+            ${claimBadge}
+          </td>
+        </tr>`;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="table table-hover m-0 align-middle bg-white shadow-sm">
+           <thead class="bg-light">
+              <tr>
+                 <th width="40" class="ps-4"></th>
+                 <th>FECHA</th>
+                 <th>VENCIMIENTO</th>
+                 <th>ID / ORIGEN</th>
+                 <th>PROVEEDOR</th>
+                 <th class="text-end">TOTAL</th>
+                 <th class="text-center">ESTADO</th>
+              </tr>
+           </thead>
+           <tbody>${rows || '<tr><td colspan="7" class="text-center p-5 opacity-25">SIN DATOS</td></tr>'}</tbody>
+        </table>`;
+    },
+
+    renderCalendar: function() {
+      const container = document.getElementById('expenses-content-area');
+      const outgoing = this.effects.filter(e => e.direction === 'OUTBOUND' && e.status === 'PENDIENTE');
+      const grouped = {};
+      outgoing.forEach(e => { if(!grouped[e.vencimiento]) grouped[e.vencimiento] = []; grouped[e.vencimiento].push(e); });
+      const sortedDates = Object.keys(grouped).sort();
+      container.innerHTML = `<div class="p-4 rounded-4 block-dark mb-4"><h6 class="m-0 fw-black">PRÓXIMOS PAGOS</h6></div>` + 
+        sortedDates.map(date => `<div class="cal-day-box"><b>${date}</b><br>${grouped[date].map(e => `<div>${e.beneficiario}: ${e.importe}€</div>`).join('')}</div>`).join('');
+    },
+
+    renderQuarantine: async function() {
+      const container = document.getElementById('expenses-content-area');
+      // Mostramos un spinner mientras el servidor busca las líneas huérfanas en todos los borradores
+      container.innerHTML = `<div class="text-center p-5"><div class="spinner-border text-brand"></div></div>`;
+      
+      const resP = await HandooApp.api('bridge.get_product_quarantine');
+      const orphans = resP.ok ? resP.data : [];
+
+      container.innerHTML = `
+      <div class="animate-slide">
+         <div class="p-4 rounded-4 shadow-sm mt-0 block-dark row align-items-center mb-4 border-warning">
+            <div class="col-md-1 text-center"><i class="bi bi-patch-question fs-1 text-warning"></i></div>
+            <div class="col-md-11 ps-4">
+               <h6 class="fw-black text-uppercase m-0" style="font-size:14px; color:#fff !important;">Conciliación de Productos OCR</h6>
+               <p class="small text-muted m-0">Asocia los textos de las facturas con los productos reales de tu catálogo para que Chemin AI aprenda y se actualicen los Borradores.</p>
+            </div>
+         </div>
+
+         <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+            <h6 class="fw-black text-uppercase m-0">Líneas Huérfanas en Borradores</h6>
+            <span class="badge bg-warning text-dark">${orphans.length} PENDIENTES</span>
+         </div>
+         
+         <div class="card-industrial border-0 overflow-hidden shadow-sm mb-5 bg-white rounded-4 border">
+            <table class="table table-hover m-0 align-middle">
+               <thead class="bg-light">
+                  <tr>
+                     <th class="ps-4">TEXTO EN FACTURA</th>
+                     <th>PROVEEDOR</th>
+                     <th class="text-center" style="width: 35%;">PRODUCTO HANDOO (CATÁLOGO)</th>
+                     <th class="text-end pe-4">ACCIÓN</th>
+                  </tr>
+               </thead>
+               <tbody>
+                  ${orphans.map((p, idx) => `
+                     <tr>
+                        <td class="ps-4 py-3">
+                           <span class="fw-black text-danger" style="font-size:12px">${escapeHTML(p.concept)}</span> 
+                           <div class="small text-muted" style="font-size:10px">Aparece en ${p.count} documento(s)</div>
+                        </td>
+                        <td class="small fw-bold text-muted">${escapeHTML(p.vendor_name)}</td>
+                        <td class="text-center">
+                           <input type="text" list="cat-list-${idx}" class="form-control form-control-sm h-form-control fw-black text-uppercase shadow-sm" placeholder="🔍 BUSCAR EN CATÁLOGO..." id="prod-map-${idx}">
+                           <datalist id="cat-list-${idx}">
+                              ${this.allCatalog.map(c => `<option value="${escapeHTML(c.nombre.toUpperCase())}" data-id="${c.id}">`).join('')}
+                           </datalist>
+                        </td>
+                        <td class="text-end pe-4">
+                           <button id="btn-map-${idx}" class="btn btn-sm btn-dark px-3 py-2 fw-black shadow-sm" onclick="ExpensesView.resolveProductMap('${escapeHTML(p.concept)}', ${idx}, '${p.vendor_id}')">VINCULAR</button>
+                        </td>
+                     </tr>`).join('') || '<tr><td colspan="4" class="p-5 text-center opacity-25 fw-bold">NO HAY PRODUCTOS POR CONCILIAR</td></tr>'}
+               </tbody>
+            </table>
+         </div>
+      </div>`;
+    },
+
+    resolveProductMap: async function(concept, idx, vendorId) {
+      const input = document.getElementById(`prod-map-${idx}`);
+      const btn = document.getElementById(`btn-map-${idx}`);
+      const productName = input.value.toUpperCase().trim();
+      
+      const product = this.allCatalog.find(c => c.nombre.toUpperCase() === productName);
+      if(!product) return HandooApp.ui.showToast("Seleccione un producto válido del catálogo", "error");
+
+      HandooApp.ui.setLoading(btn.id, true, "...");
+      
+      const res = await HandooApp.api('bridge.resolve_product_mapping', {
+         concept: concept,
+         master_id: product.id,
+         vendor_id: vendorId
+      });
+
+      if(res.ok) {
+         HandooApp.ui.showToast(res.msg, "success");
+         this.renderQuarantine(); // Refrescamos la tabla al instante
+      } else {
+         HandooApp.ui.showToast(res.msg, "error");
+         HandooApp.ui.setLoading(btn.id, false);
+      }
+    },
+
+    /* --- BATCH & UTILS --- */
+    toggleBatchItem: function(id) {
+      this.selectedBatchIds.has(id) ? this.selectedBatchIds.delete(id) : this.selectedBatchIds.add(id);
+      this.renderTabContent();
+    },
+
+    deleteBatch: async function() {
+      if(await HandooApp.ui.confirm("¿BORRAR SELECCIONADOS?")) {
+         const res = await HandooApp.api('expense.delete', { ids: Array.from(this.selectedBatchIds) });
+         if(res.ok) { this.selectedBatchIds.clear(); await this.load(); }
+      }
+    },
+
+    openBulkDeleteModal: function() {
+      const overlay = document.createElement('div');
+      overlay.className = 'h-modal-overlay animate-slide';
+      overlay.innerHTML = `
+        <div class="h-modal shadow-lg" style="width: 500px">
+           <div class="h-modal-header bg-danger text-white"><h5 class="m-0 fw-black">BORRADO MASIVO</h5></div>
+           <div class="h-modal-body bg-light">
+              <div class="unified-block block-light mt-0">
+                 <div class="row g-3">
+                    <div class="col-md-6"><label class="h-label-refined">DESDE</label><input type="date" id="bulk-start" class="form-control h-form-control"></div>
+                    <div class="col-md-6"><label class="h-label-refined">HASTA</label><input type="date" id="bulk-end" class="form-control h-form-control"></div>
+                 </div>
+                 <p class="small text-muted mt-3">Todos los documentos del tipo <b>${this.activeTab}</b> en este rango serán movidos a la papelera global.</p>
+              </div>
+           </div>
+           <div class="h-modal-footer">
+              <button class="btn btn-light border flex-grow-1 fw-bold" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+              <button id="btn-exec-bulk" class="btn btn-danger flex-grow-1 fw-black shadow" onclick="ExpensesView.executeBulk()">EJECUTAR PURGA</button>
+           </div>
+        </div>`;
+      document.body.appendChild(overlay);
+    },
+
+    executeBulk: async function() {
+      const start = document.getElementById('bulk-start').value;
+      const end = document.getElementById('bulk-end').value;
+      if(!start || !end) return HandooApp.ui.showToast("Defina el rango de fechas", "error");
+
+      if (await HandooApp.ui.confirm("¿CONFIRMAR PURGA MASIVA?", "Se procesará el borrado en bloque de forma optimizada.")) {
+         HandooApp.ui.setLoading('btn-exec-bulk', true, "BORRANDO...");
+         const toDeleteIds = this.expenses.filter(e => (e.type || 'INVOICE') === this.activeTab && e.fecha >= start && e.fecha <= end).map(x => x.id);
+         
+         if (toDeleteIds.length === 0) return HandooApp.ui.showToast("No se han localizado documentos en el rango.", "info");
+
+         const res = await HandooApp.api('expense.delete', { ids: toDeleteIds });
+         HandooApp.ui.showToast(res.msg);
+         document.querySelector('.h-modal-overlay').remove();
+         this.load();
+      }
+    },
+
+    renderInbox: function() {
+      const area = document.getElementById('neural-inbox-area');
+      if(area && this.inbox.length > 0) area.innerHTML = `<div class="alert alert-info">Tienes ${this.inbox.length} capturas de voz pendientes.</div>`;
+    },
+
+    closeModal: function() { 
+      if(this.currentModalOverlay) {
+        this.currentModalOverlay.remove();
+        this.currentModalOverlay = null;
+      } else {
+        document.querySelector('.h-modal-overlay')?.remove();
+      }
+    },
+
+/* --- TRAMO 3: AUDITORÍA DE CICLO, ESCUDO ANTI-DUPLICADOS Y ALTAS RÁPIDAS --- */
+
+    openQuickVendorModal: function() {
+      const overlay = document.createElement('div');
+      overlay.className = 'h-modal-overlay animate-slide';
+      overlay.style.zIndex = "30000";
+      this.currentModalOverlay = overlay;
+      overlay.innerHTML = `
+        <div class="h-modal shadow-lg" style="width: 500px">
+           <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">ALTA RÁPIDA PROVEEDOR</h5></div>
+           <div class="h-modal-body bg-light p-4">
+              <div class="unified-block block-dark mt-0">
+                 <label class="h-label-refined text-white-50">RAZÓN SOCIAL / NOMBRE</label>
+                 <input type="text" id="qv-name" class="form-control h-form-control fw-black text-uppercase mb-3">
+                 <label class="h-label-refined text-white-50">CIF / NIF / ID FISCAL</label>
+                 <input type="text" id="qv-cif" class="form-control h-form-control fw-black text-uppercase">
+              </div>
+           </div>
+           <div class="h-modal-footer d-flex gap-2">
+              <button class="btn btn-light flex-grow-1 fw-bold" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+              <button id="btn-save-quick-v" class="btn btn-dark flex-grow-1 fw-black shadow" onclick="ExpensesView.saveQuickVendor()">CREAR EN KERNEL ✅</button>
+           </div>
+        </div>`;
+      document.body.appendChild(overlay);
+    },
+
+    saveQuickVendor: async function() {
+      const overlay = this.currentModalOverlay || document.body;
+      const name = overlay.querySelector('#qv-name')?.value;
+      const cif = overlay.querySelector('#qv-cif')?.value;
+      if(!name) return HandooApp.ui.showToast("Nombre requerido", "error");
+      
+      HandooApp.ui.setLoading('btn-save-quick-v', true);
+      const res = await HandooApp.api('vendor.save', { nombre_fiscal: name, cif: cif });
+      
+      if(res.ok) {
+         this.vendors.push(res.data);
+         const sel = document.getElementById('p-vendor-sel');
+         if(sel) {
+            const opt = new Option(res.data.nombre_fiscal.toUpperCase(), res.data.nombre_fiscal);
+            sel.add(opt); 
+            sel.value = res.data.nombre_fiscal;
+            this.onVendorSelectChange(res.data.nombre_fiscal);
+         }
+         overlay.remove();
+         HandooApp.ui.showToast("Proveedor vinculado correctamente.");
+      }
+    },
+
+    onVendorSearchInput: function(val) {
+      const vendor = this.vendors.find(v => v.nombre_fiscal.toUpperCase() === val.toUpperCase());
+      if (vendor) {
+        this.onVendorSelectChange(vendor.nombre_fiscal);
+      } else {
+        // Si no hay coincidencia exacta, limpiamos campos dependientes pero dejamos el nombre
+        const hidden = document.getElementById('p-vendor');
+        if(hidden) hidden.value = val;
+        this.triggerDuplicateCheck();
+      }
+    },
+
+    onVendorSelectChange: async function(val) {
+      const hidden = document.getElementById('p-vendor');
+      if(hidden) hidden.value = val;
+      
+      const vendor = this.vendors.find(v => v.nombre_fiscal === val);
+      if (vendor) {
+        // MÉTODO DE PAGO AUTO
+        const payMethodInp = document.getElementById('p-payment-method');
+        if (payMethodInp) {
+          payMethodInp.value = this.mapPaymentMethod(vendor.facturacion?.forma_pago || vendor.forma_pago || '');
+        }
+        // DISPARAR CÁLCULO DE VENCIMIENTO
+        this.recalcDueDate();
+      }
+
+      this.matchingNotes = [];
+      this.matchingOrders = [];
+
+      // Si estamos en FACTURA, buscamos Albaranes pendientes de este proveedor
+      if (this.activeTab === 'INVOICE' && val) {
+        const res = await HandooApp.api('expense.find_matches', { vendor_name: val });
+        if (res.ok && res.data.length > 0) {
+           this.matchingNotes = res.data;
+           this.renderAuditCycleBlock();
+        } else {
+           const area = document.getElementById('audit-cycle-area');
+           if(area) area.innerHTML = '';
+        }
+      }
+
+      // Si estamos en ALBARÁN, buscamos Pedidos pendientes
+      if (this.activeTab === 'DELIVERY_NOTE' && val) {
+        const res = await HandooApp.api('expense.find_pending_orders', { vendor_name: val });
+        if (res.ok && res.data.length > 0) {
+           this.matchingOrders = res.data;
+           this.renderPendingOrdersBlock();
+        } else {
+           const area = document.getElementById('audit-cycle-area');
+           if(area) area.innerHTML = '';
+        }
+      }
+
+      this.triggerDuplicateCheck();
+    },
+
+    renderAuditCycleBlock: function() {
+      const area = document.getElementById('audit-cycle-area');
+      if (!area) return;
+      if (this.matchingNotes.length === 0) { area.innerHTML = ''; return; }
+
+      const notesHtml = this.matchingNotes.map(n => `
+        <div class="form-check d-inline-block me-3 mb-2 p-2 border rounded bg-dark border-secondary border-opacity-25 shadow-sm">
+           <input class="form-check-input ck-link-note" type="checkbox" value="${n.id}" id="chk-${n.id}">
+           <label class="form-check-label text-white fw-bold" style="font-size:10px" for="chk-${n.id}">
+              ALB: ${n.id} (${parseFloat(n.total).toLocaleString()}€)
+           </label>
+        </div>`).join('');
+
+      area.innerHTML = `
+        <div class="p-3 rounded-4 block-dark border-brand mb-4 animate-slide shadow">
+           <h6 class="fw-black text-uppercase text-brand mb-2" style="font-size:10px">Vincular Albaranes del Proveedor</h6>
+           <div class="d-flex flex-wrap">${notesHtml}</div>
+           <p class="m-0 text-white-50" style="font-size:9px">* Los albaranes marcados se darán por "FACTURADOS".</p>
+        </div>`;
+    },
+
+    recalcDueDate: function() {
+      const vendorName = document.getElementById('p-vendor')?.value;
+      const dateInp = document.getElementById('p-date');
+      const dueInp = document.getElementById('p-due-date');
+      
+      if(!vendorName || !dateInp || !dateInp.value || !dueInp) return;
+
+      const vendor = this.vendors.find(v => v.nombre_fiscal === vendorName);
+      
+      let dias = 30; // Default
+      if (vendor) {
+        const rawPlazo = vendor.plazo_pago || vendor.vencimiento || vendor.facturacion?.vencimiento || 30;
+        const digits = String(rawPlazo).replace(/[^0-9]/g, '');
+        dias = digits ? parseInt(digits) : 30;
+      }
+
+      const d = new Date(dateInp.value);
+      if(!isNaN(d.getTime())) {
+        d.setDate(d.getDate() + dias);
+        dueInp.value = d.toISOString().split('T')[0];
+        console.log(`TITANIUM: Vencimiento calculado para ${vendorName}: ${dias} días -> ${dueInp.value}`);
+      }
+    },
+
+    triggerDuplicateCheck: async function() {
+      const vendor = document.getElementById('p-vendor')?.value;
+      const docNum = document.getElementById('p-doc-num')?.value;
+      const totalText = document.getElementById('p-txt-total')?.innerText || "0";
+      const total = parseFloat(totalText.replace(/[^\d,]/g,'').replace(',','.') || 0);
+      
+      if (!vendor || !docNum) return;
+
+      const res = await HandooApp.api('expense.check_duplicate', { 
+        beneficiario: vendor, 
+        invoice_num: docNum, 
+        total: total, 
+        type: this.activeTab, 
+        id: this.currentEditId 
+      });
+
+      const alertArea = document.getElementById('duplicate-alert-area');
+      if (res.ok && res.data && alertArea) {
+          alertArea.innerHTML = `
+            <div class="p-4 rounded-4 block-dark row align-items-center border-danger animate-slide mb-4 shadow-lg">
+               <div class="col-md-1 text-center"><i class="bi bi-exclamation-octagon-fill fs-2 text-danger"></i></div>
+               <div class="col-md-11 ps-4">
+                  <h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">ESCUDO ANTI-DUPLICADOS: Alarma</h6>
+                  <p class="small text-muted m-0">Ya existe un documento <b>${res.data.num}</b> de este proveedor por un total de ${res.data.total}€.</p>
+               </div>
+            </div>`;
+      } else if(alertArea) { alertArea.innerHTML = ''; }
+    },
+
+    comparePrice: async function(el) {
+      const tr = el.closest('tr');
+      const masterId = tr.querySelector('.row-master-id')?.value;
+      const priceInp = tr.querySelector('.row-price');
+      const vendorName = document.getElementById('p-vendor')?.value;
+
+      if(!masterId || !priceInp || !vendorName) return;
+
+      const vendor = this.vendors.find(v => v.nombre_fiscal === vendorName);
+      const master = this.allCatalog.find(m => String(m.id) === String(masterId));
+      const historicalPrice = (vendor?.price_memory || {})[master?.nombre?.toUpperCase()];
+
+      if(historicalPrice) {
+         const currentPrice = parseFloat(priceInp.value || 0);
+         const deviation = ((currentPrice - historicalPrice) / historicalPrice) * 100;
+         
+         // Alerta de Inflación Titanium (>10% según nueva regla)
+         if(deviation > 10) {
+            HandooApp.ui.logToDrawer(`INFLACIÓN: ${master.nombre} +${deviation.toFixed(1)}% en ${vendorName}`, 'error');
+            priceInp.classList.add('row-price-deviation'); // Borde Rojo
+         } else {
+            priceInp.classList.remove('row-price-deviation');
+         }
+      }
+    },
+
+    /* --- TRAMO 4: EL GRAN MODAL, MOTOR MATEMÁTICO Y SYNC KERNEL --- */
+
+    openExpenseModal: function(id = null, forcedType = 'INVOICE') {
+      return new Promise(async (resolve) => {
+        // PREVENCIÓN DE STACKING: Si ya hay un modal, lo cerramos limpiamente
+        if (this.currentModalOverlay) {
+           this.currentModalOverlay.remove();
+           this.currentModalOverlay = null;
+        }
+
+        this.currentEditId = id;
+        this.activeTab = forcedType;
+        
+        // Aseguramos que las reglas de amortización estén cargadas para el motor CAPEX
+        if (!this.amortizationRules || this.amortizationRules.length === 0) {
+          const resAmort = await HandooApp.api('admin.get_amortization_rules');
+          if (resAmort.ok) this.amortizationRules = resAmort.data || [];
+        }
+
+        const expData = (id ? this.expenses.find(x => String(x.id) === String(id)) : null) || { beneficiario:'', invoice_num:'', total:0, items:[], fecha:new Date().toISOString().split('T')[0], fecha_vencimiento: '', is_asset:false };
+        
+        // Fallback para fecha de vencimiento si viene con otro nombre
+        if (!expData.fecha_vencimiento && expData.due_date) expData.fecha_vencimiento = expData.due_date;
+
+        // BLINDAJE DE ARCHIVO: Memorizar el PDF existente para no borrarlo al actualizar
+        this._tempDriveId = expData.drive_id || null;
+
+        // FIX CAPEX: Usar rule.name con fallbacks (Prioridad absoluta)
+        const natureButtonsHtml = (this.amortizationRules || []).map(rule => {
+          const labelName = rule.name || rule.nombre || rule.titulo || rule.label || rule.description || "REGLA CAPEX";
+          const ruleId = String(rule.id || rule.id_regla || rule.uid);
+          const months = rule.years ? (parseFloat(rule.years) * 12) : (rule.months || 36);
+          
+          return `
+             <div class="nature-btn titanium-pill ${String(expData.asset_nature) === ruleId ? 'active' : ''}" 
+                  style="width: auto !important; min-width: 120px;"
+                  onclick="ExpensesView.selectAssetNature(this, '${ruleId}', ${months})">
+                <i class="bi bi-cpu-fill"></i>
+                <span>${labelName.toUpperCase()}</span>
+             </div>`;
+        }).join('');
+
+        const overlay = document.createElement('div');
+        overlay.className = 'h-modal-overlay animate-slide';
+        overlay.style.zIndex = '11000';
+        this.currentModalOverlay = overlay;
+
+        overlay.innerHTML = `
+          <div class="h-modal shadow-lg" style="width: 1600px; max-width: 95vw;">
+            <div class="h-modal-header d-flex justify-content-between align-items-center">
+              <h5 class="m-0 fw-black text-uppercase">RECEPTOR TITANIUM: ${forcedType}</h5>
+              <button class="btn btn-sm btn-light" onclick="ExpensesView.closeModal()"><i class="bi bi-x fs-4"></i></button>
+            </div>
+            <div class="h-modal-body bg-light p-0">
+              <input type="file" id="modal-ocr-input" class="d-none" accept="image/*,application/pdf" onchange="ExpensesView.handleSingleUpload(this)">
+              <datalist id="catalog-datalist"></datalist>
+              
+              <div class="row g-0 h-100">
+                 <div id="col-form" class="col-md-8 p-4 border-end" style="max-height: 85vh; overflow-y: auto;">
+                    <div id="audit-cycle-area"></div>
+                    <div id="duplicate-alert-area"></div>
+
+                    <div class="unified-block block-light mt-0 mb-4 shadow-sm" style="position: relative; z-index: 10;">
+                       <div class="row g-2">
+                          <div class="col-md-3">
+                             <label class="h-label-refined">PROVEEDOR</label>
+                             <input type="text" id="p-vendor-search" list="vendor-datalist" class="form-control h-form-control fw-black text-uppercase" 
+                                    placeholder="🔍 BUSCAR..." 
+                                    autocomplete="new-password"
+                                    value="${escapeHTML(expData.beneficiario)}"
+                                    oninput="ExpensesView.onVendorSearchInput(this.value)">
+                             <datalist id="vendor-datalist">
+                                ${this.vendors.map(v => `<option value="${escapeHTML(v.nombre_fiscal.toUpperCase())}">`).join('')}
+                             </datalist>
+                             <input type="hidden" id="p-vendor" value="${expData.beneficiario}">
+                          </div>
+                          <div class="col-md-2"><label class="h-label-refined">Nº DOC</label><input id="p-doc-num" class="form-control h-form-control fw-black" value="${expData.invoice_num}" onkeyup="ExpensesView.triggerDuplicateCheck()"></div>
+                          <div class="col-md-2"><label class="h-label-refined">FECHA EMISIÓN</label><input id="p-date" type="date" class="form-control h-form-control fw-bold" value="${expData.fecha}" onchange="ExpensesView.recalcDueDate(); ExpensesView.triggerDuplicateCheck()"></div>
+                          <div class="col-md-2">
+                             <label class="h-label-refined">VENCIMIENTO</label>
+                             <input id="p-due-date" type="date" class="form-control h-form-control fw-bold" value="${expData.fecha_vencimiento || ''}">
+                          </div>
+                          <div class="col-md-3">
+                             <label class="h-label-refined">MÉTODO PAGO</label>
+                             <select id="p-payment-method" class="form-select h-form-control fw-bold" onchange="ExpensesView.updatePaymentBlockUI(this.value)">
+                                <option value="TRANSFER" ${expData.payment_method==='TRANSFER'?'selected':''}>TRANSFERENCIA</option>
+                                <option value="SEPA" ${expData.payment_method==='SEPA'?'selected':''}>DOMICILIACIÓN (SEPA)</option>
+                                <option value="CASH" ${expData.payment_method==='CASH'?'selected':''}>EFECTIVO / CAJA</option>
+                                <option value="CARD" ${expData.payment_method==='CARD'?'selected':''}>TARJETA EMPRESA</option>
+                             </select>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div id="nature-box" class="p-4 bg-white border rounded-4 mb-4 shadow-sm">
+                       <div class="d-flex justify-content-between align-items-center mb-3">
+                          <div class="form-check form-switch">
+                             <input class="form-check-input" type="checkbox" id="p-is-asset" ${expData.is_asset?'checked':''} onchange="document.getElementById('nature-selector').style.display=this.checked?'flex':'none'; ExpensesView.calcTaxBenefit()">
+                             <label class="fw-black small">¿ES INVERSIÓN (CAPEX)?</label>
+                          </div>
+                          <input type="hidden" id="p-asset-nature" value="${expData.asset_nature || ''}">
+                          <input type="hidden" id="p-amort-months" value="${expData.amort_months || 36}">
+                       </div>
+                       <div id="nature-selector" class="nature-selector-grid animate-slide" style="display:${expData.is_asset?'flex':'none'}; min-height: 50px;">
+                          ${natureButtonsHtml || '<div class="small text-muted p-3">No hay reglas de inversión configuradas en el Kernel.</div>'}
+                       </div>
+                    </div>
+
+                    <div class="bg-white border rounded-4 overflow-hidden shadow-sm">
+                       <table class="table table-sm m-0 align-middle">
+                          <thead class="bg-light">
+                             <tr>
+                                <th class="ps-3">CONCEPTO / MAESTRO</th>
+                                <th width="55">CANT.</th>
+                                <th width="85">PRECIO</th>
+                                <th width="55" class="text-brand">IVA%</th> <th width="55" class="text-warning">IRPF%</th> <th width="60">Tª (°C)</th>
+                                <th width="85">CADUCIDAD</th> <th width="90" class="text-end pe-3">TOTAL</th>
+                                <th width="30"></th>
+                             </tr>
+                          </thead>
+                          <tbody id="pur-tbody"></tbody>
+                       </table>
+                       <div class="p-2 bg-light text-end"><button class="btn btn-dark btn-sm fw-black" onclick="ExpensesView.addPurchaseRow()">+ LÍNEA MANUAL</button></div>
+                    </div>
+
+                    <div class="card p-4 block-dark mt-4 border-0 shadow-sm">
+                       <div class="row">
+                          <div id="tax-benefit-area" class="col-md-6 border-end border-secondary border-opacity-25" style="display:none">
+                             <div class="small fw-bold text-white-50">AHORRO FISCAL ESTIMADO (CAPEX)</div>
+                             <div id="tax-benefit-val" class="fs-4 fw-black text-warning">0,00 €</div>
+                          </div>
+                          <div class="${expData.is_asset?'col-md-6':'col-md-12'}">
+                             <div class="d-flex justify-content-between mb-1 small fw-bold text-white-50"><span>BASE IMPONIBLE</span><span id="p-txt-base">0,00 €</span></div>
+                             <div class="d-flex justify-content-between mb-1 small fw-bold text-success"><span>IMPUESTOS (IVA)</span><span id="p-txt-iva">0,00 €</span></div>
+                             <div class="d-flex justify-content-between mb-1 small fw-bold text-warning"><span>RETENCIÓN (IRPF)</span><span id="p-txt-irpf">0,00 €</span></div>
+                             <div class="d-flex justify-content-between mt-3 pt-3 border-top border-secondary fw-black fs-4 text-brand"><span>NETO A PAGAR</span><span id="p-txt-total">0,00 €</span></div>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div id="col-viewer" class="col-md-4 p-0">
+                    <div class="viewer-controls d-flex justify-content-between align-items-center">
+                       <div class="d-flex align-items-center gap-2">
+                          <button class="btn btn-warning btn-sm fw-black py-1 px-3" onclick="document.getElementById('modal-ocr-input').click()" title="Actualizar documento">
+                              <i class="bi bi-cloud-arrow-up-fill me-1"></i> ${expData.drive_id || this._tempDriveId ? 'CAMBIAR DOC' : 'SUBIR DOC'}
+                          </button>
+                          
+                          <button class="btn btn-dark btn-sm fw-black py-1 px-3 border-brand" onclick="ExpensesView.sendEmail('${expData.id}')" ${!expData.drive_id ? 'disabled title="Sube un documento primero"' : ''}>
+                             <i class="bi bi-envelope-at me-1"></i> ENVIAR
+                          </button>
+
+                          <span class="small fw-black text-white-50 ms-2">VISOR TITANIUM</span>
+                       </div>
+                       <div class="d-flex align-items-center gap-2">
+                          <i class="bi bi-zoom-out text-white-50 small"></i>
+                          <input type="range" class="form-range" id="zoom-range" min="0.5" max="2" step="0.1" value="1" style="width: 70px;" oninput="ExpensesView.applyZoom(this.value)">
+                          <i class="bi bi-zoom-in text-white-50 small"></i>
+                       </div>
+                    </div>
+                    <div id="doc-preview-area" class="doc-img-container" style="flex-grow: 1; overflow: hidden; position: relative;">
+                       ${expData.drive_id || this._tempDriveId ? `
+                         <div id="zoom-wrapper" style="width: 100%; height: 100%; transform-origin: top left; transition: transform 0.1s;">
+                           <embed src="https://drive.google.com/file/d/${expData.drive_id || this._tempDriveId}/preview" width="100%" height="100%">
+                         </div>` : `
+                         <div class="doc-empty-state"><i class="bi bi-file-earmark-image fs-1 mb-3"></i><br>
+                         <button class="btn btn-outline-warning fw-black" onclick="document.getElementById('modal-ocr-input').click()">ESCANEAR / SUBIR ARCHIVO</button>
+                         <p class="small text-white-50 mt-2" style="font-size:9px">Sube una imagen o PDF para procesar con IA</p>
+                         </div>`}
+                    </div>
+                 </div>
+              </div>
+            </div>
+            <div class="h-modal-footer d-flex gap-2">
+              <button class="btn btn-light border fw-bold flex-grow-1" onclick="ExpensesView.closeModal()">CANCELAR</button>
+              ${this.isProcessingOCR && this.ocrQueue.length > 0 ? `<button class="btn btn-warning fw-black flex-grow-1 shadow" onclick="ExpensesView.processNextInQueue()">OMITIR Y SIGUIENTE</button>` : ''}
+              <button class="btn btn-brand-titanium fw-black flex-grow-1 shadow" onclick="ExpensesView.openInventoryPushModal()">ENVIAR A INVENTARIO</button>
+              <button id="btn-save-doc" class="btn btn-dark flex-grow-1 fw-black shadow" onclick="ExpensesView.saveDocumentAction()">SINCRONIZAR KERNEL</button>
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
+        
+        // Si ya tiene beneficiario, disparamos la búsqueda de vínculos (Albaranes/Pedidos)
+        if(expData.beneficiario) {
+           this.onVendorSelectChange(expData.beneficiario);
+        }
+
+        // Renderizar líneas
+        if(expData.items && expData.items.length > 0) expData.items.forEach(it => this.addPurchaseRow(it)); else this.addPurchaseRow();
+        this.calcPurchaseTotals();
+        
+        // Pequeño delay para asegurar renderizado antes de resolver
+        setTimeout(() => resolve(true), 150);
+      });
+    },
+
+    addPurchaseRow: function(data = null) {
+      const tbody = document.getElementById('pur-tbody');
+      if(!tbody) return;
+
+      const tr = document.createElement('tr');
+      tr.className = 'pur-line-row animate-slide';
+      const masterType = (data && data.master_type) || 'PRODUCT';
+      const masterId = (data && data.master_id) || '';
+
+      // Lógica de Semáforo: Fondo
+      let inputClass = '';
+      if (masterId) {
+        tr.classList.add('table-success'); // Verde (Reconocido)
+        inputClass = 'bg-success-subtle';
+      } else if (data && (data.concept || data.master_name)) {
+        tr.classList.add('table-danger'); // Rojo (No reconocido)
+        inputClass = 'bg-danger-subtle';
+      }
+
+      tr.innerHTML = `
+        <td class="ps-3">
+          <div class="d-flex gap-1 align-items-center mb-1">
+             <select class="form-select man-input row-master-type" onchange="ExpensesView.onMasterTypeChange(this)" style="font-size:9px; height:22px; min-width: 140px;">
+                <option value="PRODUCT" ${masterType==='PRODUCT'?'selected':''}>📦 CATÁLOGO (PRODUCTOS)</option>
+                <option value="MODULE" ${masterType==='MODULE'?'selected':''}>🧩 MÓDULOS EXTRAS</option>
+                <option value="PACK" ${masterType==='PACK'?'selected':''}>📦 PACKS</option>
+                <option value="FIXED_ASSET" ${masterType==='FIXED_ASSET'?'selected':''}>🏢 INVERSIÓN (CAPEX)</option>
+             </select>
+             <div class="position-relative flex-grow-1">
+                 <input type="text" list="catalog-datalist" class="form-control h-form-control fw-black row-concept shadow-sm text-dark ${inputClass}" 
+                        style="height:32px; font-size:11px;" 
+                        placeholder="🔍 BUSCAR CATÁLOGO O TEXTO OCR..." 
+                        autocomplete="new-password"
+                        onfocus="ExpensesView.updateCatalogDatalist(this.closest('tr').querySelector('.row-master-type').value)"
+                        oninput="ExpensesView.onProductSearchInput(this)"
+                        value="${escapeHTML(data ? (data.master_name || data.concept || '') : '')}">
+             </div>
+             <input type="hidden" class="row-master-id" value="${masterId}">
+             <button class="btn btn-sm btn-light border p-0 px-2" style="height:30px" onclick="ExpensesView.openQuickProductModal(this)"><i class="bi bi-plus"></i></button>
+          </div>
+          <input type="hidden" class="row-category-val" value="${(data && data.category) || 'GENERAL'}">
+        </td>
+        <td><input type="number" class="form-control h-form-control text-center row-qty" value="${data?.qty || 1}"></td>
+        <td><input type="number" step="0.01" class="form-control h-form-control row-price" value="${data?.price || 0}" oninput="ExpensesView.comparePrice(this)"></td>
+        <td><input type="number" class="form-control h-form-control text-center row-iva" value="${data?.iva ?? 21}"></td>
+        <td><input type="number" class="form-control h-form-control text-center row-irpf" value="${data?.irpf || 0}"></td>
+        <td>
+          <div class="row-thermal-wrapper" style="display:none">
+            <input type="number" step="0.1" class="form-control appcc-row-input row-temp" oninput="ExpensesView.checkThermal(this)" value="${data?.temp || ''}">
+          </div>
+        </td>
+        <td><input type="date" class="form-control appcc-row-input row-expiry" value="${data?.expiry || ''}"></td>
+        <td class="text-end fw-black row-total-line pe-3" style="font-size:12px;">0,00 €</td>
+        <td class="text-center">
+          <button class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove(); ExpensesView.calcPurchaseTotals()"><i class="bi bi-x-lg"></i></button>
+        </td>`;
+
+      tbody.appendChild(tr);
+
+      // Si tenemos master_id pero no master_name, lo buscamos para el input de búsqueda
+      if (masterId && !data?.master_name) {
+        const item = this.allCatalog.find(i => String(i.id) === String(masterId));
+        if (item) tr.querySelector('.row-concept').value = item.nombre;
+      }
+
+      // Escuchadores para recalcular al cambiar manual
+      tr.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('input', () => this.calcPurchaseTotals());
+      });
+
+      this.onMasterTypeChange(tr.querySelector('.row-master-type'), masterId);
+      this.calcPurchaseTotals();
+    },
+
+    onProductSelect: function(sel) {
+      const tr = sel.closest('tr');
+      const masterId = sel.value;
+      const product = this.allCatalog.find(p => String(p.id) === String(masterId));
+      
+      if (product) {
+        tr.querySelector('.row-price').value = product.coste || 0;
+        tr.querySelector('.row-concept').value = product.nombre;
+        const catVal = tr.querySelector('.row-category-val');
+        if(catVal) catVal.value = product.category || 'GENERAL';
+
+        // CONSULTA AL PROTOCOLO APPCC
+        const thermalWrapper = tr.querySelector('.row-thermal-wrapper');
+        const categorySettings = (this.settings?.thermal_protocols || THERMAL_CATEGORIES);
+        const requiresControl = categorySettings.includes((product.category || '').toUpperCase()) || product.is_refrigerated;
+
+        if (requiresControl) {
+          thermalWrapper.style.display = 'block';
+          HandooApp.ui.showToast("Punto de Control Crítico: Registre Temperatura", "warning");
+        } else {
+          thermalWrapper.style.display = 'none';
+          const tempInp = tr.querySelector('.row-temp');
+          if(tempInp) tempInp.value = ''; 
+        }
+
+        // Sugerencia de IRPF
+        const irpfInp = tr.querySelector('.row-irpf');
+        if (irpfInp && product.default_irpf) {
+          irpfInp.value = product.default_irpf;
+        }
+      }
+      this.calcPurchaseTotals();
+      this.comparePrice(sel);
+    },
+
+    applyZoom: function(val) {
+      const wrapper = document.getElementById('zoom-wrapper');
+      if(wrapper) {
+        wrapper.style.transform = `scale(${val})`;
+        wrapper.style.width = (100 / val) + '%';
+        wrapper.style.height = (100 / val) + '%';
+      }
+    },
+
+    populateMasterSelector: function(masterSel, type, prefillId = null) {
+      const filtered = (this.allCatalog || []).filter(m => m.type === type);
+      const optionsHtml = filtered.map(m => {
+          const isSelected = (String(prefillId) === String(m.id)) ? 'selected' : '';
+          return `<option value="${m.id}" ${isSelected}>${m.nombre.toUpperCase()}</option>`;
+      }).join('');
+
+      masterSel.innerHTML = `<option value="">-- SELECCIONE ARTÍCULO --</option>` + optionsHtml;
+      return filtered;
+    },
+
+    onConceptInput: function(input) {
+      const tr = input.closest('tr');
+      const masterId = tr.querySelector('.row-master-id').value;
+      if (!masterId) {
+        if (input.value) tr.classList.add('row-ocr-unrecognized');
+        else tr.classList.remove('row-ocr-unrecognized');
+      }
+    },
+
+    onProductSearchInput: function(input) {
+      const tr = input.closest('tr');
+      const val = input.value;
+      const masterIdInp = tr.querySelector('.row-master-id');
+      const conceptInp = input; // El propio input es ahora el portador del concepto
+      const type = tr.querySelector('.row-master-type')?.value;
+      
+      // Limpiamos el valor de búsqueda si trae categoría [CAT]
+      const cleanVal = val.replace(/^\[.*?\]\s*/, '').toUpperCase().trim();
+      
+      // 1. Buscamos en Catálogo
+      const item = this.allCatalog.find(i => i.nombre.toUpperCase().trim() === cleanVal);
+      
+      // 2. Si es CAPEX, buscamos también en Reglas de Amortización
+      const rule = (type === 'FIXED_ASSET') ? this.amortizationRules.find(r => (r.name || r.label || '').toUpperCase().trim() === cleanVal) : null;
+
+      if (item || rule) {
+        masterIdInp.value = item ? item.id : (rule.id || rule.uid);
+        conceptInp.value = item ? item.nombre : (rule.name || rule.label);
+        
+        tr.classList.remove('table-danger');
+        tr.classList.add('table-success');
+        
+        // Feedback visual en el input de búsqueda
+        input.classList.remove('bg-danger-subtle');
+        input.classList.add('bg-success-subtle');
+        
+        // AUTO-TRIGGER CAPEX si es Inversión
+        if (type === 'FIXED_ASSET') {
+          const chkAsset = document.getElementById('p-is-asset');
+          if (chkAsset && !chkAsset.checked) {
+            chkAsset.checked = true;
+            document.getElementById('nature-selector').style.display = 'flex';
+          }
+          
+          // Sincronizamos con el selector global de naturaleza
+          const natureSel = document.getElementById('p-asset-nature');
+          if (natureSel && rule) {
+             natureSel.value = rule.id || rule.uid;
+             this.calcTaxBenefit(); // Recalcula escudo fiscal
+          }
+        }
+
+        // Auto-rellenar datos
+        if (item) {
+          tr.querySelector('.row-price').value = item.coste || 0;
+          const catVal = tr.querySelector('.row-category-val');
+          if(catVal) catVal.value = item.category || 'GENERAL';
+        }
+        
+        this.calcPurchaseTotals();
+        this.comparePrice(input);
+      } else {
+        masterIdInp.value = '';
+        conceptInp.value = val; // Si no hay match, el concepto es lo que escribió
+        
+        tr.classList.remove('table-success');
+        input.classList.remove('bg-success-subtle');
+
+        if (val) {
+            tr.classList.add('table-danger');
+            input.classList.add('bg-danger-subtle');
+        } else {
+            tr.classList.remove('table-danger');
+            input.classList.remove('bg-danger-subtle');
+        }
+      }
+    },
+
+    updateCatalogDatalist: function(type) {
+      const dl = document.getElementById('catalog-datalist');
+      if (!dl) return;
+      
+      let options = [];
+      if (type === 'FIXED_ASSET') {
+        // Reglas de amortización
+        options = (this.amortizationRules || []).map(r => {
+           const n = r.name || r.nombre || r.titulo || r.label || "REGLA";
+           const cat = r.category ? `[${r.category}] ` : '[CAPEX] ';
+           return `<option value="${cat}${n.toUpperCase()}">`;
+        });
+        const catFiltered = (this.allCatalog || []).filter(m => m.type === type);
+        options = options.concat(catFiltered.map(m => {
+           const cat = m.category ? `[${m.category}] ` : '[CAPEX] ';
+           return `<option value="${cat}${m.nombre.toUpperCase()}">`;
+        }));
+      } else {
+        // Productos, Packs, Módulos
+        const filtered = (this.allCatalog || []).filter(m => m.type === type || (type === 'PRODUCT' && m.type === 'PACK'));
+        options = filtered.map(m => {
+           const cat = m.category ? `[${m.category.toUpperCase()}] ` : '';
+           return `<option value="${cat}${m.nombre.toUpperCase()}">`;
+        });
+      }
+      
+      dl.innerHTML = options.join('');
+    },
+
+    onMasterTypeChange: function(sel, prefillId = null) {
+      const tr = sel.closest('tr');
+      if(!tr) return;
+      
+      // Limpiamos búsqueda previa para forzar nueva selección reactiva
+      const searchInp = tr.querySelector('.row-concept');
+      const masterIdInp = tr.querySelector('.row-master-id');
+      
+      if (prefillId) {
+        tr.classList.add('table-success');
+        tr.classList.remove('table-danger');
+        if (searchInp && !searchInp.value) {
+          const item = this.allCatalog.find(i => String(i.id) === String(prefillId));
+          if (item) searchInp.value = item.nombre;
+        }
+      } else {
+        // Solo limpiamos si no hay valor en el buscador
+        if (!searchInp.value) {
+          tr.classList.remove('table-success', 'table-danger');
+        } else {
+          // Si hay texto pero no hay ID, es peligro (no reconocido)
+          if (!masterIdInp.value) tr.classList.add('table-danger');
+        }
+      }
+      
+      this.updateCatalogDatalist(sel.value);
+      
+      // AUTO-TRIGGER CAPEX si es Inversión
+      if (sel.value === 'FIXED_ASSET') {
+        const chkAsset = document.getElementById('p-is-asset');
+        if (chkAsset && !chkAsset.checked) {
+          chkAsset.checked = true;
+          const natureSelector = document.getElementById('nature-selector');
+          if (natureSelector) natureSelector.style.display = 'flex';
+          this.calcTaxBenefit();
+        }
+      }
+    },
+
+    calcPurchaseTotals: function() {
+      let b = 0, i = 0, r = 0;
+      const tbody = document.getElementById('pur-tbody');
+      if(!tbody) return;
+      
+      tbody.querySelectorAll('.pur-line-row').forEach(tr => {
+        const q = parseFloat(tr.querySelector('.row-qty')?.value || 0);
+        const p = parseFloat(tr.querySelector('.row-price')?.value || 0);
+        const iv = parseFloat(tr.querySelector('.row-iva')?.value || 0);
+        const ret = parseFloat(tr.querySelector('.row-irpf')?.value || 0);
+        
+        const lineB = q * p;
+        const lineI = lineB * (iv / 100);
+        const lineR = lineB * (ret / 100);
+        
+        b += lineB;
+        i += lineI;
+        r += lineR;
+        
+        const totalCol = tr.querySelector('.row-total-line');
+        if(totalCol) {
+           const lineNeto = lineB * (1 + (iv / 100)) - lineR;
+           totalCol.innerText = lineNeto.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+        }
+      });
+
+      const baseElem = document.getElementById('p-txt-base');
+      const ivaElem = document.getElementById('p-txt-iva');
+      const irpfElem = document.getElementById('p-txt-irpf');
+      const totalElem = document.getElementById('p-txt-total');
+
+      if(baseElem) baseElem.innerText = b.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+      if(ivaElem) ivaElem.innerText = i.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+      if(irpfElem) {
+         irpfElem.innerText = r.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+         if(irpfElem.parentElement) irpfElem.parentElement.style.display = (r > 0) ? 'flex' : 'none';
+      }
+      if(totalElem) totalElem.innerText = (b + i - r).toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+
+      // REACTIVIDAD CAPEX: Recalcular ahorro fiscal al cambiar totales
+      this.calcTaxBenefit();
+    },
+
+    triggerOCR: function(isGlobal = false) {
+      const inputId = isGlobal ? 'global-ocr-input' : 'modal-ocr-input';
+      const input = document.getElementById(inputId);
+      if(input) {
+        input.click();
+      } else {
+        HandooApp.ui.showToast("Error: Receptor de archivos no encontrado", "error");
+      }
+    },
+
+    /* --- MOTOR OCR TITANIUM BLINDADO: BACKGROUND INBOX --- */
+    handleOCR: async function(input) {
+      if(!input.files || input.files.length === 0) return;
+      
+      const files = Array.from(input.files);
+      HandooApp.ui.showToast(`🧠 Chemin AI: Procesando ráfaga de ${files.length} documentos en segundo plano...`, "info");
+      
+      // Reseteamos el input para poder volver a subir los mismos archivos si hace falta
+      input.value = ''; 
+      
+      // Lanzamos el proceso sin bloquear la interfaz con await
+      this.processQueueBackground(files); 
+    },
+
+    processQueueBackground: async function(files) {
+      for (let i = 0; i < files.length; i++) {
+         const file = files[i];
+         HandooApp.ui.showToast(`Analizando: ${file.name} (${i+1}/${files.length})...`, "info");
+         await this.processSingleBackground(file);
+         await this.load(); // Refrescamos la tabla para que el borrador aparezca en vivo
+      }
+      HandooApp.ui.showToast(`✅ Ráfaga completada: ${files.length} Borradores generados.`, "success");
+    },
+
+    processSingleBackground: async function(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+             // 1. Subir a Drive
+             const uploadRes = await HandooApp.api('expense.upload_file', { base64: e.target.result, fileName: file.name, mimeType: file.type });
+             const driveId = uploadRes.ok ? uploadRes.data.drive_id : null;
+
+             // 2. Escáner Neuronal
+             const aiRes = await window.HandooAI.scanDocument(e.target.result, file.type);
+             if (!aiRes) throw new Error("Sin respuesta de la IA.");
+
+             // 3. Mapeo Inteligente de Proveedor
+             let vendorName = (aiRes.vendor || aiRes.vendor_name || 'PROVEEDOR DESCONOCIDO').toUpperCase();
+             const vendorCif = (aiRes.vendor_cif || '').toUpperCase();
+             let foundVendor = this.vendors.find(v => v.cif === vendorCif) || this.vendors.find(v => vendorName.includes(v.nombre_fiscal.toUpperCase()));
+             
+             if (!foundVendor && vendorCif) {
+                 // GHOST VENDOR: Proveedor nuevo detectado
+                 const saveRes = await HandooApp.api('vendor.save', { nombre_fiscal: vendorName, cif: vendorCif, automatic: true, status: 'CUARENTENA' });
+                 if (saveRes.ok) { foundVendor = saveRes.data; this.vendors.push(foundVendor); }
+             }
+             const finalVendorName = foundVendor ? foundVendor.nombre_fiscal : vendorName;
+
+             // 4. Mapeo de Líneas y Catálogo
+             let items = [];
+             if (aiRes.items && aiRes.items.length > 0) {
+                 items = aiRes.items.map(it => {
+                     const concept = (it.concept || it.description || '').toUpperCase();
+                     const bestMatch = this.allCatalog.find(m => {
+                         const searchConcept = concept.toUpperCase();
+                         const hasAlias = (m.aliases || []).some(a => (a.reference && searchConcept.includes(a.reference.toUpperCase())) || (a.ean && searchConcept.includes(a.ean.toUpperCase())));
+                         return hasAlias || searchConcept.includes((m.nombre || '').toUpperCase()) || (m.nombre || '').toUpperCase().includes(searchConcept);
+                     });
+
+                     let unitPrice = it.price || it.unit_price || 0;
+                     if (!unitPrice && it.total && it.qty) unitPrice = parseFloat(it.total) / parseFloat(it.qty);
+
+                     return {
+                         master_id: bestMatch ? bestMatch.id : '',
+                         master_type: bestMatch ? bestMatch.type : 'PRODUCT',
+                         concept: concept,
+                         qty: it.qty || 1,
+                         price: unitPrice,
+                         iva: it.iva || it.tax_rate || 21,
+                         irpf: it.irpf || 0,
+                         expiry: it.expiry || '',
+                         temp: it.temp || '',
+                         category: bestMatch ? (bestMatch.category || 'GENERAL') : 'GENERAL'
+                     };
+                 });
+             }
+
+             // 5. Construcción del Payload Borrador
+             const payload = {
+                 id: 'new',
+                 type: (aiRes.detected_type && aiRes.detected_type.includes('ALBARAN')) ? 'DELIVERY_NOTE' : 'INVOICE',
+                 beneficiario: finalVendorName,
+                 invoice_num: aiRes.doc_num || '',
+                 fecha: aiRes.date || new Date().toISOString().split('T')[0],
+                 fecha_vencimiento: aiRes.due_date || aiRes.fecha_vencimiento || '',
+                 payment_method: this.mapPaymentMethod(aiRes.payment_method_detected || ''),
+                 total: aiRes.total || 0,
+                 items: items.length > 0 ? items : [{ master_id: '', master_type: 'PRODUCT', concept: 'Línea de ajuste automático', qty: 1, price: aiRes.total || 0, iva: 21, irpf: 0 }],
+                 drive_id: driveId,
+                 status: 'BORRADOR', // EL ESCUDO DE VALIDACIÓN
+                 vendor_metadata: {
+                     cif: aiRes.vendor_cif,
+                     method: aiRes.payment_method_detected,
+                     iban: aiRes.vendor_iban
+                 }
+             };
+
+             // 6. Guardado silencioso en Kernel
+             await HandooApp.api('expense.save', payload);
+
+          } catch (err) {
+             console.error("TITANIUM BACKGROUND OCR ERROR:", err);
+             HandooApp.ui.showToast(`Error al procesar ${file.name}: ${err.message}`, "error");
+          }
+          resolve();
+        };
+        reader.readAsDataURL(file);
+      });
+    },
+
+    checkThermal: function(inp) {
+      if(!inp) return;
+      const temp = parseFloat(inp.value);
+      // Alerta APPCC: Si el producto entra a más de 8 grados, se marca en rojo peligro.
+      if(temp > 8) {
+         inp.classList.add('thermal-danger');
+         HandooApp.ui.showToast("ALERTA SANITARIA: Temperatura fuera de rango", "error");
+      } else {
+         inp.classList.remove('thermal-danger');
+      }
+    },
+
+    saveDocumentAction: async function() {
+      const btnId = 'btn-save-doc';
+      const overlay = this.currentModalOverlay || document.body;
+      const vendor = overlay.querySelector('#p-vendor')?.value;
+      if(!vendor) return HandooApp.ui.showToast("Falta Proveedor", "error");
+
+      HandooApp.ui.setLoading(btnId, true, "SINCRONIZANDO...");
+      
+      try {
+        const items = Array.from(overlay.querySelectorAll('.pur-line-row')).map(tr => ({
+          master_id: tr.querySelector('.row-master-id')?.value || '',
+          master_type: tr.querySelector('.row-master-type')?.value || 'PRODUCT',
+          concept: tr.querySelector('.row-concept')?.value || '',
+          qty: parseFloat(tr.querySelector('.row-qty')?.value || 0),
+          price: parseFloat(tr.querySelector('.row-price')?.value || 0),
+          iva: parseFloat(tr.querySelector('.row-iva')?.value || 21),
+          irpf: parseFloat(tr.querySelector('.row-irpf')?.value || 0),
+          temp: tr.querySelector('.row-temp')?.value || '',
+          expiry: tr.querySelector('.row-expiry')?.value || '',
+          category: tr.querySelector('.row-category-val')?.value || 'GENERAL'
+        }));
+
+        const needsConciliation = items.some(it => !it.master_id);
+
+        // BLINDAJE DE ESTADOS: Respetar facturas ya pagadas o aprobadas
+        let finalStatus = 'PENDIENTE';
+        if (this.currentEditId && this.currentEditId !== 'new') {
+            const originalDoc = this.expenses.find(e => String(e.id) === String(this.currentEditId));
+            // Si la factura ya existía y NO era un borrador, mantenemos su estado (ej: PAGADO)
+            if (originalDoc && originalDoc.status && originalDoc.status !== 'BORRADOR') {
+                finalStatus = originalDoc.status;
+            }
+        }
+
+        const payload = {
+          id: this.currentEditId || 'new',
+          type: this.activeTab,
+          beneficiario: vendor,
+          invoice_num: overlay.querySelector('#p-doc-num')?.value || '',
+          fecha: overlay.querySelector('#p-date')?.value || '',
+          fecha_vencimiento: overlay.querySelector('#p-due-date')?.value || '',
+          payment_method: overlay.querySelector('#p-payment-method')?.value || 'TRANSFER',
+          total: parseFloat(overlay.querySelector('#p-txt-total')?.innerText.replace(/[^\d,]/g, '').replace(',', '.') || 0),
+          items: items,
+          is_asset: overlay.querySelector('#p-is-asset')?.checked || false,
+          asset_nature: overlay.querySelector('#p-asset-nature')?.value || '',
+          amort_months: overlay.querySelector('#p-amort-months')?.value || 36,
+          linked_note_ids: Array.from(overlay.querySelectorAll('.ck-link-note:checked')).map(ck => ck.value),
+          drive_id: this._tempDriveId || null,
+          needs_conciliation: needsConciliation,
+          vendor_metadata: this.lastNeuralVendor || null,
+          status: finalStatus // ESTADO DINÁMICO PROTEGIDO
+        };
+
+        const res = await HandooApp.api('expense.save', payload);
+        if(res.ok) {
+           if (this.activeTab === 'DELIVERY_NOTE') {
+              await HandooApp.api('expense.push_to_inventory', { expenseId: res.data.id, type: 'FOOD' });
+           }
+           HandooApp.ui.showToast("Sincronización OK", "success");
+           
+           this.closeModal(); 
+           await this.load();
+        } else {
+           HandooApp.ui.showToast("Error en Kernel: " + (res.msg || "Fallo desconocido"), "error");
+        }
+      } catch (e) { 
+        console.error("TITANIUM: Error en saveDocumentAction", e);
+        HandooApp.ui.showToast("Error en Kernel: " + e.message, "error"); 
+      }
+      finally { HandooApp.ui.setLoading(btnId, false); }
+    },
+
+    selectAssetNature: function(el, id, months) {
+      // 1. Desmarcar todos los botones
+      document.querySelectorAll('.nature-btn').forEach(btn => btn.classList.remove('active'));
+      
+      // 2. Marcar el actual con feedback visual instantáneo (Titanium Style)
+      if (el) {
+        el.classList.add('active');
+      }
+
+      // 3. Sincronizar con los campos ocultos que leerá el motor de guardado
+      const natureInp = document.getElementById('p-asset-nature');
+      const amortInp = document.getElementById('p-amort-months');
+      
+      if (natureInp) natureInp.value = id;
+      // Si el Kernel no manda meses, usamos 36 por defecto (Industrial Std)
+      if (amortInp) amortInp.value = months || 36; 
+
+      // 4. Recalcular ahorro fiscal instantáneamente
+      this.calcTaxBenefit();
+    },
+
+    deleteExp: async function(id) {
+       if(await HandooApp.ui.confirm("¿ELIMINAR ESTE REGISTRO?")) {
+          const res = await HandooApp.api('expense.delete', { ids: [id] });
+          if(res.ok) await this.load();
+       }
+    },
+
+    /* --- TRAMO 5: MAESTROS Y CUENTAS CONTABLES --- */
+  
+/* --- ALTA COMPLETA DE PRODUCTO (Imagen 2) --- */
+openQuickProductModal: function(btn) {
+  // En lugar de un iframe roto, usamos el motor nativo de InventoryView que ya está cargado
+  if (typeof InventoryView !== 'undefined' && typeof InventoryView.openMasterForm === 'function') {
+    const tr = btn.closest('tr');
+    const type = tr ? tr.querySelector('.row-master-type')?.value : 'PRODUCT';
+    const iva = tr ? parseFloat(tr.querySelector('.row-iva')?.value || 21) : 21;
+    const irpf = tr ? parseFloat(tr.querySelector('.row-irpf')?.value || 0) : 0;
+    const concept = tr ? tr.querySelector('.row-concept')?.value : '';
+    
+    InventoryView.openMasterForm('new', { type: type, iva: iva, irpf: irpf, nombre: concept });
+    
+    // Guardamos la referencia de la fila para auto-seleccionar después si es posible
+    this._lastQuickAddRowIdx = tr ? tr.rowIndex : null;
+  } else {
+    HandooApp.ui.showToast("El motor de inventario no está listo", "error");
+  }
+},
+
+    refreshCatalogLocal: async function(rowIdx) {
+      HandooApp.ui.showToast("Sincronizando Kernel...", "info");
+      const res = await HandooApp.api('inventory.get_catalog');
+      if(res.ok && res.data) {
+         this.allCatalog = [
+           ...(res.data.products || []), 
+           ...(res.data.modules || []),
+           ...(res.data.plans || []),
+           ...(res.data.discounts || [])
+         ];
+         HandooApp.ui.showToast("Catálogo actualizado.");
+     
+     // ACTUALIZACIÓN MASIVA DE SELECTORES ABIERTOS
+     document.querySelectorAll('.pur-line-row').forEach(tr => {
+        const typeSel = tr.querySelector('.row-master-type');
+        const masterSel = tr.querySelector('.row-master-id');
+        if(typeSel && masterSel) {
+            const currentVal = masterSel.value;
+            this.populateMasterSelector(masterSel, typeSel.value, currentVal);
+        }
+     });
+  }
+},
+
+  updatePaymentBlockUI: function(val) {
+    const block = document.getElementById('payment-method-block');
+    if(!block) return;
+    block.className = (val === 'SEPA') ? "p-4 rounded-4 block-dark mt-3" : "p-4 rounded-4 block-light mt-3 shadow-sm";
+  },
+
+  /* --- TRAMO 7: LOGÍSTICA DE CICLO (PEDIDOS -> ALBARANES) --- */
+
+  renderPendingOrdersBlock: function() {
+     const area = document.getElementById('audit-cycle-area');
+     if (!area || this.matchingOrders.length === 0) return;
+
+     const ordersHtml = this.matchingOrders.map(o => `
+        <div class="form-check d-inline-block me-3">
+           <input class="form-check-input ck-link-order" type="checkbox" value="${o.id}" id="chk-ord-${o.id}">
+           <label class="form-check-label small fw-bold text-white-50" for="chk-ord-${o.id}">${o.id} (${parseFloat(o.total || 0).toLocaleString()}€)</label>
+        </div>`).join('');
+
+     area.innerHTML = `
+      <div class="p-4 rounded-4 shadow-sm mt-3 block-dark row align-items-center border-brand animate-slide">
+         <div class="col-md-1 text-center"><i class="bi bi-cart-check fs-2 text-brand"></i></div>
+         <div class="col-md-7 ps-4">
+            <h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important;">Pedidos Pendientes de Recepción</h6>
+            <div class="mt-2">${ordersHtml}</div>
+         </div>
+         <div class="col-md-4 text-end">
+            <button class="btn btn-brand-titanium btn-sm fw-black px-3" onclick="ExpensesView.importOrderLines()">
+               <i class="bi bi-download me-2"></i> IMPORTAR LÍNEAS
+            </button>
+         </div>
+      </div>`;
+  },
+
+  importOrderLines: function() {
+     const selectedOrderIds = Array.from(document.querySelectorAll('.ck-link-order:checked')).map(ck => ck.value);
+     if (selectedOrderIds.length === 0) return HandooApp.ui.showToast("Seleccione un pedido", "error");
+
+     const tbody = document.getElementById('pur-tbody');
+     if(tbody) tbody.innerHTML = ''; // Limpiamos para volcar el pedido
+
+     selectedOrderIds.forEach(orderId => {
+        const order = this.matchingOrders.find(o => o.id === orderId);
+        if (order && order.items) {
+           order.items.forEach(it => {
+              this.addPurchaseRow({
+                 concept: it.concept, qty: it.qty, price: it.price, iva: it.iva, category: it.category
+              });
+           });
+        }
+     });
+     this.calcPurchaseTotals();
+     HandooApp.ui.showToast("Líneas de pedido importadas");
+  },
+
+  /* --- TRAMO 8: PUENTE DE INVENTARIO Y FISCALIDAD CAPEX --- */
+
+  openInventoryPushModal: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.style.zIndex = "30000";
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 400px">
+         <div class="h-modal-header bg-brand text-dark"><h5 class="m-0 fw-black">ENVIAR A INVENTARIO</h5></div>
+         <div class="h-modal-body bg-light p-4">
+            <p class="small fw-bold">Selecciona el destino en el catálogo:</p>
+            <select id="inv-push-type" class="form-select h-form-control mb-3">
+               <option value="FOOD">📦 MATERIA PRIMA</option>
+               <option value="EQUIPMENT">🛠 UTILLAJE / MENAJE</option>
+            </select>
+         </div>
+         <div class="h-modal-footer d-flex gap-2">
+            <button class="btn btn-light flex-grow-1" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button class="btn btn-dark flex-grow-1 fw-black" onclick="ExpensesView.executeInventoryPush()">ENVIAR</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeInventoryPush: async function() {
+     const type = document.getElementById('inv-push-type').value;
+     const res = await HandooApp.api('expense.push_to_inventory', { expenseId: this.currentEditId, type: type });
+     if(res.ok) {
+        HandooApp.ui.showToast("Inventario actualizado correctamente");
+        document.querySelector('.h-modal-overlay[style*="30000"]').remove();
+     }
+  },
+
+  calcTaxBenefit: function() {
+    const isA = document.getElementById('p-is-asset')?.checked;
+    const nature = document.getElementById('p-asset-nature')?.value;
+    const totalText = document.getElementById('p-txt-total')?.innerText || "0";
+    const total = parseFloat(totalText.replace(/[^\d,]/g, '').replace(',', '.') || 0);
+
+    const valElem = document.getElementById('tax-benefit-val');
+    const area = document.getElementById('tax-benefit-area');
+
+    if(isA && total > 0) {
+       if(area) area.style.display = 'block'; // Forzar visibilidad
+       
+       if(nature && valElem) {
+          const rule = this.amortizationRules.find(r => String(r.id) === String(nature));
+          if(rule) {
+             const taxRate = rule.tax_benefit || 0.25; 
+             const percentage = rule.percentage || (100 / (rule.years || 3));
+             const benefit = total * (percentage / 100) * taxRate;
+             valElem.innerText = benefit.toLocaleString('es-ES', {minimumFractionDigits:2}) + " €";
+          }
+       }
+    } else if(area) {
+       area.style.display = 'none';
+    }
+  },
+
+    sendEmail: function(id) {
+      if (!id || id === 'null' || id === 'new') {
+         return HandooApp.ui.showToast("Sincroniza el documento en el Kernel antes de enviarlo.", "warning");
+      }
+      
+      const overlay = document.createElement('div');
+      overlay.className = 'h-modal-overlay animate-slide';
+      overlay.style.zIndex = "30000";
+      overlay.innerHTML = `
+        <div class="h-modal shadow-lg" style="width: 450px">
+           <div class="h-modal-header bg-dark text-white"><h5 class="m-0 fw-black text-uppercase">ENVIAR DOCUMENTO</h5></div>
+           <div class="h-modal-body bg-light p-4">
+              <div class="unified-block block-dark mt-0 shadow-sm">
+                 <label class="h-label-refined text-white-50">CORREO ELECTRÓNICO DESTINO</label>
+                 <div class="input-group mt-1">
+                    <span class="input-group-text bg-dark border-secondary text-brand"><i class="bi bi-envelope-at-fill"></i></span>
+                    <input type="email" id="email-dest" class="form-control h-form-control fw-bold text-lowercase bg-dark text-white border-secondary" placeholder="gestoria@correo.com">
+                 </div>
+                 <p class="small text-white-50 mt-3 m-0" style="font-size:9px">Se adjuntará el PDF original de este registro.</p>
+              </div>
+           </div>
+           <div class="h-modal-footer d-flex gap-2">
+              <button class="btn btn-light flex-grow-1 fw-bold border" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+              <button id="btn-exec-email" class="btn btn-brand-titanium flex-grow-1 fw-black shadow" onclick="ExpensesView.executeSendEmail('${id}')">ENVIAR AHORA</button>
+           </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      
+      // Auto-focus en el input para que puedas escribir del tirón
+      setTimeout(() => document.getElementById('email-dest').focus(), 100);
+    },
+
+    executeSendEmail: async function(id) {
+      const email = document.getElementById('email-dest').value.trim();
+      if (!email || !email.includes('@')) return HandooApp.ui.showToast("Introduzca un correo electrónico válido.", "error");
+
+      HandooApp.ui.setLoading('btn-exec-email', true, "ENVIANDO...");
+      
+      try {
+         const res = await HandooApp.api('expense.send_email', { id, email });
+         if (res.ok) {
+           HandooApp.ui.showToast("Documento enviado correctamente a " + email, "success");
+           document.querySelector('.h-modal-overlay[style*="30000"]').remove();
+         } else {
+           HandooApp.ui.showToast("Error al enviar: " + res.msg, "error");
+           HandooApp.ui.setLoading('btn-exec-email', false);
+         }
+      } catch(e) {
+         HandooApp.ui.showToast("Fallo crítico: " + e.message, "error");
+         HandooApp.ui.setLoading('btn-exec-email', false);
+      }
+    },
+
+  handleSingleUpload: async function(input) {
+      if(!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      
+      // Aviso de que la IA está trabajando
+      HandooApp.ui.showToast("Subiendo y analizando con Chemin AI...", "info");
+      
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          // 1. Subimos el archivo a Drive para mostrarlo en el Visor
+          const res = await HandooApp.api('expense.upload_file', { 
+            base64: e.target.result, 
+            fileName: file.name, 
+            mimeType: file.type 
+          });
+          
+          if(res.ok) {
+            this._tempDriveId = res.data.drive_id;
+            const preview = document.getElementById('doc-preview-area');
+            if(preview) {
+              preview.innerHTML = `
+                <div id="zoom-wrapper" style="width: 100%; height: 100%; transform-origin: top left; transition: transform 0.1s;">
+                  <embed src="https://drive.google.com/file/d/${this._tempDriveId}/preview" width="100%" height="100%">
+                </div>`;
+            }
+          }
+
+          // 2. DESPERTAMOS A LA IA PARA LEER EL DOCUMENTO EN VIVO
+          const aiRes = await window.HandooAI.scanDocument(e.target.result, file.type);
+          if (!aiRes) throw new Error("Sin respuesta de la IA.");
+
+          // 3. AUTO-RELLENADO EN EL DOM (Volcado visual)
+          let vendorName = (aiRes.vendor || aiRes.vendor_name || '').toUpperCase();
+          const vendorCif = (aiRes.vendor_cif || '').toUpperCase();
+          let foundVendor = this.vendors.find(v => v.cif === vendorCif) || this.vendors.find(v => vendorName.includes(v.nombre_fiscal.toUpperCase()));
+
+          // Si es un proveedor fantasma, lo creamos
+          if (!foundVendor && vendorCif) {
+             const saveRes = await HandooApp.api('vendor.save', { nombre_fiscal: vendorName || 'PROVEEDOR DESCONOCIDO', cif: vendorCif, automatic: true, status: 'CUARENTENA' });
+             if (saveRes.ok) { foundVendor = saveRes.data; this.vendors.push(foundVendor); }
+          }
+
+          // Rellenar Proveedor y disparar búsquedas
+          if (foundVendor) {
+             const vSearch = document.getElementById('p-vendor-search');
+             if (vSearch) {
+                 vSearch.value = foundVendor.nombre_fiscal;
+                 this.onVendorSearchInput(foundVendor.nombre_fiscal); // Esto dispara fechas y escudos
+             }
+          } else if (vendorName) {
+             const vSearch = document.getElementById('p-vendor-search');
+             if (vSearch) vSearch.value = vendorName;
+          }
+
+          // Rellenar Fechas y Nº Documento
+          if (aiRes.doc_num) {
+              const dNum = document.getElementById('p-doc-num');
+              if (dNum) { dNum.value = aiRes.doc_num; this.triggerDuplicateCheck(); }
+          }
+          if (aiRes.date) {
+             const dDate = document.getElementById('p-date');
+             if (dDate) { dDate.value = aiRes.date; this.recalcDueDate(); }
+          }
+          if (aiRes.due_date || aiRes.fecha_vencimiento) {
+             const dDue = document.getElementById('p-due-date');
+             if (dDue) dDue.value = aiRes.due_date || aiRes.fecha_vencimiento;
+          }
+          
+          // Rellenar Método de Pago
+          if (aiRes.payment_method_detected) {
+             const mappedMethod = this.mapPaymentMethod(aiRes.payment_method_detected);
+             const pMethod = document.getElementById('p-payment-method');
+             if (pMethod) { pMethod.value = mappedMethod; this.updatePaymentBlockUI(mappedMethod); }
+          }
+
+          // Metadatos ocultos para el guardado
+          this.lastNeuralVendor = {
+             cif: aiRes.vendor_cif,
+             method: aiRes.payment_method_detected,
+             iban: aiRes.vendor_iban
+          };
+
+          // 4. AUTO-RELLENADO DE LÍNEAS (Con mapeo de catálogo)
+          if (aiRes.items && aiRes.items.length > 0) {
+             const tbody = document.getElementById('pur-tbody');
+             if (tbody) tbody.innerHTML = ''; // Limpiamos la fila vacía por defecto
+
+             aiRes.items.forEach(it => {
+                 const concept = (it.concept || it.description || '').toUpperCase();
+                 const bestMatch = this.allCatalog.find(m => {
+                     const searchConcept = concept.toUpperCase();
+                     const hasAlias = (m.aliases || []).some(a => (a.reference && searchConcept.includes(a.reference.toUpperCase())) || (a.ean && searchConcept.includes(a.ean.toUpperCase())));
+                     return hasAlias || searchConcept.includes((m.nombre || '').toUpperCase()) || (m.nombre || '').toUpperCase().includes(searchConcept);
+                 });
+
+                 let unitPrice = it.price || it.unit_price || 0;
+                 if (!unitPrice && it.total && it.qty) unitPrice = parseFloat(it.total) / parseFloat(it.qty);
+
+                 // Disparamos la creación de la línea en la interfaz
+                 this.addPurchaseRow({
+                     master_id: bestMatch ? bestMatch.id : '',
+                     master_type: bestMatch ? bestMatch.type : 'PRODUCT',
+                     master_name: bestMatch ? bestMatch.nombre : '',
+                     concept: concept,
+                     qty: it.qty || 1,
+                     price: unitPrice,
+                     iva: it.iva || it.tax_rate || 21,
+                     irpf: it.irpf || 0,
+                     expiry: it.expiry || '',
+                     temp: it.temp || '',
+                     category: bestMatch ? (bestMatch.category || 'GENERAL') : 'GENERAL'
+                 });
+             });
+          }
+
+          HandooApp.ui.showToast("Análisis de datos completado.", "success");
+
+        } catch (err) {
+          console.error("Error en OCR individual:", err);
+          HandooApp.ui.showToast("Error en extracción de IA: " + err.message, "error");
+        }
+      };
+      reader.readAsDataURL(file);
+    },
+  };
+
+  /* --- FINALIZACIÓN DEL MOTOR TITANIUM EXPENSES --- */
+  window.addEventListener('handoo:product-created', () => {
+    if (typeof ExpensesView !== 'undefined' && ExpensesView.refreshCatalogLocal) {
+      ExpensesView.refreshCatalogLocal();
+    }
+  });
+
+  window.ExpensesView = window.expenseview = window.ExpenseView = ExpensesView;
+})();
+</script>

@@ -1,0 +1,256 @@
+<script src="https://unpkg.com/html5-qrcode"></script>
+<style>
+  .scanner-container { padding: 40px; max-width: 600px; margin: 0 auto; text-align: center; }
+  #camera-preview { width: 100%; height: 300px; background: #000; border-radius: 16px; margin-bottom: 20px; object-fit: cover; }
+  .btn-camera { width: 80px; height: 80px; border-radius: 50%; background: var(--brand); border: none; color: white; font-size: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  .scanner-loading { display: none; padding: 20px; font-weight: 800; color: var(--brand); }
+  .detection-list { text-align: left; margin-top: 20px; }
+  .detection-item { padding: 10px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
+  #reader { width: 100%; margin-bottom: 20px; }
+</style>
+
+<div class="scanner-container">
+  <div class="d-flex gap-2 mb-3">
+    <button class="btn btn-dark" onclick="HandooScanner.setMode('IA')">FOTO IA</button>
+    <button class="btn btn-outline-dark" onclick="HandooScanner.setMode('BARCODE')">ESCÁNER BARRAS</button>
+  </div>
+  
+  <div id="ia-mode">
+    <video id="camera-preview" autoplay playsinline></video>
+    <button class="btn-camera" onclick="HandooScanner.capture()">
+      <i class="bi bi-camera-fill"></i>
+    </button>
+  </div>
+  
+  <div id="reader" style="display: none;"></div>
+  
+  <div id="scanner-loading" class="scanner-loading">
+    <div class="spinner-border text-brand" role="status"></div>
+    <p>Analizando existencias con IA...</p>
+  </div>
+
+  <div id="detection-results" class="detection-list"></div>
+</div>
+
+<script>
+window.HandooScanner = {
+  video: null,
+  mode: 'IA',
+  
+  setMode: function(mode) {
+    this.mode = mode;
+    document.getElementById('ia-mode').style.display = mode === 'IA' ? 'block' : 'none';
+    document.getElementById('reader').style.display = mode === 'BARCODE' ? 'block' : 'none';
+    if (mode === 'BARCODE') this.startBarcodeScanner();
+    else this.stopBarcodeScanner();
+  },
+
+  startBarcodeScanner: function() {
+    this.html5QrCode = new Html5Qrcode("reader");
+    this.html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        this.lookupBarcode(decodedText);
+        this.stopBarcodeScanner();
+      });
+  },
+
+  stopBarcodeScanner: function() {
+    if (this.html5QrCode) this.html5QrCode.stop().catch(err => console.log(err));
+  },
+
+  lookupBarcode: function(barcode) {
+    HandooApp.api('inventory.getCatalog', {}).then(res => {
+        if (res.ok) {
+            const prod = res.data.products.find(p => p.barcode === barcode);
+            if (prod) {
+                this.showQuickAction(prod);
+            } else {
+                HandooApp.ui.showToast("Producto no encontrado por código", "error");
+            }
+        }
+    });
+  },
+
+  showQuickAction: async function(prod) {
+      const qty = await HandooApp.ui.prompt(`Producto: ${prod.nombre}. Cantidad a ajustar:`, "1", "number");
+      if (!qty) return;
+      
+      const expiry = await HandooApp.ui.prompt(`Fecha de caducidad (YYYY-MM-DD):`, "", "text");
+      if (!expiry) return;
+
+      // FIFO Check
+      const fifoCheck = window.InventoryView.checkExpiryRotation({
+          productId: prod.id,
+          expiryDate: expiry,
+          location: prod.zona // Assuming location is zona
+      });
+
+      if (fifoCheck.error) {
+          const container = document.getElementById('detection-results');
+          window.InventoryView.renderExpiryAlert(container, fifoCheck.message);
+          return; // Block action
+      }
+
+      HandooApp.api('inventory.adjust_stock', { producto_id: prod.id, cantidad: parseFloat(qty), tipo: 'SUMA', expiry: expiry });
+      HandooApp.ui.showToast("Stock ajustado");
+  },
+
+  open: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.id = 'handoo-scanner-modal';
+    overlay.style.zIndex = "30000";
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 600px">
+         <div class="h-modal-header bg-dark text-white">
+            <h5 class="m-0 fw-black text-uppercase">ESCÁNER RÁFAGA HANDOO</h5>
+            <button class="btn btn-link text-white p-0" onclick="HandooScanner.close()"><i class="bi bi-x-lg"></i></button>
+         </div>
+         <div class="h-modal-body bg-light" id="scanner-modal-body">
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    
+    const scannerUI = document.querySelector('.scanner-container');
+    if (scannerUI) {
+      document.getElementById('scanner-modal-body').appendChild(scannerUI);
+      scannerUI.style.display = 'block';
+    }
+    
+    this.init();
+  },
+
+  close: function() {
+    const modal = document.getElementById('handoo-scanner-modal');
+    if (modal) {
+      const scannerUI = document.querySelector('.scanner-container');
+      const templates = document.getElementById('handoo-templates');
+      if (scannerUI && templates) {
+        templates.appendChild(scannerUI);
+        scannerUI.style.display = 'none';
+      }
+      modal.remove();
+    }
+    this.stopBarcodeScanner();
+    if (this.video && this.video.srcObject) {
+      this.video.srcObject.getTracks().forEach(track => track.stop());
+    }
+  },
+  
+  init: async function() {
+    this.video = document.getElementById('camera-preview');
+    if (!this.video) {
+        console.error("No se encontró el elemento camera-preview");
+        return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      this.video.srcObject = stream;
+    } catch (err) {
+      HandooApp.ui.showToast("No se pudo acceder a la cámara", "error");
+    }
+  },
+
+  capture: async function() {
+    const canvas = document.createElement('canvas');
+    canvas.width = this.video.videoWidth;
+    canvas.height = this.video.videoHeight;
+    canvas.getContext('2d').drawImage(this.video, 0, 0);
+    const base64 = canvas.toDataURL('image/jpeg');
+    
+    this.process(base64);
+  },
+
+  process: async function(base64) {
+    document.getElementById('scanner-loading').style.display = 'block';
+    document.getElementById('detection-results').innerHTML = '';
+    
+    const res = await HandooApp.api('ai.process_inventory_photo', { image: base64, context: 'conteo_almacen' });
+    
+    document.getElementById('scanner-loading').style.display = 'none';
+    
+    if (res.ok) {
+      this.renderResults(res.data);
+    } else {
+      HandooApp.ui.showToast(res.msg || "Error al analizar la imagen", "error");
+    }
+  },
+
+  renderResults: function(items) {
+    this.detectedItems = items;
+    const container = document.getElementById('detection-results');
+    container.innerHTML = '<h5>Confirmar detecciones:</h5>';
+    
+    items.forEach((item, index) => {
+      const isNotCataloged = !item.producto_id;
+      const isRotationError = item.warning_type === 'ROTATION_ERROR';
+      const baseUnitInfo = item.unidad_base ? `<div class="x-small text-muted">eq. ${item.unidad_base}</div>` : '';
+      
+      container.innerHTML += `
+        <div class="detection-item align-items-center">
+          <div>
+            <div class="fw-bold">
+              ${isNotCataloged ? '<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>' : ''}
+              ${isRotationError ? '<i class="bi bi-arrow-repeat text-danger me-1"></i>' : ''}
+              ${item.producto_nombre}
+              ${isNotCataloged ? '<span class="text-warning x-small ms-1">Artículo no catalogado</span>' : ''}
+              ${isRotationError ? '<span class="text-danger x-small ms-1">Error de Rotación</span>' : ''}
+            </div>
+            ${!isNotCataloged ? baseUnitInfo : ''}
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <span><b>${item.cantidad}</b> ${item.unidad}</span>
+            <button class="btn btn-link text-danger p-0" onclick="HandooScanner.removeItem(${index})">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    
+    container.innerHTML += `
+      <div class="mt-3">
+        <button class="btn btn-dark w-100" onclick="HandooScanner.save()">CONFIRMAR Y GUARDAR</button>
+        <button class="btn btn-outline-dark w-100 mt-2" onclick="HandooScanner.generateOrder()">GENERAR PEDIDO AUTOMÁTICO</button>
+      </div>
+    `;
+  },
+
+  removeItem: function(index) {
+    this.detectedItems.splice(index, 1);
+    this.renderResults(this.detectedItems);
+  },
+
+  generateOrder: async function() {
+    const res = await HandooApp.api('ai.generateAutoOrder', { items: this.detectedItems });
+    if (res.ok) {
+      HandooApp.ui.showToast(res.data.draft);
+    } else {
+      HandooApp.ui.showToast(res.msg || "Error al generar pedido", "error");
+    }
+  },
+
+  save: async function() {
+    const items = [];
+    this.detectedItems.forEach(item => {
+      items.push({
+        producto_id: item.producto_id,
+        cantidad: item.cantidad,
+        tipo: 'SUMA',
+        unidad: item.unidad
+      });
+    });
+
+    const res = await HandooApp.api('ai.saveInventoryFromScanner', { items: items });
+    
+    if (res.ok) {
+      HandooApp.ui.showToast("Inventario actualizado con éxito");
+      if (res.data.warnings && res.data.warnings.length > 0) {
+        res.data.warnings.forEach(w => HandooApp.ui.showToast(w, "warning"));
+      }
+    } else {
+      HandooApp.ui.showToast(res.msg || "Error al guardar inventario", "error");
+    }
+  }
+};
+</script>

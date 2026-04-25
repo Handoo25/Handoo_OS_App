@@ -1,0 +1,724 @@
+<style>
+  @media print {
+    body * { visibility: hidden; }
+    #printable-label, #printable-label * { visibility: visible; }
+    .print-thermal { position: absolute; left: 0; top: 0; width: 50mm; margin: 0; padding: 0; border: none !important; box-shadow: none !important; }
+    .print-a4 { position: absolute; left: 15mm; top: 15mm; width: 70mm; border: 1px dashed #ccc !important; padding: 10px; }
+    .modal-backdrop { display: none; }
+  }
+  .trace-card { border-left: 4px solid #0f172a; background: #f8fafc; transition: all 0.2s; }
+  .trace-critical { border-left-color: #ef4444; background: #fef2f2; }
+</style>
+
+<div id="view-production" class="animate__animated animate__fadeIn">
+  
+  <div class="p-4 text-white d-flex justify-content-between align-items-center shadow-sm" style="background:#0f172a">
+    <div>
+      <div class="small opacity-50 text-uppercase fw-bold mb-1" style="font-size: 10px; letter-spacing: 2px;">Logística y Operaciones</div>
+      <h4 class="fw-black text-uppercase mb-0" style="letter-spacing: 1px;">Centro de Producción</h4>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-light text-dark text-uppercase fw-black shadow-sm py-2 px-4 rounded-3" style="font-size: 11px;" onclick="ProductionView.openProduceModal()">
+        <i class="bi bi-plus-lg me-1"></i> NUEVA PRODUCCIÓN
+      </button>
+    </div>
+  </div>
+
+  <div class="container-fluid mt-4 px-4">
+    <div class="p-4 rounded-4 shadow-sm bg-white border">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-black text-uppercase mb-0" style="font-size: 12px">Historial de Fabricación (Lotes Activos)</h6>
+        <div class="d-flex gap-2">
+          <select id="hist-filter-status" class="form-select form-select-sm rounded-pill border shadow-sm px-3 fw-bold" style="width: 130px; font-size: 10px; outline: none;" onchange="ProductionView.renderHistory()">
+            <option value="ACTIVE" selected>✅ Válidas</option>
+            <option value="CANCELLED">❌ Anuladas</option>
+            <option value="ALL">📋 Todas</option>
+          </select>
+          <input type="text" id="hist-search" class="form-control form-control-sm rounded-pill border shadow-sm px-3" placeholder="🔍 Buscar producto o lote..." style="width: 220px; font-size: 11px; outline: none;" onkeyup="ProductionView.renderHistory()">
+          <button class="btn btn-sm btn-light rounded-pill px-3 fw-bold border shadow-sm" onclick="ProductionView.loadHistory()"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+      </div>
+      
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="small text-muted sticky-top bg-white">
+            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px;" class="text-uppercase">
+              <th style="width: 15%;">Fecha</th>
+              <th style="width: 30%;">Preparación</th>
+              <th class="text-center" style="width: 15%;">Lote</th>
+              <th class="text-center" style="width: 15%;">Caducidad</th>
+              <th class="text-center" style="width: 15%;">Cantidad</th>
+              <th class="text-end" style="width: 15%;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="production-history-list">
+            <tr><td colspan="6" class="text-center p-5"><div class="spinner-border text-brand"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-produce" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content rounded-4 border-0 shadow-lg">
+        <div class="modal-header p-3 border-0 d-flex justify-content-between align-items-center" style="background:#0f172a">
+          <h6 class="modal-title fw-black text-white text-uppercase mb-0" style="font-size: 13px; letter-spacing: 1px;">Registrar Producción con Trazabilidad</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-4">
+          <div class="row g-3">
+            
+            <div class="col-md-4">
+              <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px; letter-spacing: 1px;">CATEGORÍA</label>
+              <select class="form-select form-select-sm border shadow-sm bg-white fw-bold" id="prod-category" onchange="ProductionView.filterFormulas()">
+                <option value="ALL">Todas</option>
+              </select>
+            </div>
+            
+            <div class="col-md-8">
+              <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px; letter-spacing: 1px;">BUSCADOR PREDICTIVO</label>
+              <div class="position-relative">
+                <input type="text" class="form-control form-control-sm border shadow-sm bg-white fw-bold rounded-3 px-3 py-2" id="prod-search" autocomplete="off" placeholder="Escribe para buscar..." onkeyup="ProductionView.filterFormulas()" onclick="ProductionView.filterFormulas()">
+                <div id="prod-dropdown" class="list-group position-absolute w-100 shadow-lg mt-1 border-0" style="display:none; max-height: 220px; overflow-y: auto; z-index: 1050; border-radius: 8px;"></div>
+              </div>
+              <input type="hidden" id="prod-selector-id">
+            </div>
+            
+            <div class="col-md-6 mt-2">
+              <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px;">CANTIDAD PRODUCIDA</label>
+              <div class="input-group input-group-sm shadow-sm border rounded">
+                <input type="number" class="form-control border-0 bg-white text-center fw-bold" id="prod-cantidad" placeholder="0.00" onchange="ProductionView.simulateTraceability()">
+                <select class="form-select border-0 bg-light fw-black text-muted" id="prod-unidad" style="font-size: 10px; max-width: 90px;"></select>
+              </div>
+            </div>
+            
+            <div class="col-md-6 mt-2">
+              <label class="text-uppercase fw-black text-muted d-block mb-1" style="font-size:9px;">DÍAS DE VIDA ÚTIL</label>
+              <div class="input-group input-group-sm shadow-sm border rounded">
+                <input type="number" class="form-control border-0 bg-white text-center fw-bold" id="prod-caducidad" value="3" onchange="ProductionView.simulateTraceability()">
+                <span class="input-group-text border-0 bg-light fw-black text-muted" style="font-size: 10px;">Días</span>
+              </div>
+            </div>
+
+            <div class="col-12 mt-4" id="trace-panel" style="display:none;">
+              <label class="text-uppercase fw-black text-danger mb-2" style="font-size:10px;"><i class="bi bi-diagram-3 me-1"></i> Trazabilidad de Materia Prima (FIFO)</label>
+              <div id="trace-list" class="d-flex flex-column gap-2"></div>
+              <div class="mt-3 p-3 rounded-3 border bg-white shadow-sm">
+                <div class="row align-items-center">
+                  <div class="col-md-6">
+                    <label class="text-uppercase fw-bold text-muted mb-1" style="font-size:9px;">Caducidad Sugerida (Herencia)</label>
+                    <input type="date" id="prod-final-date" class="form-control form-control-sm fw-black text-danger">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="text-uppercase fw-bold text-muted mb-1" style="font-size:9px;">Lote Maestro Generado</label>
+                    <input type="text" id="prod-final-lote" class="form-control form-control-sm fw-bold bg-light" readonly>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="modal-footer p-3 bg-white border-0">
+          <button class="btn btn-light py-2.5 px-4 fw-black text-uppercase rounded-3 shadow-sm border" data-bs-dismiss="modal">CANCELAR</button>
+          <button class="btn btn-dark py-2.5 px-4 fw-black text-uppercase rounded-3 shadow" onclick="ProductionView.confirmProduction()">REGISTRAR Y ETIQUETAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-cancel" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content rounded-4 border-0 shadow-lg">
+        <div class="modal-header p-3 border-0 bg-danger text-white">
+          <h6 class="modal-title fw-black text-uppercase mb-0" style="font-size: 13px;"><i class="bi bi-trash3 me-2"></i>Anular Registro</h6>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <div class="alert alert-danger border-0 shadow-sm mb-3" style="font-size: 10px;">
+             <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Importante:</strong> Se devolverán los ingredientes al almacén y el lote quedará marcado como anulado para control de Sanidad.
+          </div>
+          <label class="small fw-bold text-muted mb-1" style="font-size:10px;">MOTIVO DE LA ANULACIÓN</label>
+          <textarea class="form-control rounded-3 shadow-sm fw-bold border-danger" id="cancel-reason" rows="2" placeholder="Ej: Error al teclear, lote incorrecto..."></textarea>
+          <input type="hidden" id="cancel-log-id">
+        </div>
+        <div class="modal-footer p-3 border-0 bg-white">
+          <button class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">VOLVER</button>
+          <button class="btn btn-danger rounded-pill px-4 fw-black shadow" onclick="ProductionView.confirmCancel()">ANULAR Y RESTAURAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-label" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content border-2 border-dark" style="border-radius: 8px;">
+        <div id="printable-label" class="modal-body text-center p-3 print-thermal">
+          <div class="text-uppercase fw-black text-dark lh-sm mb-2" id="label-nombre" style="font-size: 16px;"></div>
+          <div class="d-flex justify-content-center my-2"><img id="label-qr" src="" style="width: 100px; height: 100px; object-fit: contain;"></div>
+          <div class="small fw-bold text-dark mb-1" id="label-lote" style="font-size: 11px;"></div>
+          <div class="small text-dark mb-2" id="label-fechas" style="font-size: 10px;"></div>
+          <div class="border-top pt-2 mt-2 border-dark">
+              <div id="label-trace-summary" style="font-size: 9px; line-height: 1;" class="text-muted mb-2"></div>
+              <div style="font-size: 9px;" class="fw-bold text-uppercase mb-1">Contiene/Alérgenos:</div>
+              <div id="label-alergenos" class="fw-black text-danger d-flex flex-wrap justify-content-center gap-1" style="font-size: 10px;"></div>
+          </div>
+        </div>
+        <div class="modal-footer p-3 bg-light border-0 d-block d-print-none">
+          <label class="small fw-bold text-muted mb-1" style="font-size: 10px;">FORMATO DE IMPRESIÓN</label>
+          <select id="printer-mode" class="form-select form-select-sm mb-3 fw-bold shadow-sm" onchange="ProductionView.changePrintMode()">
+            <option value="thermal" selected>Rollo Térmico (50mm)</option>
+            <option value="a4">Folio Normal A4 (Epson)</option>
+          </select>
+          <button class="btn btn-primary rounded-pill fw-black px-4 shadow w-100 py-2" onclick="ProductionView.executeSmartPrint()"><i class="bi bi-printer me-2"></i> IMPRIMIR PEGATINA</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-edit-production" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-4 border-0 shadow-lg">
+        <div class="modal-header p-3 border-0 bg-warning text-dark d-flex align-items-center">
+          <h6 class="modal-title fw-black text-uppercase mb-0" style="font-size: 13px;"><i class="bi bi-pencil-square me-2"></i>Edición de Lote Producido</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          
+          <div class="alert alert-warning border-0 shadow-sm mb-4" style="font-size: 10px;">
+             <i class="bi bi-info-circle-fill me-1"></i> <strong>Aviso de Trazabilidad:</strong> Si modificas la cantidad producida, el sistema ajustará <b>automáticamente</b> el stock de las materias primas y del producto final para que todo cuadre.
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="small fw-bold text-muted mb-1" style="font-size:10px;">LOTE MAESTRO</label>
+              <input type="text" class="form-control fw-bold shadow-sm" id="edit-lote">
+            </div>
+            <div class="col-md-6">
+              <label class="small fw-bold text-muted mb-1" style="font-size:10px;">NUEVA CANTIDAD</label>
+              <input type="number" step="any" class="form-control fw-bold shadow-sm border-brand text-brand" id="edit-qty">
+            </div>
+            <div class="col-md-12">
+              <label class="small fw-bold text-muted mb-1" style="font-size:10px;">FECHA DE CADUCIDAD REAL</label>
+              <input type="date" class="form-control fw-bold shadow-sm text-danger" id="edit-cadu">
+            </div>
+          </div>
+          
+          <input type="hidden" id="edit-log-id">
+        </div>
+        <div class="modal-footer p-3 border-0 bg-white">
+          <button class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">CANCELAR</button>
+          <button class="btn btn-dark rounded-pill px-4 fw-black shadow" onclick="ProductionView.saveEdit()"><i class="bi bi-arrow-repeat me-2"></i> APLICAR Y RECALCULAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-audit" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-4 border-0 shadow-lg">
+        <div class="modal-header p-3 border-0 text-white" style="background-color: #0f172a;">
+          <h6 class="modal-title fw-black text-uppercase mb-0" style="font-size: 13px;"><i class="bi bi-clipboard2-check-fill me-2"></i>Auditoría / Cierre de Lote</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          
+          <div class="alert alert-dark border-0 shadow-sm mb-4" style="font-size: 10px;">
+             <i class="bi bi-robot me-1 text-brand"></i> <strong>Datos para Chemin AI:</strong> Clasifica cómo ha terminado este lote para que la inteligencia artificial pueda predecir y ajustar tu *Mise en place* del futuro.
+          </div>
+
+          <div class="p-3 rounded-3 border-danger mb-3 bg-white shadow-sm" style="border-left: 4px solid #ef4444;">
+             <label class="small fw-black text-danger mb-2" style="font-size:11px;">🗑️ REGISTRO DE MERMA (DESPERDICIO)</label>
+             <div class="row g-2">
+               <div class="col-12 mb-2">
+                 <label class="small fw-bold text-muted mb-1" style="font-size:9px;">ESTADO DEL PRODUCTO QUE SE TIRA</label>
+                 <select id="audit-waste-origin" class="form-select form-select-sm fw-black border-danger shadow-sm" style="font-size:11px;">
+                   <option value="FRESCO" selected>🟢 PRODUCTO FRESCO (Producido hoy)</option>
+                   <option value="ARRASTRE">🟠 PRODUCTO DE ARRASTRE (Sobró de ayer)</option>
+                 </select>
+               </div>
+               <div class="col-4">
+                 <label class="small fw-bold text-muted mb-1" style="font-size:9px;">CANTIDAD</label>
+                 <input type="number" step="any" class="form-control form-control-sm text-center fw-bold shadow-sm" id="audit-waste-qty" placeholder="0">
+               </div>
+               <div class="col-8">
+                 <label class="small fw-bold text-muted mb-1" style="font-size:9px;">MOTIVO DE LA PÉRDIDA</label>
+                 <select id="audit-waste-type" class="form-select form-select-sm fw-bold shadow-sm">
+                   <option value="CADUCADO" selected>⏳ Caducado / Fin de vida</option>
+                   <option value="QUEMADO">🔥 Error de cocinado</option>
+                   <option value="MAL_ESTADO">🦠 Mal estado / Caída</option>
+                 </select>
+               </div>
+             </div>
+          </div>
+
+          <div class="p-3 rounded-3 border-success bg-white shadow-sm" style="border-left: 4px solid #10b981;">
+             <label class="small fw-black text-success mb-2" style="font-size:11px;">📦 APTO PARA MAÑANA (REMANENTE)</label>
+             <div class="row align-items-center g-2">
+               <div class="col-4">
+                 <input type="number" step="any" class="form-control form-control-sm text-center fw-bold shadow-sm border-success text-success" id="audit-carry-qty" placeholder="0">
+               </div>
+               <div class="col-8 text-muted" style="font-size:10px;">
+                  Unidades sobrantes en perfecto estado. Esto <b>reducirá</b> la cantidad que la AI te pedirá preparar mañana.
+               </div>
+             </div>
+          </div>
+
+          <input type="hidden" id="audit-log-id">
+        </div>
+        <div class="modal-footer p-3 border-0 bg-white">
+          <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border" data-bs-dismiss="modal">CANCELAR</button>
+          <button class="btn btn-dark rounded-pill px-4 fw-black shadow" onclick="ProductionView.saveAudit()"><i class="bi bi-check-circle-fill me-2"></i> REGISTRAR CIERRE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+console.log("🟢 [DEBUG] Views_Production.html: Script INICIANDO...");
+
+var ProductionView = {
+  formulas: [],
+  productionLogs: [],
+  units: [],
+  categories: [],
+  currentSimulation: null,
+
+  render: async function() {
+    console.log("🛠️ [DEBUG] ProductionView: Ejecutando Render...");
+    const s = document.getElementById('main-stage');
+    const v = document.getElementById('view-production');
+    if (v && s) s.innerHTML = v.outerHTML;
+
+    try {
+        const [fRes, cRes] = await Promise.all([ 
+            HandooApp.api('formula.list',{}), 
+            HandooApp.api('inventory.get_all_conversions',{}) 
+        ]);
+        
+        if(fRes && fRes.ok) this.formulas = Array.isArray(fRes.data) ? fRes.data : [];
+        this.categories = [...new Set(this.formulas.map(f => f.categoria || f.category).filter(c => c))];
+        this.populateCategoriesDropdown();
+        
+        let ru = [];
+        if(cRes && cRes.ok && cRes.data) {
+            const data = Array.isArray(cRes.data) ? cRes.data : [];
+            ru = data.map(c => c.unit_to || c.unidad_destino || c.unidad).filter(u => u);
+        }
+        this.units = ru.length > 0 ? [...new Set(ru)] : ['Kg', 'g', 'L', 'ml', 'Uds', 'PAQ'];
+        this.populateUnitsDropdown();
+        await this.loadHistory();
+    } catch(e) { 
+        console.error("❌ [DEBUG] Error en render de Producción:", e); 
+        this.units = ['Kg', 'L', 'Uds']; 
+        this.populateUnitsDropdown(); 
+    }
+  },
+
+  populateCategoriesDropdown: function() {
+    const sel = document.getElementById('prod-category');
+    if (sel) {
+        sel.innerHTML = '<option value="ALL">Todas</option>' + 
+                        this.categories.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join('');
+    }
+  },
+
+  populateUnitsDropdown: function() {
+    const sel = document.getElementById('prod-unidad');
+    if (sel) {
+        sel.innerHTML = this.units.map(u => `<option value="${u}">${u}</option>`).join('');
+    }
+  },
+
+  updateFormulaSelect: function(list) {
+    const d = document.getElementById('prod-dropdown');
+    if(!d) return;
+    
+    if (list.length === 0) {
+        d.innerHTML = '<div class="list-group-item text-muted small py-3 fw-bold bg-light">Sin coincidencias</div>';
+    } else {
+        d.innerHTML = list.map(f => `
+            <button type="button" class="list-group-item list-group-item-action fw-bold py-2 border-bottom" 
+                    onclick="ProductionView.selectFormula('${f.id}', '${f.nombre.replace(/'/g, "\\'")}')">
+                <i class="bi bi-box-seam text-brand me-2"></i> ${f.nombre}
+            </button>`).join('');
+    }
+    d.style.display = 'block';
+  },
+
+  selectFormula: function(id, name) {
+    document.getElementById('prod-selector-id').value = id;
+    document.getElementById('prod-search').value = name;
+    document.getElementById('prod-dropdown').style.display = 'none';
+    
+    const formula = this.formulas.find(f => String(f.id) === String(id));
+    if (formula) {
+        document.getElementById('prod-caducidad').value = formula.dias_caducidad || formula.vida_util || 3;
+    }
+    this.simulateTraceability();
+  },
+
+  simulateTraceability: async function() {
+    const fId = document.getElementById('prod-selector-id').value;
+    const qty = document.getElementById('prod-cantidad').value || 1;
+    if (!fId) return;
+    
+    const res = await HandooApp.api('production.simulate_fifo', { formula_id: fId, cantidad: qty });
+    if (res && res.ok) { 
+        this.currentSimulation = res.data; 
+        this.renderTracePanel(res.data); 
+    }
+  },
+
+  renderTracePanel: function(data) {
+    const panel = document.getElementById('trace-panel');
+    const list = document.getElementById('trace-list');
+    panel.style.display = 'block';
+    
+    list.innerHTML = data.components.map(c => `
+        <div class="p-2 rounded-3 trace-card ${c.is_critical ? 'trace-critical' : ''} shadow-sm border">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="fw-black text-uppercase" style="font-size:11px;">${c.nombre}</div>
+                <div class="badge bg-dark">${c.lote_usado}</div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 small">
+                <span class="text-muted">Cadu: ${new Date(c.fecha_caducidad).toLocaleDateString('es-ES')}</span>
+                <span class="fw-bold">${c.is_critical ? '⚠️ MARCA CADUCIDAD' : 'OK'}</span>
+            </div>
+        </div>`).join('');
+        
+    document.getElementById('prod-final-date').value = (data.fecha_caducidad_sugerida || '').split('T')[0];
+    
+    // 🔥 NUEVA LÓGICA DE LOTES SECUENCIALES: DDMMAA-00X
+    const today = new Date();
+    const d = String(today.getDate()).padStart(2, '0');
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const y = String(today.getFullYear()).slice(-2);
+    const prefix = `${d}${m}${y}`;
+    
+    const todaysLogs = this.productionLogs.filter(l => l.lote && l.lote.startsWith(prefix));
+    const seq = String(todaysLogs.length + 1).padStart(3, '0');
+    
+    document.getElementById('prod-final-lote').value = `${prefix}-${seq}`;
+  },
+
+  openProduceModal: function() {
+    document.getElementById('prod-category').value = 'ALL'; 
+    document.getElementById('prod-search').value = '';
+    document.getElementById('prod-selector-id').value = ''; 
+    document.getElementById('trace-panel').style.display = 'none';
+    if(document.getElementById('prod-dropdown')) document.getElementById('prod-dropdown').style.display = 'none';
+    document.getElementById('prod-cantidad').value = ''; 
+    document.getElementById('prod-caducidad').value = '3';
+    
+    const m = document.getElementById('modal-produce'); 
+    if (m) (bootstrap.Modal.getInstance(m) || new bootstrap.Modal(m)).show();
+  },
+
+  filterFormulas: function() {
+    const cat = document.getElementById('prod-category').value;
+    const s = document.getElementById('prod-search').value.toLowerCase();
+    let f = this.formulas;
+    if (cat !== 'ALL') f = f.filter(x => x.categoria === cat || x.category === cat);
+    if (s) f = f.filter(x => x.nombre.toLowerCase().includes(s));
+    this.updateFormulaSelect(f);
+  },
+
+  changePrintMode: function() {
+    const m = document.getElementById('printer-mode').value;
+    const l = document.getElementById('printable-label');
+    l.className = `modal-body text-center p-3 ${m === 'thermal' ? 'print-thermal' : 'print-a4'}`;
+  },
+
+  confirmProduction: async function() {
+    const btn = document.querySelector('[onclick="ProductionView.confirmProduction()"]');
+    const fId = document.getElementById('prod-selector-id').value;
+    const qty = document.getElementById('prod-cantidad').value;
+    const u = document.getElementById('prod-unidad').value;
+    const cDate = document.getElementById('prod-final-date').value;
+    const cLote = document.getElementById('prod-final-lote').value;
+    
+    if (!fId) return HandooApp.ui.showToast("Selecciona producto", "warning");
+    if (!qty || qty <= 0) return HandooApp.ui.showToast("Cantidad inválida", "warning");
+    
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> REGISTRANDO...'; }
+    
+    try {
+        const payload = { 
+            formula_id: fId, 
+            cantidad: qty, 
+            unidad_medida: u, 
+            fecha_caducidad: cDate, 
+            lote: cLote, 
+            trazabilidad_resumen: this.currentSimulation ? this.currentSimulation.resumen_lotes : '', 
+            usuario: 'Admin' 
+        };
+        const res = await HandooApp.api('production.executeProduction', payload);
+        
+        if(res && res.ok) {
+          HandooApp.ui.showToast(res.msg, "success"); 
+          bootstrap.Modal.getInstance(document.getElementById('modal-produce')).hide();
+          
+          // 🔥 LIMPIADOR TOTAL: Eliminamos cualquier rastro de modales o backdrops
+          setTimeout(() => {
+            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+            document.body.style.overflow = 'auto';
+            document.body.style.paddingRight = '0';
+          }, 300);
+
+          await this.loadHistory(); 
+          res.data.cantidad_str = qty + " " + u; 
+          this.showLabel(res.data);
+        } else {
+            throw new Error(res.msg);
+        }
+    } catch(e) { 
+        HandooApp.ui.showToast("Error: " + e.message, "danger"); 
+    } finally { 
+        if (btn) { btn.disabled = false; btn.innerHTML = 'REGISTRAR Y ETIQUETAR'; } 
+    }
+  },
+
+  executeSmartPrint: function() {
+    window.print();
+    // Limpiamos pos-print para evitar que el fondo se quede gris
+    setTimeout(() => {
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        document.body.style.overflow = 'auto';
+    }, 500);
+  },
+
+  loadHistory: async function() {
+    const b = document.getElementById('production-history-list'); 
+    if(b) b.innerHTML = '<tr><td colspan="6" class="text-center p-4"><div class="spinner-border text-brand spinner-border-sm"></div></td></tr>';
+    try {
+      const res = await HandooApp.api('production.get_history', {});
+      if(res && res.ok) { 
+          this.productionLogs = res.data || []; 
+          this.renderHistory(); 
+      } else {
+          if(b) b.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-muted small">No hay producciones registradas.</td></tr>';
+      }
+    } catch (e) { 
+        if(b) b.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-danger">Error de carga.</td></tr>'; 
+    }
+  },
+
+  renderHistory: function() {
+      const b = document.getElementById('production-history-list'); 
+      if(!b) return;
+      
+      const filterStatus = document.getElementById('hist-filter-status') ? document.getElementById('hist-filter-status').value : 'ACTIVE';
+      const searchTerm = document.getElementById('hist-search') ? document.getElementById('hist-search').value.toLowerCase() : '';
+
+      let filteredLogs = this.productionLogs;
+      
+      if (filterStatus === 'ACTIVE') filteredLogs = filteredLogs.filter(l => l.status !== 'CANCELLED');
+      if (filterStatus === 'CANCELLED') filteredLogs = filteredLogs.filter(l => l.status === 'CANCELLED');
+
+      if (searchTerm) {
+          filteredLogs = filteredLogs.filter(l => 
+              (l.formula_nombre && l.formula_nombre.toLowerCase().includes(searchTerm)) ||
+              (l.lote && l.lote.toLowerCase().includes(searchTerm))
+          );
+      }
+
+      if(filteredLogs.length === 0) { 
+          b.innerHTML = '<tr><td colspan="6" class="text-center p-5 text-muted small fw-bold">No hay producciones que coincidan.</td></tr>'; 
+          return; 
+      }
+      
+      b.innerHTML = [...filteredLogs].sort((a,b) => new Date(b.fecha_produccion) - new Date(a.fecha_produccion)).map((l) => {
+          const dProd = new Date(l.fecha_produccion);
+          const dCad = new Date(l.fecha_caducidad);
+          const isCancelled = l.status === 'CANCELLED';
+          
+          const rowOpacity = isCancelled ? 'opacity-50 bg-light' : '';
+          const titleStyle = isCancelled ? 'text-decoration-line-through text-muted' : 'text-dark';
+          const badgeHTML = isCancelled ? `<div class="badge bg-danger mt-1" style="font-size:8px;">ANULADO: ${l.cancel_reason}</div>` : '';
+          
+          const actionsHTML = isCancelled ? 
+              `<span class="small text-danger fw-bold"><i class="bi bi-x-circle"></i> Anulado</span>` :
+              `<button class="btn btn-sm btn-outline-danger p-1 border-0" onclick="event.stopPropagation(); ProductionView.openAuditModal('${l.id}')" title="Auditoría / Cierre de Lote"><i class="bi bi-clipboard2-check fs-6 text-dark"></i></button>
+               <button class="btn btn-sm btn-outline-dark p-1 border-0" onclick="event.stopPropagation(); ProductionView.showLabelFromHistory('${l.id}')" title="Imprimir Etiqueta"><i class="bi bi-printer fs-6"></i></button>`;
+
+          return `
+          <tr class="table-hover ${rowOpacity}" style="${isCancelled ? '' : 'cursor:pointer;'}" onclick="${isCancelled ? '' : `ProductionView.openEditModal('${l.id}')`}">
+            <td class="ps-3">
+                <div class="fw-bold ${titleStyle}" style="font-size:11px;">${dProd.toLocaleDateString('es-ES')}</div>
+                <div class="text-muted" style="font-size:9px;">${dProd.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})}</div>
+            </td>
+            <td>
+                <div class="fw-black ${titleStyle}" style="font-size:12px;">${l.formula_nombre}</div>
+                ${badgeHTML}
+            </td>
+            <td class="text-center"><span class="badge bg-white text-dark border font-monospace px-2 py-1">${l.lote}</span></td>
+            <td class="text-center"><span class="fw-bold text-muted" style="font-size:11px;">${dCad.toLocaleDateString('es-ES')}</span></td>
+            <td class="text-center"><span class="fw-black text-dark">${l.cantidad}</span> <span class="small text-muted">${l.unidad_medida || ''}</span></td>
+            <td class="text-end pe-3">${actionsHTML}</td>
+          </tr>
+          `;
+      }).join('');
+  },
+
+  openEditModal: function(id) {
+      const log = this.productionLogs.find(l => l.id === id);
+      if (!log) return;
+      document.getElementById('edit-log-id').value = log.id;
+      document.getElementById('edit-lote').value = log.lote;
+      let fechaIso = '';
+      if(log.fecha_caducidad) fechaIso = log.fecha_caducidad.split('T')[0];
+      document.getElementById('edit-cadu').value = fechaIso;
+      document.getElementById('edit-qty').value = log.cantidad;
+      const m = document.getElementById('modal-edit-production');
+      if (m) (bootstrap.Modal.getInstance(m) || new bootstrap.Modal(m)).show();
+  },
+
+  openCancelModal: function(id) {
+      const log = this.productionLogs.find(l => l.id === id);
+      if (!log) return;
+      document.getElementById('cancel-log-id').value = log.id;
+      document.getElementById('cancel-reason').value = '';
+      const m = document.getElementById('modal-cancel');
+      if (m) (bootstrap.Modal.getInstance(m) || new bootstrap.Modal(m)).show();
+  },
+
+  confirmCancel: async function() {
+      const id = document.getElementById('cancel-log-id').value;
+      const reason = document.getElementById('cancel-reason').value;
+      const btn = document.querySelector('#modal-cancel .btn-danger');
+      if (!reason) return HandooApp.ui.showToast("Escribe un motivo", "warning");
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> ANULANDO...'; }
+
+      const res = await HandooApp.api('production.cancel_production', { id: id, motivo: reason, usuario: 'Admin' });
+      if (res && res.ok) {
+          HandooApp.ui.showToast("Anulado correctamente", "success");
+          bootstrap.Modal.getInstance(document.getElementById('modal-cancel')).hide();
+          await this.loadHistory(); 
+      } else {
+          HandooApp.ui.showToast("Error: " + (res ? res.msg : "Fallo"), "danger");
+      }
+      if (btn) { btn.disabled = false; btn.innerHTML = 'ANULAR Y RESTAURAR'; }
+  },
+
+  saveEdit: async function() {
+      const btn = document.querySelector('[onclick="ProductionView.saveEdit()"]');
+      const id = document.getElementById('edit-log-id').value;
+      const lote = document.getElementById('edit-lote').value;
+      const cadu = document.getElementById('edit-cadu').value;
+      let rawQty = String(document.getElementById('edit-qty').value);
+      const qty = parseFloat(rawQty.replace(',', '.'));
+      
+      if (!lote || !cadu || isNaN(qty)) return HandooApp.ui.showToast("Rellena todos los campos", "warning");
+      if(btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> GUARDANDO...'; }
+
+      const res = await HandooApp.api('production.update_log', { id: id, lote: lote, fecha_caducidad: cadu, cantidad: qty });
+      if (res && res.ok) {
+          HandooApp.ui.showToast("Actualizado correctamente", "success");
+          bootstrap.Modal.getInstance(document.getElementById('modal-edit-production')).hide();
+          await this.loadHistory(); 
+      } else {
+          HandooApp.ui.showToast("Error: " + (res ? res.msg : "Fallo"), "danger");
+      }
+      if(btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> APLICAR Y RECALCULAR'; }
+  },
+
+  openAuditModal: function(id) {
+      const log = this.productionLogs.find(l => String(l.id) === String(id));
+      if (!log) return;
+      
+      document.getElementById('audit-log-id').value = log.id;
+      document.getElementById('audit-waste-qty').value = '';
+      document.getElementById('audit-waste-type').value = 'NONE';
+      document.getElementById('audit-carry-qty').value = '';
+      
+      const m = document.getElementById('modal-audit');
+      if (m) (bootstrap.Modal.getInstance(m) || new bootstrap.Modal(m)).show();
+  },
+
+  saveAudit: async function() {
+      const id = document.getElementById('audit-log-id').value;
+      const log = this.productionLogs.find(l => String(l.id) === String(id));
+      
+      let rawWaste = document.getElementById('audit-waste-qty').value || '0';
+      let rawCarry = document.getElementById('audit-carry-qty').value || '0';
+      
+      const wasteQty = parseFloat(rawWaste.replace(',', '.'));
+      const carryQty = parseFloat(rawCarry.replace(',', '.'));
+      const wasteType = document.getElementById('audit-waste-type').value;
+      const wasteOrigin = document.getElementById('audit-waste-origin').value;
+      
+      // Validaciones lógicas
+      if (wasteQty > 0 && wasteType === 'NONE') return HandooApp.ui.showToast("Selecciona el motivo de la merma", "warning");
+      if (wasteQty === 0 && carryQty === 0) return HandooApp.ui.showToast("Introduce al menos un valor de merma o remanente", "warning");
+      if ((wasteQty + carryQty) > log.cantidad) return HandooApp.ui.showToast("No puedes auditar más cantidad de la que produjiste", "danger");
+
+      const btn = document.querySelector('#modal-audit .btn-dark');
+      if(btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> PROCESANDO...'; }
+
+      const res = await HandooApp.api('production.audit_batch', { 
+          id: id, 
+          merma_qty: wasteQty, 
+          merma_tipo: wasteType,
+          merma_procedencia: wasteOrigin,
+          arrastre_qty: carryQty,
+          usuario: 'Admin'
+      });
+      
+      if (res && res.ok) {
+          HandooApp.ui.showToast("Auditoría guardada. AI actualizada.", "success");
+          bootstrap.Modal.getInstance(document.getElementById('modal-audit')).hide();
+          this.loadHistory(); 
+      } else {
+          HandooApp.ui.showToast("Error: " + (res ? res.msg : "Fallo de conexión"), "danger");
+      }
+      if(btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> REGISTRAR CIERRE'; }
+  },
+
+  showLabelFromHistory: function(id) {
+      const log = this.productionLogs.find(l => l.id === id);
+      if(log) { 
+          log.cantidad_str = log.cantidad + " " + (log.unidad_medida||'Uds'); 
+          this.showLabel(log); 
+      }
+  },
+
+  showLabel: function(d) {
+    const t = document.getElementById('label-nombre'); 
+    t.innerText = d.formula_nombre || d.formula_id;
+    document.getElementById('label-lote').innerText = `LOTE: ${d.lote} | QTY: ${d.cantidad_str || d.cantidad}`;
+    
+    const dP = new Date(d.fecha_produccion).toLocaleDateString('es-ES');
+    const dC = new Date(d.fecha_caducidad).toLocaleDateString('es-ES');
+    document.getElementById('label-fechas').innerHTML = `FAB: ${dP} <br> CAD: <span class="fw-black text-danger">${dC}</span>`;
+    document.getElementById('label-trace-summary').innerText = d.trazabilidad_resumen || '';
+    
+    const qrText = `Lote:${d.lote}|Prod:${d.formula_nombre}|Cad:${dC}`;
+    document.getElementById('label-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrText)}&margin=0`;
+    
+    const ac = document.getElementById('label-alergenos');
+    if (d.alergenos_calculados && d.alergenos_calculados.length > 0) { 
+        ac.innerHTML = d.alergenos_calculados.join(', '); 
+        t.classList.add('text-danger'); 
+        t.classList.remove('text-dark'); 
+    } else { 
+        ac.innerHTML = '<span class="text-muted fw-normal">Ninguno registrado</span>'; 
+        t.classList.add('text-dark'); 
+        t.classList.remove('text-danger'); 
+    }
+    
+    new bootstrap.Modal(document.getElementById('modal-label')).show();
+  }
+};
+
+window.ProductionView = ProductionView;
+
+document.addEventListener('click', function(e) {
+  const i = document.getElementById('prod-search');
+  const d = document.getElementById('prod-dropdown');
+  if (d && d.style.display === 'block' && i && !i.contains(e.target) && !d.contains(e.target)) {
+      d.style.display = 'none';
+  }
+});
+</script>

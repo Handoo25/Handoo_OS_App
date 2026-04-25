@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background: #f8fafc; font-family: sans-serif; }
+        .header-block { background: #0f172a; color: white; padding: 20px; border-radius: 0 0 20px 20px; }
+        .drop-zone { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: 0.3s; background: white; }
+        .drop-zone:hover { border-color: #0f172a; background: #f1f5f9; }
+        .card-industrial { border-radius: 16px; border: 1px solid #e2e8f0; background: white; }
+    </style>
+</head>
+<body>
+    <div class="header-block mb-4">
+        <h4 class="m-0"><i class="bi bi-cloud-upload me-2"></i> INGENIERÍA DE CARGA MASIVA</h4>
+    </div>
+    
+    <div class="container">
+        <div class="card-industrial p-4 mb-4">
+            <div id="drop-zone" class="drop-zone" ondrop="handleDrop(event)" ondragover="event.preventDefault()">
+                <i class="bi bi-file-earmark-arrow-up fs-1 text-muted"></i>
+                <p class="mt-2 fw-bold">Arrastra aquí tu archivo JSON o Excel</p>
+            </div>
+            <input type="file" id="file-input" class="d-none" onchange="handleFiles(this.files)">
+        </div>
+
+        <div id="summary-area" class="card-industrial p-4 d-none">
+            <h5>Resumen de Carga</h5>
+            <div id="summary-content" class="my-3"></div>
+            <button class="btn btn-dark" onclick="executeLoad()">EJECUTAR CARGA</button>
+        </div>
+    </div>
+
+    <script>
+        let payload = null;
+
+        function handleDrop(e) {
+            e.preventDefault();
+            handleFiles(e.dataTransfer.files);
+        }
+
+        function handleFiles(files) {
+            const file = files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                payload = JSON.parse(e.target.result);
+                showSummary(payload);
+            };
+            reader.readAsText(file);
+        }
+
+        function showSummary(data) {
+            const summary = document.getElementById('summary-content');
+            const pCount = (data.products || []).length;
+            const prepCount = (data.preps || []).length;
+            const saleCount = (data.sales || []).length;
+            
+            summary.innerHTML = `
+                <ul class="list-group">
+                    <li class="list-group-item">Productos (Masters): ${pCount}</li>
+                    <li class="list-group-item">Preparaciones: ${prepCount}</li>
+                    <li class="list-group-item">Platos de Venta: ${saleCount}</li>
+                </ul>
+            `;
+            document.getElementById('summary-area').classList.remove('d-none');
+        }
+
+        function executeLoad() {
+            // Llamada al backend
+            google.script.run
+                .withSuccessHandler(res => alert(res.msg))
+                .api('bridge.massive_load', payload);
+        }
+    </script>
+</body>
+</html>

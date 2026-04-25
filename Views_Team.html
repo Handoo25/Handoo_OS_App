@@ -1,0 +1,923 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+  .role-badge { font-size: 10px; letter-spacing: 1px; }
+  .subtab-btn { font-size: 11px; font-weight: 800; padding: 10px 20px; border-radius: 12px; transition: 0.3s; border: none; background: transparent; color: #64748b; }
+  .subtab-btn.active { background: #0f172a; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .table-hover tbody tr:hover { background-color: #f8fafc; cursor: pointer; }
+  .kpi-card { border-radius: 20px; transition: 0.3s; border: 1px solid #e2e8f0; }
+</style>
+
+<script>
+window.TeamView = {
+    staffData: [],
+    rolesData: [],
+    activeTab: 'MANAGEMENT', 
+    allAuditLogs: [], 
+    filteredLogs: [], 
+
+    render: function() {
+        const stage = document.getElementById('main-stage');
+        
+        stage.innerHTML = `
+          <div class="animate__animated animate__fadeIn">
+            <div class="block-dark p-4 shadow-sm mb-4" style="background: #0f172a; border-radius: 0 0 24px 24px;">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-white-50 small text-uppercase" style="letter-spacing: 0.1em; font-weight: 800; margin-bottom: 5px;">Recursos Humanos</div>
+                  <h2 class="fw-black m-0 text-uppercase text-white">Módulo de Equipo</h2>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                  <button class="btn btn-warning rounded-pill px-3 fw-bold py-2 shadow-sm" onclick="TeamView.openSelfConsumption()">
+                    <i class="bi bi-cart4 me-1"></i> AUTOCONSUMO STAFF
+                  </button>
+                  <div class="bg-white bg-opacity-10 p-1 rounded-3 d-none d-md-block">
+                    <button class="subtab-btn ${this.activeTab === 'MANAGEMENT' ? 'active' : ''}" onclick="TeamView.setTab('MANAGEMENT')">
+                      <i class="bi bi-people-fill me-1"></i> GESTIÓN
+                    </button>
+                    <button class="subtab-btn ${this.activeTab === 'AUDIT' ? 'active' : ''}" onclick="TeamView.setTab('AUDIT')">
+                      <i class="bi bi-currency-euro me-1"></i> AUDITORÍA FINANCIERA
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="container-fluid px-4" id="team-content-area"></div>
+          </div>
+
+          <div class="modal fade" id="modal-roles" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+              <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header p-3 border-0 bg-dark text-white">
+                  <h6 class="modal-title fw-black text-uppercase mb-0" style="font-size: 13px;"><i class="bi bi-gear me-2 text-brand"></i>Configurar Puestos</h6>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                  <div class="input-group shadow-sm mb-3">
+                      <input type="text" class="form-control fw-bold" id="new-role-input" placeholder="Ej: Repartidor">
+                      <button class="btn btn-dark fw-bold" onclick="TeamView.addRole()">AÑADIR</button>
+                  </div>
+                  <div id="roles-list-container" class="list-group shadow-sm"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal fade" id="modal-staff" tabindex="-1" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+              <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header p-3 border-0 bg-light d-flex justify-content-between align-items-center">
+                  <h6 class="modal-title fw-black text-uppercase mb-0 text-dark" style="font-size: 13px;" id="modal-staff-title">
+                    <i class="bi bi-person-badge text-brand me-2"></i>Ficha de Empleado
+                  </h6>
+                  <div class="d-flex align-items-center">
+                      <button type="button" class="btn btn-outline-danger btn-sm rounded-pill fw-bold px-3 shadow-sm me-3" id="btn-delete-staff" onclick="TeamView.confirmDelete()" style="display:none;" title="Eliminar permanentemente (Usar si hay duplicados)">
+                          <i class="bi bi-trash3-fill me-1"></i> Eliminar Ficha
+                      </button>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                  
+                  <input type="hidden" id="staff-id">
+                  
+                  <div class="row g-3">
+                      <div class="col-md-8">
+                          <label class="small fw-bold text-muted mb-1" style="font-size:10px;">NOMBRE COMPLETO</label>
+                          <input type="text" class="form-control fw-black shadow-sm border-dark" id="staff-name" placeholder="Ej: Carlos Martínez">
+                      </div>
+                      
+                      <div class="col-md-4">
+                          <label class="small fw-bold text-muted mb-1" style="font-size:10px;">DNI / NIE / PASAPORTE</label>
+                          <input type="text" class="form-control fw-bold shadow-sm" id="staff-dni" placeholder="Ej: 12345678X">
+                      </div>
+                      
+                      <div class="col-md-6 mt-3">
+                          <label class="small fw-bold text-muted mb-1" style="font-size:10px;">ROL / PUESTO</label>
+                          <select class="form-select fw-bold shadow-sm" id="staff-role"></select>
+                      </div>
+
+                      <div class="col-md-6 mt-3">
+                          <label class="small fw-bold text-muted mb-1" style="font-size:10px;">PIN DE ACCESO (TPV / Fichajes)</label>
+                          <div class="input-group shadow-sm">
+                              <span class="input-group-text bg-light border-end-0"><i class="bi bi-key-fill"></i></span>
+                              <input type="password" class="form-control border-start-0 fw-black text-center letter-spacing-2" id="staff-pin" maxlength="4" placeholder="****">
+                          </div>
+                      </div>
+
+                      <div class="col-md-12 mt-4">
+                          <div class="p-3 bg-light rounded-3 border border-dashed">
+                              <label class="small fw-black text-dark mb-1" style="font-size:10px;"><i class="bi bi-envelope-at me-1"></i> EMAIL DE CONTACTO / GOOGLE CALENDAR</label>
+                              <input type="email" class="form-control form-control-sm fw-bold shadow-sm mt-1" id="staff-email" placeholder="usuario@gmail.com">
+                          </div>
+                      </div>
+                      
+                      <div class="col-md-6 mt-4">
+                          <label class="small fw-bold text-muted mb-1" style="font-size:10px;">COSTE HORA (Salarial)</label>
+                          <div class="input-group input-group-sm shadow-sm w-75">
+                              <input type="number" step="any" class="form-control fw-bold" id="staff-wage" placeholder="0.00">
+                              <span class="input-group-text bg-light fw-bold">€/h</span>
+                          </div>
+                      </div>
+
+                      <div class="col-md-6 mt-4">
+                          <div class="p-3 rounded-3 border h-100 d-flex flex-column justify-content-center" id="status-container">
+                              <label class="small fw-black text-muted mb-2 text-uppercase" style="font-size:10px;">ESTADO DEL EMPLEADO</label>
+                              <div class="form-check form-switch fs-5">
+                                  <input class="form-check-input shadow-sm" type="checkbox" id="staff-active" checked onchange="TeamView.updateStatusStyle()">
+                                  <label class="form-check-label fs-6 fw-bold ms-2" for="staff-active" id="staff-active-label">Trabajador Activo</label>
+                              </div>
+                              <div class="small text-muted mt-1" style="font-size:10px; line-height: 1.2;">
+                                 Si el contrato finaliza, desmarca esta casilla para darle de baja sin perder su historial.
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                </div>
+                <div class="modal-footer p-3 border-0 bg-light d-flex justify-content-end">
+                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border me-2" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-dark rounded-pill px-5 fw-black shadow" id="btn-save-staff" onclick="TeamView.saveStaff(this)">Guardar Ficha</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal fade" id="modal-confirm-delete" tabindex="-1" style="z-index: 1060;" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+              <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-body p-4 text-center">
+                  <i class="bi bi-exclamation-triangle-fill text-danger mb-3" style="font-size: 3rem;"></i>
+                  <h6 class="fw-black text-uppercase mb-2">¿Eliminar Ficha?</h6>
+                  <p class="small text-muted mb-4">Esta acción borrará al trabajador por completo. Si solo finalizó su contrato, es mejor "Dar de Baja" desde su ficha.</p>
+                  <div class="d-flex flex-column gap-2">
+                      <button type="button" class="btn btn-danger fw-black rounded-pill shadow" id="btn-confirm-delete" onclick="TeamView.executeDelete(this)">SÍ, ELIMINAR</button>
+                      <button type="button" class="btn btn-light fw-bold rounded-pill border" data-bs-dismiss="modal">CANCELAR</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        this.renderTabContent();
+    },
+
+    setTab: function(tab) {
+        this.activeTab = tab;
+        this.renderTabContent();
+    },
+
+    renderTabContent: function() {
+        const area = document.getElementById('team-content-area');
+        
+        if (this.activeTab === 'MANAGEMENT') {
+            area.innerHTML = `
+              <div class="row mb-4 align-items-center">
+                  <div class="col-md-6">
+                      <div class="input-group shadow-sm rounded-pill bg-white border">
+                          <span class="input-group-text bg-transparent border-0 text-muted"><i class="bi bi-search"></i></span>
+                          <input type="text" class="form-control border-0 fw-bold bg-transparent" placeholder="Buscar por nombre o DNI..." onkeyup="TeamView.filter(this.value)">
+                      </div>
+                  </div>
+                  <div class="col-md-6 text-end">
+                      <span class="badge bg-white text-dark border shadow-sm px-3 py-2 me-2"><i class="bi bi-people-fill me-1 text-brand"></i> <span id="team-count">0</span> Activos</span>
+                      <button class="btn btn-outline-dark rounded-pill px-3 fw-bold py-2 shadow-sm me-2" onclick="TeamView.openRolesModal()">⚙️ PUESTOS</button>
+                      <button class="btn btn-brand-titanium rounded-pill px-4 fw-black py-2 shadow" onclick="TeamView.openStaffModal()">+ NUEVO TRABAJADOR</button>
+                  </div>
+              </div>
+              
+              <div class="table-responsive bg-white rounded-4 shadow-sm border">
+                  <table class="table table-hover align-middle mb-0">
+                      <thead class="bg-light text-muted small fw-black text-uppercase" style="font-size: 10px;">
+                          <tr>
+                              <th class="ps-4 py-3 border-0">Estado</th>
+                              <th class="border-0">Nombre / DNI</th>
+                              <th class="border-0">Puesto</th>
+                              <th class="border-0">Contacto</th>
+                              <th class="text-center border-0">PIN</th>
+                              <th class="text-end pe-4 border-0">Acciones</th>
+                          </tr>
+                      </thead>
+                      <tbody id="team-list-body">
+                          <tr id="table-loading-row"><td colspan="6" class="text-center p-5"><div class="spinner-border text-brand"></div></td></tr>
+                      </tbody>
+                  </table>
+              </div>
+            `;
+            this.loadData();
+        } else {
+            // 🔥 NUEVOS FILTROS DESDE / HASTA
+            area.innerHTML = `
+              <div class="row mb-4 align-items-end animate__animated animate__fadeIn">
+                  <div class="col-md-3">
+                      <label class="small fw-bold text-muted mb-1" style="font-size:10px;">TRABAJADOR</label>
+                      <select id="audit-emp-filter" class="form-select fw-bold shadow-sm border-dark" onchange="TeamView.applyAuditFilters()">
+                          <option value="ALL">Todos los empleados</option>
+                      </select>
+                  </div>
+                  <div class="col-md-3">
+                      <label class="small fw-bold text-muted mb-1" style="font-size:10px;">DESDE (INICIO)</label>
+                      <input type="date" id="audit-date-start" class="form-control fw-bold shadow-sm border-dark" onchange="TeamView.applyAuditFilters()">
+                  </div>
+                  <div class="col-md-3">
+                      <label class="small fw-bold text-muted mb-1" style="font-size:10px;">HASTA (FIN)</label>
+                      <input type="date" id="audit-date-end" class="form-control fw-bold shadow-sm border-dark" onchange="TeamView.applyAuditFilters()">
+                  </div>
+                  <div class="col-md-3 text-end mt-3 mt-md-0 d-flex gap-2 justify-content-end">
+                      <button class="btn btn-outline-danger rounded-pill px-4 py-2 fw-black shadow-sm" onclick="TeamView.exportToPDF()">
+                          <i class="bi bi-file-earmark-pdf-fill me-2"></i> PDF
+                      </button>
+                      <button class="btn btn-success rounded-pill px-4 py-2 fw-black shadow" onclick="TeamView.exportToExcel()">
+                          <i class="bi bi-file-earmark-excel-fill me-2"></i> EXCEL
+                      </button>
+                  </div>
+              </div>
+              <div id="audit-dashboard-content">
+                  <div class="p-5 text-center"><div class="spinner-border text-dark"></div><p class="mt-3 fw-bold text-muted">Auditando consumos de personal reales...</p></div>
+              </div>
+            `;
+            this.loadAuditData();
+        }
+    },
+
+    loadData: async function() {
+        HandooApp.ui.setLoading(true);
+        const [resStaff, resSettings] = await Promise.all([
+            HandooApp.api('team.get_all'),
+            HandooApp.api('admin.get_settings')
+        ]);
+        HandooApp.ui.setLoading(false);
+
+        if (resSettings && resSettings.ok) {
+            this.rolesData = resSettings.data.team_roles || ['COCINA', 'SALA', 'ENCARGADO', 'ADMIN'];
+            window.HandooRolesDB = this.rolesData;
+        }
+
+        if (resStaff && resStaff.ok) {
+            this.staffData = resStaff.data;
+            window.HandooStaffDB = this.staffData;
+            if (this.activeTab === 'MANAGEMENT') this.renderTable(this.staffData);
+        } else {
+            HandooApp.ui.showToast("Error al cargar equipo", "error");
+        }
+    },
+
+    renderTable: function(data) {
+        const tbody = document.getElementById('team-list-body');
+        const countEl = document.getElementById('team-count');
+        if (countEl) countEl.innerText = data.filter(d=>d.active).length;
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center p-5 text-muted fw-bold">No hay empleados registrados.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(s => `
+        <tr onclick="TeamView.openStaffModal('${s.id}')" class="${!s.active ? 'opacity-50' : ''}">
+            <td class="ps-4">
+                <span class="badge ${s.active ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-secondary bg-opacity-10 text-secondary border border-secondary'} fw-bold" style="font-size: 10px;">
+                    ${s.active ? 'ACTIVO' : 'BAJA'}
+                </span>
+            </td>
+            <td>
+                <div class="fw-black text-dark text-uppercase">${s.name}</div>
+                <div class="small text-muted fw-bold" style="font-size: 11px;">DNI: ${s.dni || '---'}</div>
+            </td>
+            <td>
+                <span class="badge bg-dark bg-opacity-10 text-dark role-badge border border-dark border-opacity-25">${s.role}</span>
+            </td>
+            <td>
+                <div class="small text-muted fw-bold" style="font-size: 11px;"><i class="bi bi-envelope me-1"></i> ${s.email || '---'}</div>
+            </td>
+            <td class="text-center">
+                <div class="fw-black text-muted letter-spacing-2">****</div>
+            </td>
+            <td class="text-end pe-4">
+                <button class="btn btn-light btn-sm rounded-pill fw-bold border shadow-sm px-3" onclick="event.stopPropagation(); TeamView.openStaffModal('${s.id}')">EDITAR</button>
+            </td>
+        </tr>
+        `).join('');
+    },
+
+    filter: function(term) {
+        const termLower = term.toLowerCase();
+        this.renderTable(this.staffData.filter(s => 
+            s.name.toLowerCase().includes(termLower) || 
+            (s.dni && s.dni.toLowerCase().includes(termLower))
+        ));
+    },
+
+    // --- PUESTOS ---
+    openRolesModal: function() { this.renderRolesList(); new bootstrap.Modal(document.getElementById('modal-roles')).show(); },
+    renderRolesList: function() {
+        document.getElementById('roles-list-container').innerHTML = this.rolesData.map((r, i) => `
+            <div class="list-group-item d-flex justify-content-between align-items-center fw-bold border-0 border-bottom">${r} <button class="btn btn-link text-danger p-0" onclick="TeamView.deleteRole(${i})"><i class="bi bi-trash-fill"></i></button></div>
+        `).join('');
+        this.updateStaffRoleDropdown(); 
+    },
+    addRole: async function() {
+        const input = document.getElementById('new-role-input');
+        const val = input.value.trim().toUpperCase();
+        if (val && !this.rolesData.includes(val)) {
+            const newRoles = [...this.rolesData, val];
+            HandooApp.ui.setLoading(true);
+            const res = await HandooApp.api('admin.save_settings', { team_roles: newRoles });
+            HandooApp.ui.setLoading(false);
+            
+            if (res && res.ok) {
+                this.rolesData = newRoles;
+                window.HandooRolesDB = this.rolesData;
+                input.value = '';
+                this.renderRolesList();
+                HandooApp.ui.showToast("Puesto añadido", "success");
+            } else {
+                HandooApp.ui.showToast("Error al guardar puesto", "error");
+            }
+        }
+    },
+    deleteRole: function(i) {
+        const customConfirmHtml = `
+            <div class="modal fade" id="temp-role-confirm" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content border-0 shadow-lg rounded-4 p-3 text-center">
+                        <h6 class="fw-black mb-3">¿Borrar puesto?</h6>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-light flex-grow-1 fw-bold rounded-pill" data-bs-dismiss="modal">No</button>
+                            <button class="btn btn-danger flex-grow-1 fw-black rounded-pill" onclick="TeamView.executeDeleteRole(${i})">Sí</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', customConfirmHtml);
+        const m = new bootstrap.Modal(document.getElementById('temp-role-confirm'));
+        document.getElementById('temp-role-confirm').addEventListener('hidden.bs.modal', function () { this.remove(); });
+        m.show();
+    },
+    executeDeleteRole: async function(i) {
+        const newRoles = [...this.rolesData];
+        newRoles.splice(i, 1);
+        
+        HandooApp.ui.setLoading(true);
+        const res = await HandooApp.api('admin.save_settings', { team_roles: newRoles });
+        HandooApp.ui.setLoading(false);
+        
+        if (res && res.ok) {
+            this.rolesData = newRoles;
+            window.HandooRolesDB = this.rolesData;
+            this.renderRolesList();
+            HandooApp.ui.showToast("Puesto eliminado", "info");
+        } else {
+            HandooApp.ui.showToast("Error al eliminar puesto", "error");
+        }
+        bootstrap.Modal.getInstance(document.getElementById('temp-role-confirm')).hide();
+    },
+    updateStaffRoleDropdown: function() {
+        const sel = document.getElementById('staff-role');
+        if (sel) sel.innerHTML = this.rolesData.map(r => `<option value="${r}">${r}</option>`).join('');
+    },
+
+    // --- FICHAS DE EMPLEADO ---
+    openStaffModal: function(id = null) {
+        this.updateStaffRoleDropdown(); 
+        document.getElementById('staff-id').value = id || '';
+        document.getElementById('btn-delete-staff').style.display = id ? 'block' : 'none';
+        document.getElementById('modal-staff-title').innerHTML = id ? '<i class="bi bi-person-gear text-brand me-2"></i>Editar Ficha' : '<i class="bi bi-person-plus text-brand me-2"></i>Alta de Empleado';
+
+        const btnSave = document.getElementById('btn-save-staff');
+        btnSave.disabled = false;
+        btnSave.innerHTML = 'Guardar Ficha';
+
+        if (id) {
+            const s = this.staffData.find(x => x.id === id);
+            document.getElementById('staff-name').value = s.name || '';
+            document.getElementById('staff-dni').value = s.dni || '';
+            document.getElementById('staff-role').value = s.role;
+            document.getElementById('staff-pin').value = s.pin || '';
+            document.getElementById('staff-email').value = s.email || '';
+            document.getElementById('staff-wage').value = s.wage || '';
+            document.getElementById('staff-active').checked = s.active;
+        } else {
+            document.getElementById('staff-name').value = '';
+            document.getElementById('staff-dni').value = '';
+            if(this.rolesData.length > 0) document.getElementById('staff-role').value = this.rolesData[0];
+            document.getElementById('staff-pin').value = '';
+            document.getElementById('staff-email').value = '';
+            document.getElementById('staff-wage').value = '';
+            document.getElementById('staff-active').checked = true;
+        }
+        
+        this.updateStatusStyle();
+        new bootstrap.Modal(document.getElementById('modal-staff')).show();
+    },
+
+    updateStatusStyle: function() {
+        const chk = document.getElementById('staff-active');
+        const label = document.getElementById('staff-active-label');
+        const container = document.getElementById('status-container');
+        
+        if(chk.checked) {
+            label.innerText = "Trabajador Activo"; label.classList.replace('text-danger', 'text-success');
+            container.classList.add('bg-success', 'bg-opacity-10', 'border-success'); container.classList.remove('bg-danger', 'bg-opacity-10', 'border-danger');
+        } else {
+            label.innerText = "Trabajador en Baja"; label.classList.replace('text-success', 'text-danger');
+            container.classList.add('bg-danger', 'bg-opacity-10', 'border-danger'); container.classList.remove('bg-success', 'bg-opacity-10', 'border-success');
+        }
+    },
+
+    saveStaff: async function(btn) {
+        const name = document.getElementById('staff-name').value;
+        const pin = document.getElementById('staff-pin').value;
+        
+        if(!name || !pin) { return HandooApp.ui.showToast("El Nombre y el PIN son obligatorios", "warning"); }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i> Guardando...';
+
+        const id = document.getElementById('staff-id').value;
+        const data = {
+            id: id,
+            name: name,
+            dni: document.getElementById('staff-dni').value,
+            role: document.getElementById('staff-role').value,
+            pin: pin,
+            email: document.getElementById('staff-email').value,
+            wage: parseFloat(document.getElementById('staff-wage').value) || 0,
+            active: document.getElementById('staff-active').checked
+        };
+
+        const res = await HandooApp.api('team.save', data);
+        
+        if(res && res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('modal-staff')).hide();
+            HandooApp.ui.showToast("Ficha guardada correctamente", "success");
+            this.cleanShadows();
+            this.loadData();
+        } else {
+            HandooApp.ui.showToast("Error al guardar", "error");
+        }
+        
+        btn.disabled = false; btn.innerHTML = 'Guardar Ficha';
+    },
+
+    confirmDelete: function() {
+        new bootstrap.Modal(document.getElementById('modal-confirm-delete')).show();
+    },
+
+    executeDelete: async function(btn) {
+        btn.disabled = true; btn.innerHTML = '<i class="spinner-border spinner-border-sm"></i>';
+        const id = document.getElementById('staff-id').value;
+        
+        const res = await HandooApp.api('team.purge', { id: id });
+        
+        if (res && res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('modal-confirm-delete')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('modal-staff')).hide();
+            HandooApp.ui.showToast("Ficha eliminada para siempre", "info");
+            this.cleanShadows();
+            this.loadData();
+        } else {
+            HandooApp.ui.showToast("Error al eliminar", "error");
+        }
+        btn.disabled = false; btn.innerHTML = 'SÍ, ELIMINAR';
+    },
+    
+    cleanShadows: function() {
+        setTimeout(() => {
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open'); document.body.style = '';
+        }, 300);
+    },
+
+    // --- CARGA DE AUDITORÍA (CON BLINDAJE DE CATÁLOGO) ---
+    loadAuditData: async function() {
+        try {
+            // 🔥 BLINDAJE: Obtenemos consumos, y si el catálogo no está en memoria, lo traemos también en segundo plano
+            const [res, resCat] = await Promise.all([
+                HandooApp.api('team.get_consumptions'),
+                (!window.HandooCatalogGlobal || window.HandooCatalogGlobal.length === 0) ? HandooApp.api('inventory.get_catalog') : Promise.resolve(null)
+            ]);
+            
+            if (resCat && resCat.ok) window.HandooCatalogGlobal = resCat.data.products || [];
+            
+            const logs = (res && res.ok && res.data) ? res.data : [];
+            const catalog = window.HandooCatalogGlobal || [];
+            const staffDB = window.HandooStaffDB || [];
+            
+            // Rellenar desplegable de empleados
+            const empSelect = document.getElementById('audit-emp-filter');
+            if(empSelect) {
+                const options = staffDB.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+                empSelect.innerHTML = `<option value="ALL">Todos los trabajadores</option>` + options;
+            }
+
+            // Poner fechas por defecto: Desde el día 1 del mes actual, hasta HOY
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById('audit-date-start').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('audit-date-end').value = today.toISOString().split('T')[0];
+            
+            // Cruzar datos y valorar el coste
+            this.allAuditLogs = logs.map(log => {
+                const prod = catalog.find(p => String(p.id) === String(log.producto_id)) || { nombre: 'Producto Eliminado', pvp: 0, last_cost: 0, last_purchase_price: 0, coste: 0 };
+                const employee = staffDB.find(s => String(s.id) === String(log.staff_id)) || { name: 'Ex-Empleado' };
+                
+                const unitCost = parseFloat(prod.last_purchase_price || prod.last_cost || prod.coste || 0);
+                const lineCost = unitCost * parseFloat(log.cantidad || 1);
+                
+                return {
+                    id: log.timestamp,
+                    raw_date: new Date(log.timestamp),
+                    fecha: log.fecha || new Date(log.timestamp).toLocaleDateString('es-ES'),
+                    empleado_id: log.staff_id,
+                    empleado: employee.name,
+                    producto: prod.nombre,
+                    cantidad: log.cantidad,
+                    coste_total: lineCost
+                };
+            }).sort((a,b) => b.raw_date - a.raw_date);
+            
+            this.applyAuditFilters();
+            
+        } catch (e) {
+            console.error(e);
+            document.getElementById('audit-dashboard-content').innerHTML = '<div class="p-5 text-center text-danger fw-bold"><i class="bi bi-exclamation-triangle fs-1"></i><br>Error conectando con la base de datos.</div>';
+        }
+    },
+
+    // 🔥 APLICAR FILTROS (POR EMPLEADO Y RANGO DE FECHAS)
+    applyAuditFilters: function() {
+        const empId = document.getElementById('audit-emp-filter').value;
+        const startDateStr = document.getElementById('audit-date-start').value;
+        const endDateStr = document.getElementById('audit-date-end').value;
+        
+        // Formatear fechas para que comparen bien desde las 00:00:00 hasta las 23:59:59
+        const start = startDateStr ? new Date(startDateStr) : new Date(0);
+        start.setHours(0, 0, 0, 0);
+        
+        const end = endDateStr ? new Date(endDateStr) : new Date(8640000000000000); // Futuro lejano si está vacío
+        end.setHours(23, 59, 59, 999);
+        
+        this.filteredLogs = this.allAuditLogs.filter(log => {
+            let passEmp = (empId === 'ALL') || (String(log.empleado_id) === String(empId));
+            let passDate = (log.raw_date >= start && log.raw_date <= end);
+            return passEmp && passDate;
+        });
+        
+        // Recalcular KPIs filtrados
+        let totalCost = 0;
+        this.filteredLogs.forEach(l => totalCost += l.coste_total);
+        const count = this.filteredLogs.length;
+        const media = count > 0 ? (totalCost / count) : 0;
+        
+        this.renderAuditDashboardReal(this.filteredLogs, totalCost, media, count);
+    },
+
+    renderAuditDashboardReal: function(logs, totalCost, media, count) {
+        const container = document.getElementById('audit-dashboard-content');
+        if(!container) return;
+
+        let rowsHtml = logs.map(log => `
+            <tr>
+                <td class="text-muted">${log.fecha}</td>
+                <td class="fw-bold text-dark text-uppercase">${log.empleado}</td>
+                <td><span class="badge bg-light text-dark border">${log.producto}</span></td>
+                <td class="text-center fw-black">${log.cantidad}</td>
+                <td class="text-end fw-black text-danger">${log.coste_total.toFixed(2)} €</td>
+            </tr>
+        `).join('');
+
+        if(logs.length === 0) {
+            rowsHtml = '<tr><td colspan="5" class="text-center p-5 text-muted fw-bold">No hay consumos en este periodo o para este trabajador.</td></tr>';
+        }
+
+        container.innerHTML = `
+          <div class="row g-4 mb-4">
+            <div class="col-md-4">
+               <div class="p-4 bg-white shadow-sm kpi-card border-bottom border-4 border-dark h-100">
+                  <div class="text-muted small fw-black text-uppercase">Coste Total Filtrado</div>
+                  <div class="fs-2 fw-black text-dark">${totalCost.toFixed(2)} €</div>
+                  <div class="small text-muted mt-2"><i class="bi bi-info-circle me-1"></i> Coste de materia prima perdida</div>
+               </div>
+            </div>
+            <div class="col-md-4">
+               <div class="p-4 bg-white shadow-sm kpi-card border-bottom border-4 border-warning h-100">
+                  <div class="text-muted small fw-black text-uppercase">Media del Filtro</div>
+                  <div class="fs-2 fw-black text-dark">${media.toFixed(2)} €</div>
+                  <div class="small ${media > 6 ? 'text-danger' : 'text-success'} mt-2 fw-bold">
+                     <i class="bi ${media > 6 ? 'bi-graph-up-arrow' : 'bi-check-circle-fill'} me-1"></i> 
+                     ${media > 6 ? 'Revisar política de consumos' : 'Gasto controlado'}
+                  </div>
+               </div>
+            </div>
+            <div class="col-md-4">
+               <div class="p-4 bg-white shadow-sm kpi-card border-bottom border-4 border-dark h-100">
+                  <div class="text-muted small fw-black text-uppercase">Tickets Filtrados</div>
+                  <div class="fs-2 fw-black text-dark">${count} <span class="fs-6 text-muted">Consumos</span></div>
+               </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
+             <div class="d-flex justify-content-between align-items-center mb-4">
+                <h6 class="fw-black text-uppercase m-0"><i class="bi bi-receipt text-brand me-2"></i> Listado Detallado</h6>
+             </div>
+             <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+               <table class="table table-hover align-middle">
+                  <thead class="bg-light sticky-top shadow-sm"><tr class="small text-muted fw-black text-uppercase" style="font-size: 10px;"><th class="ps-3">Fecha</th><th>Trabajador</th><th>Producto</th><th class="text-center">Cant.</th><th class="text-end pe-3">Impacto Contable</th></tr></thead>
+                  <tbody style="font-size: 12px;">
+                     ${rowsHtml}
+                  </tbody>
+               </table>
+             </div>
+          </div>
+        `;
+    },
+
+    // --- EXPORTACIÓN A EXCEL (CON FORMATO Y COLORES) ---
+    exportToExcel: function() {
+        if(!this.filteredLogs || this.filteredLogs.length === 0) return HandooApp.ui.showToast("No hay datos", "warning");
+
+        // Creamos una tabla HTML con estilos CSS en línea (Excel los respeta nativamente)
+        let table = `<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head><meta charset="UTF-8"></head><body>
+        <table border="1" style="font-family: Arial, sans-serif; border-collapse: collapse;">`;
+        
+        // Cabecera principal Handoo
+        table += `<tr><td colspan="5" style="background-color: #0f172a; color: #ffffff; font-size: 16px; font-weight: bold; text-align: center; height: 40px; vertical-align: middle;">HANDOO OS - AUDITORÍA DE CONSUMOS DE PERSONAL</td></tr>`;
+        
+        // Títulos de columnas
+        table += `<tr>
+            <th style="background-color: #ffc107; color: #0f172a; font-weight: bold; height: 30px;">FECHA</th>
+            <th style="background-color: #ffc107; color: #0f172a; font-weight: bold;">TRABAJADOR</th>
+            <th style="background-color: #ffc107; color: #0f172a; font-weight: bold;">PRODUCTO</th>
+            <th style="background-color: #ffc107; color: #0f172a; font-weight: bold;">CANTIDAD</th>
+            <th style="background-color: #ffc107; color: #0f172a; font-weight: bold;">IMPACTO CONTABLE</th>
+        </tr>`;
+        
+        // Datos filtrados
+        this.filteredLogs.forEach(l => {
+            const cost = l.coste_total.toFixed(2).replace('.', ','); 
+            table += `<tr>
+                <td style="text-align: center;">${l.fecha}</td>
+                <td><b>${l.empleado}</b></td>
+                <td>${l.producto}</td>
+                <td style="text-align: center;">${l.cantidad}</td>
+                <td style="text-align: right; color: #dc2626; font-weight: bold;">${cost} €</td>
+            </tr>`;
+        });
+        table += `</table></body></html>`;
+
+        // Descargamos simulando un archivo .xls antiguo para que coja el HTML
+        const blob = new Blob([table], { type: 'application/vnd.ms-excel' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Auditoria_Handoo_${new Date().toISOString().split('T')[0]}.xls`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        HandooApp.ui.showToast("Excel con formato descargado", "success");
+    },
+
+    // --- EXPORTACIÓN A PDF (CALIDAD ALTA) ---
+    exportToPDF: function() {
+        if(!this.filteredLogs || this.filteredLogs.length === 0) return HandooApp.ui.showToast("No hay datos para exportar", "warning");
+
+        // Instanciamos el motor PDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // 1. DIBUJAR CABECERA HANDOO OS
+        doc.setFillColor(15, 23, 42); // Fondo Azul oscuro (#0f172a)
+        doc.rect(0, 0, 210, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text("Handoo // OS", 14, 20);
+        
+        doc.setTextColor(255, 193, 7); // Letras amarillas (#ffc107)
+        doc.setFontSize(10);
+        doc.text("REPORTE DE AUDITORÍA FINANCIERA: CONSUMOS DE PERSONAL", 14, 30);
+
+        // 2. PREPARAR DATOS
+        const tableData = this.filteredLogs.map(l => [
+            l.fecha, 
+            l.empleado, 
+            l.producto, 
+            l.cantidad.toString(), 
+            l.coste_total.toFixed(2) + ' €'
+        ]);
+
+        // 3. DIBUJAR TABLA INTELIGENTE
+        doc.autoTable({
+            startY: 50,
+            head: [['FECHA', 'TRABAJADOR', 'PRODUCTO', 'CANT.', 'IMPACTO (€)']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [255, 193, 7], textColor: [15, 23, 42], fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [248, 250, 252] },
+            styles: { font: 'helvetica', fontSize: 10, cellPadding: 4 },
+            columnStyles: {
+                3: { halign: 'center' },
+                4: { halign: 'right', textColor: [220, 38, 38], fontStyle: 'bold' } // Dinero en rojo
+            }
+        });
+
+        // 4. DESCARGAR
+        doc.save(`Auditoria_Handoo_${new Date().toISOString().split('T')[0]}.pdf`);
+        HandooApp.ui.showToast("PDF Premium descargado", "success");
+    },
+
+    // --- DASHBOARD DE AUDITORÍA FINANCIERA (Deprecado, usar renderAuditDashboardReal) ---
+    renderAuditDashboard: function(container) {
+        // ... conservado por compatibilidad si es necesario
+    },
+
+    // --- PORTAL DE AUTOCONSUMO (Kiosco para Empleados) ---
+    openSelfConsumption: function() {
+        const bodyHtml = `
+            <div id="staff-portal-step-1" class="text-center">
+                <i class="bi bi-person-badge text-brand mb-3" style="font-size: 3rem;"></i>
+                <h6 class="fw-black text-dark mb-4 text-uppercase">Identificación de Personal</h6>
+                <input type="password" id="staff-auth-pin" class="form-control form-control-lg text-center fw-black letter-spacing-2 mb-4 shadow-sm mx-auto" style="max-width: 200px;" maxlength="4" placeholder="PIN">
+                <button class="btn btn-dark w-100 fw-black py-3 rounded-4 shadow" onclick="TeamView.verifyStaffForConsumption()">ACCEDER AL PORTAL</button>
+            </div>
+            
+            <div id="staff-portal-step-2" style="display:none;">
+                <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded-4 mb-4 border">
+                    <div>
+                        <div class="small text-muted fw-bold" style="font-size:10px;">TRABAJADOR ACTIVO</div>
+                        <div class="fw-black text-uppercase text-dark" id="staff-active-name"></div>
+                    </div>
+                    <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                </div>
+                
+                <div class="mb-3 position-relative">
+                    <label class="small fw-bold text-muted mb-1" style="font-size:10px;">BUSCAR PLATO O BEBIDA</label>
+                    <div class="input-group shadow-sm">
+                        <span id="staff-search-icon" class="input-group-text bg-white border-end-0" style="cursor: pointer;" onclick="document.getElementById('staff-prod-search').focus(); TeamView.searchStaffProduct(document.getElementById('staff-prod-search').value)">
+                            <i class="bi bi-search text-brand"></i>
+                        </span>
+                        <input type="text" id="staff-prod-search" class="form-control border-start-0 fw-bold border-dark" placeholder="Ej: Burger, Coca Cola..." onkeyup="TeamView.searchStaffProduct(this.value)" onclick="TeamView.searchStaffProduct(this.value)" autocomplete="off">
+                    </div>
+                    <div id="staff-prod-results" class="list-group position-absolute w-100 shadow-lg rounded-3 border-dark mt-1" style="display:none; z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                </div>
+
+                <div class="row g-2 align-items-center mb-4">
+                    <div class="col-8">
+                        <input type="hidden" id="staff-selected-prod-id">
+                    </div>
+                    <div class="col-4">
+                        <label class="small fw-bold text-muted mb-1" style="font-size:10px;">CANTIDAD</label>
+                        <input type="number" id="staff-consumption-qty" class="form-control fw-black text-center shadow-sm border-dark" value="1" min="1">
+                    </div>
+                </div>
+                
+                <button class="btn btn-brand-titanium w-100 fw-black py-3 rounded-4 shadow mt-2" onclick="TeamView.registerStaffConsumption(this)">REGISTRAR CONSUMO</button>
+            </div>
+        `;
+
+        HandooApp.ui.createCustomModal("AUTOCONSUMO STAFF", bodyHtml, null, "CERRAR");
+        
+        const mainBtn = document.getElementById('handoo-custom-modal-btn');
+        if(mainBtn) mainBtn.style.display = 'none';
+        
+        setTimeout(() => { 
+            const pinInput = document.getElementById('staff-auth-pin');
+            if(pinInput) pinInput.focus(); 
+        }, 400);
+
+        // Evento global para cerrar la lista si haces clic fuera de ella
+        document.addEventListener('click', this.closeStaffDropdownOnClickOutside);
+    },
+
+    closeStaffDropdownOnClickOutside: function(event) {
+        const searchInput = document.getElementById('staff-prod-search');
+        const resultsDiv = document.getElementById('staff-prod-results');
+        const searchIcon = document.getElementById('staff-search-icon'); // 🔥 Ahora busca el ID exacto
+        
+        if (searchInput && resultsDiv && !searchInput.contains(event.target) && !resultsDiv.contains(event.target) && (!searchIcon || !searchIcon.contains(event.target))) {
+            resultsDiv.style.display = 'none';
+        }
+    },
+
+    verifyStaffForConsumption: async function() {
+        const pin = document.getElementById('staff-auth-pin').value;
+        const staffDB = window.HandooStaffDB || [];
+        const employee = staffDB.find(s => s.pin === pin && s.active);
+
+        if (employee) {
+            window.activeStaffId = employee.id;
+            document.getElementById('staff-active-name').innerText = employee.name;
+            
+            // 🔥 BLINDAJE: Si la memoria está vacía, descarga el catálogo en segundo plano
+            if (!window.HandooCatalogGlobal || window.HandooCatalogGlobal.length === 0) {
+                const btn = document.querySelector('#staff-portal-step-1 button');
+                btn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i> CARGANDO CARTA...';
+                btn.disabled = true;
+                try {
+                    const res = await HandooApp.api('inventory.get_catalog');
+                    if (res && res.ok) window.HandooCatalogGlobal = res.data.products || [];
+                } catch(e) { console.error("Error cargando carta:", e); }
+            }
+
+            // Animación de transición
+            document.getElementById('staff-portal-step-1').classList.add('animate__animated', 'animate__fadeOut');
+            setTimeout(() => {
+                document.getElementById('staff-portal-step-1').style.display = 'none';
+                const step2 = document.getElementById('staff-portal-step-2');
+                step2.style.display = 'block';
+                step2.classList.add('animate__animated', 'animate__fadeIn');
+                
+                // Hace focus y despliega la lista automáticamente
+                const searchBox = document.getElementById('staff-prod-search');
+                searchBox.focus();
+                TeamView.searchStaffProduct(searchBox.value);
+            }, 300);
+        } else {
+            HandooApp.ui.showToast("PIN incorrecto o empleado inactivo", "error");
+            document.getElementById('staff-auth-pin').value = '';
+        }
+    },
+
+    searchStaffProduct: function(term) {
+        const resultsDiv = document.getElementById('staff-prod-results');
+        const termLower = (term || '').toLowerCase();
+        const catalog = window.HandooCatalogGlobal || [];
+
+        const filtered = catalog.filter(p => {
+            const name = (p.nombre || p.name || '').toLowerCase();
+            const tipo = (p.type || p.tipo || '').toUpperCase();
+            
+            // 🔥 FILTRO AMPLIADO: Incluimos FINAL_PRODUCT para productos importados o antiguos
+            const isConsumable = tipo === 'VENTA_FINAL' || tipo === 'FINAL_PRODUCT' || tipo === 'PRODUCT';
+            
+            if (!isConsumable) return false;
+            if (!termLower) return true; 
+            return name.includes(termLower);
+        });
+
+        if (filtered.length === 0) {
+            resultsDiv.innerHTML = '<div class="list-group-item text-muted small fw-bold bg-light">No hay productos de venta disponibles.</div>';
+        } else {
+            resultsDiv.innerHTML = filtered.slice(0, 30).map(p => {
+                const safeName = (p.nombre || p.name || 'S/N').toUpperCase().replace(/'/g, "\\'");
+                return `<button type="button" class="list-group-item list-group-item-action fw-bold border-0 border-bottom py-3" style="font-size:12px;" onclick="TeamView.selectStaffProduct('${p.id}', '${safeName}')">
+                            <i class="bi bi-cup-hot me-2 text-brand"></i> ${safeName}
+                        </button>`;
+            }).join('');
+        }
+        resultsDiv.style.display = 'block';
+    },
+
+    selectStaffProduct: function(id, name) {
+        document.getElementById('staff-prod-search').value = name;
+        document.getElementById('staff-selected-prod-id').value = id;
+        document.getElementById('staff-prod-results').style.display = 'none';
+        document.getElementById('staff-consumption-qty').focus();
+    },
+
+    registerStaffConsumption: async function(btn) {
+        const prodId = document.getElementById('staff-selected-prod-id').value;
+        const qty = document.getElementById('staff-consumption-qty').value;
+        const prodName = document.getElementById('staff-prod-search').value;
+        
+        if (!prodId || qty <= 0) return HandooApp.ui.showToast("Selecciona un producto de la lista primero.", "warning");
+
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i> REGISTRANDO...';
+
+        const payload = {
+            staff_id: window.activeStaffId,
+            producto_id: prodId,
+            cantidad: qty,
+            tipo: 'STAFF_CONSUMPTION'
+        };
+
+        const res = await HandooApp.api('team.register_consumption', payload);
+
+        if (res && res.ok) {
+            HandooApp.ui.showToast(`¡Buen provecho! ${qty}x ${prodName} registrado.`, "success");
+            const m = document.getElementById('handoo-custom-modal');
+            if(m) { 
+                const inst = bootstrap.Modal.getInstance(m); 
+                if(inst) inst.hide(); 
+            }
+            this.cleanShadows();
+            
+            // Si la pestaña de Auditoría está abierta, la actualizamos automáticamente
+            if(this.activeTab === 'AUDIT') {
+                this.loadAuditData();
+            }
+        } else {
+            HandooApp.ui.showToast("Error al registrar consumo", "error");
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+};
+</script>

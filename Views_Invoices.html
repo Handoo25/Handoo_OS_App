@@ -1,0 +1,721 @@
+<style>
+  .inv-shell { display: flex; background: white; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; min-height: 850px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+  .inv-sidebar { width: 300px; background: #f8fafc; border-right: 1px solid var(--border); flex-shrink: 0; padding-top: 25px; }
+  .inv-nav-btn { 
+    display: flex; align-items: center; gap: 15px; padding: 20px 30px; border: none; background: none; 
+    width: 100%; text-align: left; font-weight: 800; color: #64748b; transition: 0.3s; 
+    border-bottom: 1px solid #f1f5f9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;
+  }
+  .inv-nav-btn:hover { background: #f1f5f9; color: var(--dark); }
+  .inv-nav-btn.active { background: white; color: var(--dark); border-right: 6px solid var(--brand); }
+  .inv-nav-btn i { font-size: 1.4rem; color: #94a3b8; transition: 0.3s; width: 24px; text-align: center; }
+  .inv-nav-btn.active i { color: var(--brand); }
+  .inv-content { flex-grow: 1; padding: 40px; overflow-y: auto; background: white; }
+  
+  /* TITANIUM BATCH BAR V2.0 */
+  .batch-actions { background: #0f172a; color: white; border-radius: 16px; padding: 15px 25px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-left: 6px solid var(--brand); }
+  .table-check { width: 40px; text-align: center; }
+  
+  .invoice-status-draft { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+  .invoice-status-issued { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  
+  .man-input { font-size: 11px !important; font-weight: 800; border-radius: 6px !important; height: 32px; }
+  .man-row-total { font-weight: 900; color: var(--dark); font-size: 11px; }
+
+  .titanium-block { padding: 20px; border-radius: 16px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); margin-top: 12px; transition: 0.3s; }
+  .block-light { background: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; }
+  .block-dark { background: #0f172a; border: 1px solid #1e293b; color: #fff; }
+  .block-dark .text-muted { color: #94a3b8 !important; }
+  .block-dark .form-control, .block-dark .form-select { background: #1e293b; border-color: #334155; color: #fff; font-size: 11px; }
+  .block-dark .form-control:focus, .block-dark .form-select:focus { background: #1e293b; color: #fff; border-color: var(--brand); }
+
+  /* BOTONES DE ACCIÓN SUPERIOR UNIFICADOS */
+  .btn-top-action {
+    border-radius: 12px;
+    padding: 10px 24px;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+  }
+  
+  .btn-top-danger {
+    background: transparent;
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  
+  .btn-top-danger:hover {
+    background: var(--danger) !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  }
+  
+  .btn-top-white {
+    background: white;
+    color: var(--dark);
+    border-color: var(--border);
+  }
+  
+  .btn-top-white:hover {
+    background: #f8fafc;
+    border-color: var(--dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  
+  .btn-top-dark {
+    background: var(--dark);
+    color: white;
+    border-color: var(--dark);
+  }
+  
+  .btn-top-dark:hover {
+    background: #1e293b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+  }
+
+  /* CALENDARIO ESTILOS */
+  .cal-day-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 10px; background: #fff; transition: 0.2s; cursor: pointer; }
+  .cal-day-box:hover { border-color: var(--brand); transform: translateX(5px); }
+  .cal-date-label { font-weight: 900; font-size: 10px; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px; display: block; }
+  .cal-payment-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #f1f5f9; }
+
+  /* BADGE RED HANDOO */
+  .badge-network { background: #0f172a; color: var(--brand); border: 1px solid var(--brand); font-size: 8px; font-weight: 900; padding: 2px 6px; border-radius: 4px; animation: led-pulse 2s infinite; }
+</style>
+
+<script>
+window.InvoicesView = {
+  activeTab: 'drafts',
+  drafts: [],
+  history: [],
+  effects: [],
+  settings: null,
+  selectedIds: new Set(),
+  currentManualClient: null,
+  currentEditId: null,
+  _currentKeyListener: null,
+
+  render: async function() {
+    const stage = document.getElementById('main-stage');
+    stage.innerHTML = `
+      <div class="bg-dark text-white px-5 py-4 d-flex justify-content-between align-items-center sticky-top shadow">
+         <div><h6 class="h-label text-white-50">SISTEMA FINANCIERO</h6><h2 class="fw-black m-0">GESTIÓN DE FACTURACIÓN</h2></div>
+         <div class="d-flex gap-2">
+            <button class="btn-top-action btn-top-danger shadow-sm" onclick="InvoicesView.openBulkDeleteModal()"><i class="bi bi-radioactive"></i> BORRADO MASIVO</button>
+            <button class="btn-top-action btn-top-white shadow-sm" onclick="InvoicesView.genBatch()"><i class="bi bi-arrow-repeat"></i> GENERAR CICLO</button>
+            <button class="btn-top-action btn-top-dark shadow-sm" onclick="InvoicesView.openManualModal()"><i class="bi bi-plus-circle"></i> FACTURA MANUAL</button>
+         </div>
+      </div>
+      
+      <div class="p-5 animate-slide">
+         <div class="inv-shell">
+            <div class="inv-sidebar" id="inv-sidebar-area"></div>
+            <div class="inv-content" id="invoice-view-content">
+               <div class="text-center p-5"><div class=\"spinner-border text-brand\"></div><p class="mt-3 small fw-bold text-muted">ACCEDIENDO AL LIBRO DIARIO...</p></div>
+            </div>
+         </div>
+      </div>`;
+    this.renderSidebar();
+    this.load();
+  },
+
+  renderSidebar: function() {
+    const nav = document.getElementById('inv-sidebar-area');
+    if(!nav) return;
+    const activeModules = (HandooApp.ui.stats && HandooApp.ui.stats.active_modules) || [];
+
+    const items = [
+      {id:'drafts', icon:'bi-file-earmark-plus', label:'Borradores Pendientes'},
+      {id:'history', icon:'bi-journal-check', label:'Historial de Facturas'},
+      {id:'CALENDAR', icon:'bi-calendar3-range', label:'Calendario de Cobros', license: 'FEAT_CALENDAR_COBRO'}
+    ];
+
+    const filtered = items.filter(m => {
+      if (m.license && !activeModules.includes(m.license)) return false;
+      return true;
+    });
+
+    nav.innerHTML = filtered.map(m => `
+      <button class="inv-nav-btn ${this.activeTab===m.id?'active':''}" onclick="InvoicesView.setTab('${m.id}')">
+        <i class="bi ${m.icon}"></i> ${m.label}
+      </button>`).join('');
+  },
+
+  setTab: function(tab) {
+    this.activeTab = tab;
+    this.selectedIds.clear();
+    this.renderSidebar();
+    if (tab === 'CALENDAR') this.renderCalendar();
+    else this.load();
+  },
+
+  load: async function() {
+    const route = this.activeTab === 'drafts' ? 'invoice.get_drafts' : 'invoice.get_history';
+    const [resData, resSet, resEff] = await Promise.all([
+      HandooApp.api(route),
+      HandooApp.api('admin.get_settings'),
+      HandooApp.api('treasury.list_all_effects')
+    ]);
+    if (resSet.ok) this.settings = resSet.data;
+    if (resEff.ok) this.effects = resEff.data || [];
+    if (resData.ok) {
+      if (this.activeTab === 'drafts') this.drafts = resData.data || [];
+      else {
+         this.history = (resData.data || []).filter(i => new Date(i.fecha).getFullYear() === HandooApp.fiscalYear);
+      }
+      if (this.activeTab !== 'CALENDAR') this.renderList();
+    }
+  },
+
+  renderCalendar: function() {
+    const container = document.getElementById('invoice-view-content');
+    if(!container) return;
+
+    const incoming = (this.effects || []).filter(e => e.direction === 'INBOUND' && e.status === 'PENDIENTE');
+    const grouped = {};
+    incoming.forEach(e => {
+       if(!grouped[e.vencimiento]) grouped[e.vencimiento] = [];
+       grouped[e.vencimiento].push(e);
+    });
+
+    const sortedDates = Object.keys(grouped).sort();
+
+    container.innerHTML = `
+      <div class="animate-slide">
+         <div class="p-4 rounded-4 shadow-sm mt-0 block-dark row align-items-center mb-4">
+            <div class="col-md-1 text-center"><i class="bi bi-calendar3-range fs-2 text-brand"></i></div>
+            <div class="col-md-11 ps-4">
+               <h6 class="fw-black text-uppercase m-0 small" style="color:#fff !important; font-size:12px">Proyección de Tesorería: Cobros a Clientes</h6>
+               <p class="small text-muted m-0">Previsión cronológica de entrada de capital pendiente de liquidar.</p>
+            </div>
+         </div>
+         <div class="mt-4">
+            ${sortedDates.map(date => `
+               <div class="cal-day-box" onclick="InvoicesView.openManualModal('${grouped[date][0].invoice_id}')">
+                  <span class="cal-date-label">${new Date(date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                  ${grouped[date].map(e => `
+                     <div class="cal-payment-item">
+                        <div>
+                           <div class="fw-black text-uppercase" style="font-size:11px">${escapeHTML(e.entity_name || e.client_name)}</div>
+                           <div class="small text-muted" style="font-size:9px">DOC: ${e.invoice_id || 'S/N'} | ${e.metodo}</div>
+                        </div>
+                        <div class="text-end">
+                           <div class="fw-black text-success">+${parseFloat(e.importe).toLocaleString()} €</div>
+                        </div>
+                     </div>
+                  `).join('')}
+               </div>
+            `).join('') || '<div class="p-5 text-center opacity-25 fw-black">NO HAY COBROS PROGRAMADOS</div>'}
+         </div>
+      </div>`;
+  },
+
+  renderList: function() {
+    const data = this.activeTab === 'drafts' ? this.drafts : this.history;
+    const container = document.getElementById('invoice-view-content');
+    if(!container) return;
+
+    let batchHtml = '';
+    if (this.selectedIds.size > 0) {
+      batchHtml = `
+        <div class="batch-actions animate-slide">
+           <div class="fw-black"><i class="bi bi-check2-square text-brand me-2"></i> ${this.selectedIds.size} SELECCIONADOS</div>
+           <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-danger fw-bold shadow" onclick="InvoicesView.deleteBatch()">BORRAR BLOQUE 🚨</button>
+              ${this.activeTab === 'drafts' ? `<button class="btn btn-sm btn-dark fw-black px-4" onclick="InvoicesView.approveBatch()">APROBAR Y EMITIR</button>` : `<button class="btn btn-sm btn-dark fw-black px-4" onclick="InvoicesView.onClickBatchSend()">ENVIAR SELECCIONADAS 📧</button>`}
+           </div>
+        </div>`;
+    }
+
+    container.innerHTML = `
+      ${batchHtml}
+      <div class="card-industrial border-0 overflow-hidden shadow-sm">
+         <div class="table-responsive">
+            <table class="table table-hover m-0 align-middle">
+               <thead class="bg-light">
+                  <tr>
+                     <th class="table-check"><input type="checkbox" id="cb-select-all" onchange="InvoicesView.toggleAll(this.checked)"></th>
+                     <th class="ps-4 py-3">NÚMERO / ID</th>
+                     <th>CLIENTE</th>
+                     <th>CONCEPTO</th>
+                     <th class="text-end">BASE</th>
+                     <th class="text-end">TOTAL</th>
+                     <th>ESTADO</th>
+                     <th class="text-end pe-4">ACCIÓN</th>
+                  </tr>
+               </thead>
+               <tbody>
+                  ${data.map(i => {
+                    const client = this.settings?.clients?.find(c => String(c.id) === String(i.client_id));
+                    return `
+                    <tr onclick="InvoicesView.openManualModal('${i.id}')" style="cursor:pointer" class="${this.selectedIds.has(i.id)?'row-selected':''}">
+                       <td class="table-check" onclick="event.stopPropagation()">
+                          <input type="checkbox" class="cb-invoice" onchange="InvoicesView.toggleSelect('${i.id}', this.checked)" ${this.selectedIds.has(i.id)?'checked':''}>
+                       </td>
+                       <td class="ps-4 font-monospace fw-black ${this.activeTab==='drafts'?'text-muted':''}">
+                          ${i.numero || i.id}
+                          ${client?.handoo_network ? '<br><span class="badge-network"><i class="bi bi-hexagon-fill"></i> NETWORK</span>' : ''}
+                       </td>
+                       <td class="fw-bold text-uppercase">${escapeHTML(i.client_name)}</td>
+                       <td class="small">${escapeHTML(i.item_display_name)}</td>
+                       <td class="text-end font-monospace">${parseFloat(i.base || 0).toLocaleString('es-ES', {minimumFractionDigits:2})} €</td>
+                       <td class="text-end fw-black">${parseFloat(i.total || 0).toLocaleString('es-ES', {minimumFractionDigits:2})} €</td>
+                       <td><span class="badge ${i.status==='DRAFT'?'invoice-status-draft':'invoice-status-issued'}">${i.status}</span></td>
+                       <td class="text-end pe-4" onclick="event.stopPropagation()">
+                          <div class="d-flex justify-content-end gap-2">
+                             ${this.activeTab==='history'?`<button class="btn btn-link text-dark p-0" onclick="InvoicesView.openPDF('${i.id}')" title="Ver PDF"><i class="bi bi-file-earmark-pdf fs-5"></i></button>`:''}
+                             <button class="btn btn-link text-danger p-0" onclick="InvoicesView.deleteSingle('${i.id}')" title="Mover a papelera"><i class="bi bi-trash3 fs-5"></i></button>
+                          </div>
+                       </td>
+                    </tr>`}).join('') || `<tr><td colspan="8" class="text-center p-5 opacity-25 fw-black">NO HAY REGISTROS EN EL EJERCICIO ${HandooApp.fiscalYear}</td></tr>`}
+               </tbody>
+            </table>
+         </div>
+      </div>`;
+  },
+
+  toggleSelect: function(id, checked) {
+    if (checked) this.selectedIds.add(id);
+    else this.selectedIds.delete(id);
+    this.renderList();
+  },
+
+  toggleAll: function(checked) {
+    const data = this.activeTab === 'drafts' ? this.drafts : this.history;
+    if (checked) data.forEach(d => this.selectedIds.add(d.id));
+    else this.selectedIds.clear();
+    this.renderList();
+  },
+
+  genBatch: async function() {
+    HandooApp.ui.showToast("Motor Titanium buscando recurrencias...", "info");
+    const res = await HandooApp.api('invoice.gen_batch');
+    if (res.ok) { HandooApp.ui.showToast(res.msg); this.load(); }
+  },
+
+  approveBatch: async function() {
+    const ids = Array.from(this.selectedIds);
+    if (await HandooApp.ui.confirm(`¿EMITIR ${ids.length} FACTURAS?`, "Se asignará numeración oficial y se distribuirán efectos de cobro en tesorería.")) {
+       HandooApp.ui.showToast("Consolidando facturas...", "info");
+       const res = await HandooApp.api('invoice.approve', { ids });
+       if (res.ok) { 
+          HandooApp.ui.showToast(res.msg, "success"); 
+          this.selectedIds.clear(); 
+          this.load(); 
+       }
+       else HandooApp.ui.showToast(res.msg, "error");
+    }
+  },
+
+  onClickBatchSend: async function() {
+    const ids = Array.from(this.selectedIds);
+    if (await HandooApp.ui.confirm(`¿ENVIAR ${ids.length} FACTURAS POR EMAIL?`, "Se generarán los PDFs y se enviarán a los correos de facturación de cada cliente.")) {
+       HandooApp.ui.showToast("Iniciando motor de despacho de correo...", "info");
+       const res = await HandooApp.api('invoice.send_batch_emails', { ids });
+       if (res.ok) {
+          HandooApp.ui.showToast(res.msg, "success");
+          this.selectedIds.clear();
+          this.load();
+       } else {
+          HandooApp.ui.showToast(res.msg, "error");
+       }
+    }
+  },
+
+  openPDF: async function(id) {
+    HandooApp.ui.showToast("Generando documento oficial...", "info");
+    const res = await HandooApp.api('invoice.get_pdf', { id });
+    if (res.ok) window.open(res.data.url, '_blank');
+  },
+
+  deleteSingle: function(id) {
+    this.selectedIds.clear();
+    this.selectedIds.add(id);
+    this.deleteBatch();
+  },
+
+  /**
+   * DELETE BATCH ATÓMICO: Optimización drástica de red enviando todos los IDs en un solo disparo.
+   */
+  deleteBatch: async function() {
+    const ids = Array.from(this.selectedIds);
+    if(await HandooApp.ui.confirm(`¿BORRAR ${ids.length} DOCUMENTOS?`, "Se procesarán en bloque de forma atómica en el Kernel.")) {
+       HandooApp.ui.showToast("Limpieza masiva en curso...", "info");
+       const res = await HandooApp.api('invoice.delete', { ids: ids });
+       if(res.ok) {
+          HandooApp.ui.showToast(res.msg, "success");
+          this.selectedIds.clear();
+          this.load();
+       }
+    }
+  },
+
+  openManualModal: async function(id = null, preSelectedClientId = null) {
+    if (!this.settings) {
+       const resSet = await HandooApp.api('admin.get_settings');
+       if (resSet.ok) this.settings = resSet.data;
+       else return HandooApp.ui.showToast("Kernel no disponible. Verifique su conexión.", "error");
+    }
+
+    this.currentEditId = id;
+    let invData = { 
+       client_id: preSelectedClientId || '', numero: 'BORRADOR', 
+       fecha: new Date().toISOString().split('T')[0], 
+       fecha_vencimiento: '', 
+       total: 0, base: 0, total_iva: 0, total_ret: 0, 
+       obs: '', items: [], forma_pago_override: 'TRANSFERENCIA'
+    };
+
+    if (id) {
+       HandooApp.ui.showToast("Cargando documento...", "info");
+       let allInvs = [...this.drafts, ...this.history];
+       let found = allInvs.find(i => String(i.id) === String(id));
+       
+       if (!found) {
+          const [resD, resH] = await Promise.all([HandooApp.api('invoice.get_drafts'), HandooApp.api('invoice.get_history')]);
+          if(resD.ok) this.drafts = resD.data || [];
+          if(resH.ok) this.history = resH.data || [];
+          allInvs = [...this.drafts, ...this.history];
+          found = allInvs.find(i => String(i.id) === String(id));
+       }
+
+       if (found) {
+          invData = JSON.parse(JSON.stringify(found));
+       } else {
+          return HandooApp.ui.showToast("Documento no localizado en el Kernel.", "error");
+       }
+    }
+
+    const closingDate = this.settings.closing_date;
+    const isClosed = closingDate && new Date(invData.fecha) <= new Date(closingDate);
+    const today = new Date().toISOString().split('T')[0];
+
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 1200px">
+         <div class="h-modal-header d-flex justify-content-between">
+            <h5 class="m-0 fw-black text-uppercase">${id ? 'EDITOR DE FACTURA: ' + (invData.numero || id) : 'EDITOR MANUAL INTELIGENTE'}</h5>
+            ${isClosed ? '<span class="badge bg-danger fw-black">PERIODO CERRADO - SOLO LECTURA</span>' : '<span class="badge bg-white text-dark fw-black">ASISTENTE TITANIUM</span>'}
+         </div>
+         <div class="h-modal-body bg-light" style="padding: 20px 40px">
+            
+            <!-- BLOQUE UNIFICADO TITANIUM (DINÁMICO V130.5) -->
+            <div id="m-payment-block" class="p-4 rounded-4 shadow-sm mt-0 block-light row align-items-center">
+               <div class="col-md-1 text-center"><i id="m-payment-icon" class="bi bi-bank fs-2 text-brand"></i></div>
+               <div class="col-md-11 ps-4">
+                  <h6 id="m-payment-title" class="fw-black text-uppercase m-0" style="font-size:12px;">Configuración de Tesorería y Emisión</h6>
+                  <p class="small text-muted m-0">Parámetros técnicos para la factura oficial.</p>
+                  <div class="row mt-3 g-2">
+                     <div class="col-md-3">
+                       <label class="h-label-refined">CLIENTE TITULAR</label>
+                       <select id="man-client-sel" class="form-select fw-bold h-form-control" ${isClosed?'disabled':''} style="font-size:11px" onchange="InvoicesView.onManualClientChange(this.value)">
+                           <option value="">-- BUSCAR CLIENTE --</option>
+                           ${(this.settings.clients || []).map(c => `<option value="${c.id}" ${invData.client_id === c.id ? 'selected' : ''}>${c.nombre_fiscal} (${c.cif}) ${c.handoo_network?'(NET)':''}</option>`).join('')}
+                       </select>
+                     </div>
+                     <div class="col-md-2"><label class="h-label-refined">SERIE</label><select id="m-serie-id" class="form-select h-form-control fw-bold" ${isClosed?'disabled':''}><option value="">POR DEFECTO</option>${(this.settings.masters.series || []).map(s => `<option value="${s.id}" ${invData.series_id === s.id ? 'selected' : ''}>${s.nombre.toUpperCase()}</option>`).join('')}</select></div>
+                     <div class="col-md-2"><label class="h-label-refined">SEDE</label><select id="man-sede-sel" class="form-select fw-bold h-form-control" ${isClosed?'disabled':''}><option value="">CENTRAL</option></select></div>
+                     <div class="col-md-3"><label class="h-label-refined">FORMA DE PAGO</label><select id="man-pago-sel" class="form-select fw-bold h-form-control" ${isClosed?'disabled':''} onchange="InvoicesView.updatePaymentBlockUI(this.value)"><option value="">DEFECTO CLIENTE</option><option value="SEPA" ${invData.forma_pago_override === 'SEPA' ? 'selected' : ''}>GIRO SEPA (AUTO)</option><option value="STRIPE" ${invData.forma_pago_override === 'STRIPE' ? 'selected' : ''}>STRIPE (AUTO)</option>${(this.settings.masters.payment_methods || []).map(p => `<option value="${p.nombre}" ${invData.forma_pago_override === p.nombre ? 'selected' : ''}>${p.nombre.toUpperCase()}</option>`).join('')}</select></div>
+                     <div class="col-md-2"><label class="h-label-refined">PLAZO (DÍAS)</label><input type="number" id="man-vto-dias" class="form-control fw-bold h-form-control" value="${invData.vencimiento_override || 30}" ${isClosed?'disabled':''} onchange="InvoicesView.autoCalcDates()"></div>
+                  </div>
+                  <div class="row g-2 mt-2">
+                     <div class="col-md-6"><label class="h-label-refined">FECHA FACTURA</label><input type="date" id="man-fecha-fact" class="form-control h-form-control fw-bold" value="${invData.fecha}" ${isClosed?'disabled':''} onchange="InvoicesView.autoCalcDates()"></div>
+                     <div class="col-md-6"><label class="h-label-refined text-warning">FECHA VENCIMIENTO</label><input type="date" id="man-fecha-vto" class="form-control h-form-control fw-bold border-warning shadow-sm" value="${invData.fecha_vencimiento || today}" ${isClosed?'disabled':''}></div>
+                  </div>
+               </div>
+            </div>
+
+            <div class="titanium-block block-light mt-4">
+               <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6 class="m-0 fw-black text-muted small">DESGLOSE DE CONCEPTOS</h6>
+                  ${!isClosed ? `<button class="btn btn-dark btn-sm fw-black px-3" style="font-size:10px" onclick="InvoicesView.addManualRow()">+ LÍNEA</button>` : ''}
+               </div>
+               <table class="table table-sm align-middle">
+                  <thead class="bg-light">
+                     <tr class="small text-muted fw-bold" style="font-size:9px">
+                        <th width="120">TIPO</th>
+                        <th>CONCEPTO</th>
+                        <th width="80" class="text-center">CANT.</th>
+                        <th width="120">PRECIO (€)</th>
+                        <th width="80" class="text-center">DTO%</th>
+                        <th width="80" class="text-center">IVA%</th>
+                        <th width="80" class="text-center">IRPF%</th>
+                        <th width="140" class="text-end">TOTAL</th>
+                        <th width="40"></th>
+                     </tr>
+                  </thead>
+                  <tbody id="man-tbody"></tbody>
+               </table>
+            </div>
+
+            <div class="row mt-3">
+               <div class="col-md-7"><label class="h-label" style="font-size:9px">OBSERVACIONES INTERNAS</label><textarea id="man-obs" class="form-control h-form-control" rows="3" ${isClosed?'disabled':''} style="height:auto; font-size:11px">${invData.obs || ''}</textarea></div>
+               <div class="col-md-5">
+                  <div class="card p-3 border-0 shadow-sm bg-white rounded-4">
+                     <div class="d-flex justify-content-between mb-1 small fw-bold text-muted"><span>BASE IMPONIBLE</span><span id="txt-base" class="text-dark">${parseFloat(invData.base || 0).toLocaleString()} €</span></div>
+                     <div class="d-flex justify-content-between mb-1 small fw-bold text-success"><span>TOTAL IVA</span><span id="txt-iva" class="text-success">${parseFloat(invData.total_iva || 0).toLocaleString()} €</span></div>
+                     <div class="d-flex justify-content-between mb-1 small fw-bold text-danger"><span>TOTAL RET. (IRPF)</span><span id="txt-irpf" class="text-danger">${parseFloat(invData.total_ret || 0).toLocaleString()} €</span></div>
+                     <div class="d-flex justify-content-between mt-2 pt-2 border-top fw-black fs-4 text-dark"><span>TOTAL FACTURA</span><span id="txt-total" class="text-dark">${parseFloat(invData.total || 0).toLocaleString()} €</span></div>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <div class="h-modal-footer" style="padding: 15px 40px">
+            <button class="btn btn-light border fw-bold flex-grow-1" onclick="InvoicesView.closeModal()">CERRAR</button>
+            ${!isClosed ? `<button id="btn-save-man" class="btn btn-dark fw-black flex-grow-1 shadow" onclick="InvoicesView.saveManual()">SINC. BORRADOR (Ctrl+S)</button>` : ''}
+         </div>
+      </div>
+      <datalist id="dl-inv-man-PRODUCT">${(this.settings.masters.products || []).map(p => `<option value="${escapeHTML(p.nombre)}">${p.pvp}</option>`).join('')}</datalist>
+      <datalist id="dl-inv-man-PLAN">${(this.settings.masters.plans || []).map(p => `<option value="${escapeHTML(p.nombre)}">${p.pvp}</option>`).join('')}</datalist>
+      <datalist id="dl-inv-man-MODULE">${(this.settings.masters.modules || []).map(p => `<option value="${escapeHTML(p.nombre)}">${p.pvp}</option>`).join('')}</datalist>
+    `;
+    document.body.appendChild(overlay);
+    
+    if (invData.client_id) this.onManualClientChange(invData.client_id, invData.sede_id);
+    
+    if (invData.items && invData.items.length > 0) {
+       invData.items.forEach(it => this.addManualRow(it, isClosed));
+    } else if (id && (invData.base || invData.total)) {
+       this.addManualRow({ 
+          concept: invData.item_display_name || 'CONCEPTO GENERAL SISTEMA', 
+          qty: 1, 
+          price: invData.base || (invData.total / 1.21),
+          iva: invData.total_iva ? Math.round((invData.total_iva / (invData.base || 1)) * 100) : 21,
+          irpf: invData.total_ret ? Math.round((invData.total_ret / (invData.base || 1)) * 100) : 0
+       }, isClosed);
+    } else if (!id) {
+       this.addManualRow(null, isClosed);
+    }
+    
+    this.updatePaymentBlockUI(invData.forma_pago_override);
+    this.autoCalcDates();
+    this.calcManual();
+
+    // V130.5: Inyección de Atajo Ctrl+S
+    const keyListener = (e) => {
+       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          e.preventDefault();
+          InvoicesView.saveManual();
+       }
+    };
+    document.addEventListener('keydown', keyListener);
+    this._currentKeyListener = keyListener;
+  },
+
+  updatePaymentBlockUI: function(val) {
+    const block = document.getElementById('m-payment-block');
+    const icon = document.getElementById('m-payment-icon');
+    const title = document.getElementById('m-payment-title');
+    const labels = block?.querySelectorAll('label') || [];
+
+    if (!block) return;
+
+    if (val === 'SEPA' || val === 'STRIPE') {
+       block.className = "p-4 rounded-4 shadow-sm mt-0 block-dark row align-items-center";
+       if(icon) icon.className = "bi bi-credit-card-2-front-fill fs-2 text-warning";
+       if(title) title.style.color = "#fff";
+       labels.forEach(l => l.classList.add('text-white-50'));
+    } else {
+       block.className = "p-4 rounded-4 shadow-sm mt-0 block-light row align-items-center";
+       if(icon) icon.className = "bi bi-bank fs-2 text-brand";
+       if(title) title.style.color = "inherit";
+       labels.forEach(l => l.classList.remove('text-white-50'));
+    }
+  },
+
+  autoCalcDates: function() {
+    const fFact = document.getElementById('man-fecha-fact');
+    const fVto = document.getElementById('man-fecha-vto');
+    const days = document.getElementById('man-vto-dias');
+    if(!fFact || !fVto || !days) return;
+    
+    let date = new Date(fFact.value);
+    date.setDate(date.getDate() + parseInt(days.value || 30));
+    fVto.value = date.toISOString().split('T')[0];
+  },
+
+  onManualClientChange: function(clientId, selectedSedeId = null) {
+    const client = (this.settings.clients || []).find(c => String(c.id) === String(clientId));
+    const sel = document.getElementById('man-sede-sel');
+    const pagoSel = document.getElementById('man-pago-sel');
+    const vtoInp = document.getElementById('man-vto-dias');
+    const seriesSel = document.getElementById('m-serie-id');
+    
+    if(client) {
+       this.currentManualClient = client;
+       sel.innerHTML = `<option value="">CENTRAL / PRINCIPAL</option>` + (client.sedes || []).map(s => `<option value="${s.id}" ${String(s.id) === String(selectedSedeId) ? 'selected' : ''}>${escapeHTML(s.nombre)}</option>`).join('');
+       if(pagoSel && !this.currentEditId) {
+          pagoSel.value = client.facturacion?.forma_pago || '';
+          this.updatePaymentBlockUI(pagoSel.value);
+       }
+       if(vtoInp && !this.currentEditId) vtoInp.value = client.facturacion?.vencimiento || 30;
+       if(seriesSel && client.default_series_id && !this.currentEditId) seriesSel.value = client.default_series_id;
+       this.autoCalcDates();
+    }
+  },
+
+  addManualRow: function(data = null, disabled = false) {
+    const tbody = document.getElementById('man-tbody');
+    const tr = document.createElement('tr'); tr.className = 'man-line-row';
+    const type = data ? (data.type || 'PRODUCT') : 'PRODUCT';
+    const concept = data ? (data.concept || data.nombre || '') : '';
+    const qty = data ? (data.qty || 1) : 1;
+    const price = data ? (data.price || data.pvp || 0) : 0;
+    const dto = data ? (data.dto || 0) : 0;
+    const iva = data ? (data.iva || 21) : 21;
+    const irpf = data ? (data.irpf || 0) : 0;
+
+    tr.innerHTML = `
+      <td><select class="form-select man-input row-type" ${disabled?'disabled':''} style="font-size:10px" onchange="InvoicesView.onRowTypeChange(this)"><option value="PRODUCT" ${type==='PRODUCT'?'selected':''}>PRODUCTO</option><option value="PLAN" ${type==='PLAN'?'selected':''}>PLAN</option><option value="MODULE" ${type==='MODULE'?'selected':''}>MÓDULO</option></select></td>
+      <td><input type="text" class="form-control man-input row-concept" ${disabled?'disabled':''} value="${escapeHTML(concept)}" placeholder="Concepto..." list="dl-inv-man-${type}"></td>
+      <td><input type="number" class="form-control man-input text-center row-qty" ${disabled?'disabled':''} value="${qty}" oninput="InvoicesView.calcManual()"></td>
+      <td><input type="number" step="0.01" class="form-control man-input row-price" ${disabled?'disabled':''} value="${price}" oninput="InvoicesView.calcManual()"></td>
+      <td><input type="number" class="form-control man-input text-center row-dto" ${disabled?'disabled':''} value="${dto}" oninput="InvoicesView.calcManual()"></td>
+      <td><input type="number" class="form-control man-input text-center row-iva" ${disabled?'disabled':''} value="${iva}" oninput="InvoicesView.calcManual()"></td>
+      <td><input type="number" class="form-control man-input text-center row-irpf" ${disabled?'disabled':''} value="${irpf}" oninput="InvoicesView.calcManual()"></td>
+      <td class="text-end fw-black row-total">0,00 €</td>
+      <td class="text-center">${!disabled ? `<button class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove(); InvoicesView.calcManual()"><i class="bi bi-trash"></i></button>` : ''}</td>
+    `;
+    tbody.appendChild(tr);
+    this.calcManual();
+  },
+
+  onRowTypeChange: function(el) {
+    const tr = el.closest('tr');
+    const list = tr.querySelector('.row-concept');
+    list.setAttribute('list', `dl-inv-man-${el.value}`);
+  },
+
+  calcManual: function() {
+    let baseTotal = 0, ivaTotal = 0, irpfTotal = 0;
+    document.querySelectorAll('.man-line-row').forEach(tr => {
+       const qty = parseFloat(tr.querySelector('.row-qty').value || 0);
+       const prc = parseFloat(tr.querySelector('.row-price').value || 0);
+       const dP = parseFloat(tr.querySelector('.row-dto').value || 0);
+       const iP = parseFloat(tr.querySelector('.row-iva').value || 0);
+       const rP = parseFloat(tr.querySelector('.row-irpf').value || 0);
+       
+       const lBase = (qty * prc) * (1 - dP/100);
+       const lIva = lBase * (iP/100);
+       const lRet = lBase * (rP/100);
+       const lTotal = lBase + lIva - lRet;
+       
+       baseTotal += lBase; ivaTotal += lIva; irpfTotal += lRet;
+       tr.querySelector('.row-total').innerText = lTotal.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+    });
+    
+    document.getElementById('txt-base').innerText = baseTotal.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+    document.getElementById('txt-iva').innerText = ivaTotal.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+    document.getElementById('txt-irpf').innerText = irpfTotal.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+    document.getElementById('txt-total').innerText = (baseTotal + ivaTotal - irpfTotal).toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+  },
+
+  saveManual: async function() {
+    if(!this.currentManualClient) return HandooApp.ui.showToast("Seleccione un cliente", "error");
+    
+    const items = Array.from(document.querySelectorAll('.man-line-row')).map(tr => ({
+       type: tr.querySelector('.row-type').value,
+       concept: tr.querySelector('.row-concept').value,
+       qty: parseFloat(tr.querySelector('.row-qty').value),
+       price: parseFloat(tr.querySelector('.row-price').value),
+       dto: parseFloat(tr.querySelector('.row-dto').value),
+       iva: parseFloat(tr.querySelector('.row-iva').value),
+       irpf: parseFloat(tr.querySelector('.row-irpf').value)
+    }));
+
+    const payload = {
+       id: this.currentEditId,
+       client_id: this.currentManualClient.id,
+       client_name: this.currentManualClient.nombre_fiscal,
+       sede_id: document.getElementById('man-sede-sel').value,
+       series_id: document.getElementById('m-serie-id').value,
+       forma_pago_override: document.getElementById('man-pago-sel').value,
+       vencimiento_override: document.getElementById('man-vto-dias').value,
+       fecha: document.getElementById('man-fecha-fact').value,
+       fecha_vencimiento: document.getElementById('man-fecha-vto').value,
+       total: parseFloat(document.getElementById('txt-total').innerText.replace(/[^\d,\.]/g, '').replace(',', '.')),
+       base: parseFloat(document.getElementById('txt-base').innerText.replace(/[^\d,\.]/g, '').replace(',', '.')),
+       total_iva: parseFloat(document.getElementById('txt-iva').innerText.replace(/[^\d,\.]/g, '').replace(',', '.')),
+       total_ret: parseFloat(document.getElementById('txt-irpf').innerText.replace(/[^\d,\.]/g, '').replace(',', '.')),
+       obs: document.getElementById('man-obs').value,
+       items: items,
+       item_display_name: items[0]?.concept || 'Factura Manual',
+       is_network_delivery: this.currentManualClient.handoo_network === true
+    };
+    
+    HandooApp.ui.setLoading('btn-save-man', true, "SINCRONIZANDO...");
+    const res = await HandooApp.api(this.currentEditId ? 'invoice.save_manual' : 'invoice.create_manual', payload);
+    if(res.ok) { 
+       if(this.currentManualClient.handoo_network) {
+          HandooApp.ui.showToast("Factura entregada vía Handoo Network", "success");
+       }
+       this.closeModal();
+       this.load(); 
+    } else {
+       HandooApp.ui.setLoading('btn-save-man', false);
+       HandooApp.ui.showToast(res.msg, "error");
+    }
+  },
+
+  closeModal: function() {
+    if(this._currentKeyListener) {
+       document.removeEventListener('keydown', this._currentKeyListener);
+       this._currentKeyListener = null;
+    }
+    const overlays = document.querySelectorAll('.h-modal-overlay');
+    if(overlays.length > 0) overlays[overlays.length-1].remove();
+  },
+
+  openBulkDeleteModal: function() {
+    const overlay = document.createElement('div');
+    overlay.className = 'h-modal-overlay animate-slide';
+    overlay.innerHTML = `
+      <div class="h-modal shadow-lg" style="width: 500px">
+         <div class="h-modal-header bg-danger text-white"><h5 class="m-0 fw-black">BORRADO MASIVO</h5></div>
+         <div class="h-modal-body bg-light">
+            <div class="unified-block block-light mt-0">
+               <div class="row g-3">
+                  <div class="col-md-6"><label class="h-label-refined">DESDE</label><input type="date" id="bulk-start" class="form-control h-form-control"></div>
+                  <div class="col-md-6"><label class="h-label-refined">HASTA</label><input type="date" id="bulk-end" class="form-control h-form-control"></div>
+               </div>
+               <p class="small text-muted mt-3">Todas las facturas del tipo actual en este rango serán movidas a la papelera global en una sola transacción.</p>
+            </div>
+         </div>
+         <div class="h-modal-footer">
+            <button class="btn btn-light border flex-grow-1 fw-bold" onclick="this.closest('.h-modal-overlay').remove()">CANCELAR</button>
+            <button id="btn-exec-bulk" class="btn btn-danger flex-grow-1 fw-black shadow" onclick="InvoicesView.executeBulk()">EJECUTAR PURGA</button>
+         </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  },
+
+  executeBulk: async function() {
+    const start = document.getElementById('bulk-start').value;
+    const end = document.getElementById('bulk-end').value;
+    if(!start || !end) return HandooApp.ui.showToast("Defina el rango de fechas", "error");
+
+    if (await HandooApp.ui.confirm("¿CONFIRMAR PURGA MASIVA?", "Se procesará el borrado en bloque de forma optimizada.")) {
+       HandooApp.ui.setLoading('btn-exec-bulk', true, "BORRANDO...");
+       const data = this.activeTab === 'drafts' ? this.drafts : this.history;
+       const toDeleteIds = data.filter(i => i.fecha >= start && i.fecha <= end).map(x => x.id);
+       
+       if (toDeleteIds.length === 0) return HandooApp.ui.showToast("No se han localizado documentos en el rango.", "info");
+
+       const res = await HandooApp.api('invoice.delete', { ids: toDeleteIds });
+       HandooApp.ui.showToast(res.msg);
+       document.querySelector('.h-modal-overlay').remove();
+       this.load();
+    }
+  }
+};
+</script>
