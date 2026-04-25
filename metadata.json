@@ -1,0 +1,8 @@
+{
+  "name": "HANDOO OS - TITANIUM",
+  "description": "Industrial Enterprise OS with Neural OCR, Per-Item APPCC, and Gestoria Export.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
